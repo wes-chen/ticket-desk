@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Reject a commit message containing a known private value.
+#
+# This exists because it already happened: a bug-fix commit message used the real
+# season invoice total as an illustrative example, and pushed it to a public repo.
+# The build-time privacy check caught it only afterwards, by which point the commit
+# was already published - and rewriting published history is exactly the problem
+# this project went to some trouble to avoid.
+#
+# A commit message is the one artifact that cannot be quietly amended once pushed.
+# Check it before it exists, not after.
+#
+# Install:  git config core.hooksPath .githooks
+
+set -euo pipefail
+MSG_FILE="$1"
+ROOT="$(git rev-parse --show-toplevel)"
+PATTERNS="$ROOT/.private-patterns"
+
+# A fresh clone has no patterns file, so this cannot check anything. Say so rather
+# than passing silently - a green check that verified nothing is worse than no check.
+if [[ ! -f "$PATTERNS" ]]; then
+  echo "commit-msg: no .private-patterns found; message NOT checked for private values" >&2
+  exit 0
+fi
+
+found=0
+while IFS= read -r pat; do
+  [[ -z "$pat" || "$pat" == \#* ]] && continue
+  if grep -qF -- "$pat" "$MSG_FILE"; then
+    echo "commit-msg: BLOCKED - message contains private value: $pat" >&2
+    found=1
+  fi
+done < "$PATTERNS"
+
+if [[ $found -eq 1 ]]; then
+  echo "" >&2
+  echo "Use a fabricated example instead. Real values belong in the private ops repo." >&2
+  exit 1
+fi

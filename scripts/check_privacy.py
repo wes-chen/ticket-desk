@@ -22,10 +22,29 @@ import pathlib
 import subprocess
 import sys
 
-# History findings are advisory while the repo is private, and fatal before it goes
-# public - which is the exact moment they start to matter. Set to 1 in the workflow
-# that publishes, or before flipping visibility.
-HISTORY_FATAL = os.environ.get("PRIVACY_HISTORY_FATAL") == "1"
+def _remote_is_public() -> bool | None:
+    """Ask GitHub whether the origin repo is public. None if it can't be determined.
+
+    This matters more than it looks. History findings were originally advisory with a
+    hardcoded message claiming "this repo is private" - which stayed reassuring after
+    the repo went public, and let a real leak through. Ask, don't assume.
+    """
+    try:
+        r = subprocess.run(
+            ["gh", "repo", "view", "--json", "visibility", "-q", ".visibility"],
+            capture_output=True, text=True, timeout=15, cwd=str(pathlib.Path(__file__).resolve().parent.parent),
+        )
+        v = r.stdout.strip().upper()
+        return v == "PUBLIC" if v in {"PUBLIC", "PRIVATE", "INTERNAL"} else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+REMOTE_PUBLIC = _remote_is_public()
+
+# Fatal if explicitly requested, OR if the repo is actually public - the case where a
+# history leak is live rather than hypothetical.
+HISTORY_FATAL = os.environ.get("PRIVACY_HISTORY_FATAL") == "1" or REMOTE_PUBLIC is True
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
@@ -137,12 +156,14 @@ def history() -> tuple[list[str], bool]:
         for line in r.stdout.splitlines():
             problems.append(f"history: commit {line.strip()} contains {p!r} in file content")
 
-    # Commit messages leak just as readily as files.
+    # Commit messages leak just as readily as files. Use an explicit record separator:
+    # splitting on a doubled NUL misattributed findings to the wrong commit, because
+    # records are SHA\0BODY\0SHA\0BODY with no doubled delimiter between them.
     msgs = subprocess.run(
-        ["git", "-C", str(ROOT), "log", "--all", "--format=%H%x00%B%x00"],
+        ["git", "-C", str(ROOT), "log", "--all", "--format=%H%x00%B%x1e"],
         capture_output=True, text=True, check=False,
     )
-    for entry in msgs.stdout.split("\x00\x00"):
+    for entry in msgs.stdout.split("\x1e"):
         if "\x00" not in entry:
             continue
         sha, body = entry.split("\x00", 1)
@@ -167,9 +188,11 @@ def main() -> int:
     if ran_history:
         n = len(hist)
         state = "CLEAN" if n == 0 else f"{n} finding(s)"
-        print(f"history check:    git log content + messages -> {state}")
+        vis = {True: "PUBLIC", False: "private", None: "visibility unknown"}[REMOTE_PUBLIC]
+        mode = "fatal" if HISTORY_FATAL else "advisory"
+        print(f"history check:    git log content + messages -> {state}  [remote {vis}, {mode}]")
         if hist and not HISTORY_FATAL:
-            print("                  (advisory: this repo is private; history must be clean BEFORE going public)")
+            print("                  history must be clean BEFORE this repo is made public")
     if HISTORY_FATAL:
         problems += hist
 
