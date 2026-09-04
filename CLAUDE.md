@@ -50,7 +50,10 @@ purpose. **A fresh clone will not have it, so the literal and history passes sil
 skip.** A clean build on a fresh clone is therefore weaker evidence than it looks. If
 you are about to make a visibility change, recreate that file first.
 
-History findings are advisory by default and fatal under `PRIVACY_HISTORY_FATAL=1`.
+History findings are **automatically fatal when the remote is public** (checked via `gh`,
+not assumed), and can be forced with `PRIVACY_HISTORY_FATAL=1`. This is deliberate: the
+original version was advisory with a hardcoded "this repo is private" note, which stayed
+reassuring after the repo went public and let a real leak through.
 
 ## 2. Issues live in a different repo
 
