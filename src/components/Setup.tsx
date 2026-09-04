@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { breakEvenList, fmt } from "../lib/economics";
 import { TIERS, invoicePerSeat, seatCount, shareUrl, type Profile, type Tier } from "../lib/profile";
 
@@ -23,6 +23,18 @@ export default function Setup({
   firstRun: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+
+  // The seats field is free text while being edited, and only *derived* into the
+  // parsed array. Binding the input directly to seats.join(", ") ate any comma the
+  // moment it was typed: "16," splits to ["16",""], the empty is filtered out, and
+  // it rejoins to "16". Keep what was typed; parse alongside it.
+  const [seatsText, setSeatsText] = useState(profile.seats.seats.join(", "));
+
+  const parseSeats = (raw: string) =>
+    raw
+      .split(/[,\s]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
 
   const recon = useMemo(() => {
     const perSeat = invoicePerSeat(profile);
@@ -84,36 +96,29 @@ export default function Setup({
           </Field>
           <Field label="Seats (comma separated)">
             <input
-              value={profile.seats.seats.join(", ")}
-              onChange={(e) =>
-                set({
-                  seats: {
-                    ...profile.seats,
-                    seats: e.target.value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  },
-                })
-              }
+              value={seatsText}
+              onChange={(e) => {
+                setSeatsText(e.target.value);
+                set({ seats: { ...profile.seats, seats: parseSeats(e.target.value) } });
+              }}
+              onBlur={() => setSeatsText(parseSeats(seatsText).join(", "))}
               placeholder="e.g. 1, 2"
               className={inputCls}
             />
+            <p className="mt-1 text-xs text-slate-500">
+              {profile.seats.seats.length === 0
+                ? "no seats yet"
+                : `${profile.seats.seats.length} seat${profile.seats.seats.length === 1 ? "" : "s"}: ${profile.seats.seats.join(", ")}`}
+            </p>
           </Field>
         </div>
         <div className="mt-4 max-w-xs">
           <Field label="Season invoice total (all seats)">
-            <div className="flex items-center gap-1">
-              <span className="text-slate-400">$</span>
-              <input
-                type="number"
-                step="0.01"
-                value={profile.invoiceTotal ?? ""}
-                onChange={(e) => set({ invoiceTotal: e.target.value === "" ? null : Number(e.target.value) })}
-                placeholder="e.g. 5000.00"
-                className={inputCls}
-              />
-            </div>
+            <MoneyInput
+              value={profile.invoiceTotal}
+              onValue={(n) => set({ invoiceTotal: n })}
+              placeholder="e.g. 5000.00"
+            />
           </Field>
           {profile.invoiceTotal != null && (
             <p className="mt-1 text-xs text-slate-500 tabular-nums">
@@ -138,20 +143,16 @@ export default function Setup({
               <label key={t} className="block">
                 <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{t}</span>
                 <span className="ml-1 text-xs text-slate-400">({tierCounts[t] ?? 0})</span>
-                <div className="mt-1 flex items-center gap-1">
-                  <span className="text-slate-400">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={c ?? ""}
+                <div className="mt-1">
+                  <MoneyInput
+                    value={c ?? null}
                     placeholder="--"
-                    onChange={(e) => {
+                    onValue={(n) => {
                       const next = { ...profile.credits };
-                      if (e.target.value === "") delete next[t as Tier];
-                      else next[t as Tier] = Number(e.target.value);
+                      if (n == null) delete next[t as Tier];
+                      else next[t as Tier] = n;
                       set({ credits: next });
                     }}
-                    className={inputCls}
                   />
                 </div>
                 <p className="mt-1 text-xs text-slate-500 tabular-nums">
@@ -220,6 +221,57 @@ export default function Setup({
 
 const inputCls =
   "w-full rounded border border-slate-300 bg-transparent px-2 py-1 text-sm tabular-nums dark:border-slate-700";
+
+/**
+ * Money input that keeps the typed text as the source of truth.
+ *
+ * Binding a number input to `Number(e.target.value)` breaks decimal entry: typing
+ * "51." coerces to 51, which re-renders as "51" and swallows the dot, so "51.50"
+ * can never be entered. Same failure as the seats field ate commas. Hold the raw
+ * string, emit the parsed number, and only normalize on blur.
+ */
+function MoneyInput({
+  value,
+  onValue,
+  placeholder,
+}: {
+  value: number | null;
+  onValue: (n: number | null) => void;
+  placeholder?: string;
+}) {
+  const [text, setText] = useState(value == null ? "" : String(value));
+
+  // Re-sync when the value changes from outside (e.g. a profile import).
+  useEffect(() => {
+    const parsed = text.trim() === "" ? null : Number(text);
+    if (parsed !== value && !(Number.isNaN(parsed) && value == null)) {
+      setText(value == null ? "" : String(value));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-slate-400">$</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={text}
+        placeholder={placeholder}
+        onChange={(e) => {
+          const raw = e.target.value;
+          // Permit intermediate states like "", "51.", "." while typing.
+          if (raw !== "" && !/^\d*\.?\d*$/.test(raw)) return;
+          setText(raw);
+          const n = raw === "" || raw === "." ? null : Number(raw);
+          onValue(n == null || Number.isNaN(n) ? null : n);
+        }}
+        onBlur={() => setText(value == null ? "" : String(value))}
+        className={inputCls}
+      />
+    </div>
+  );
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
