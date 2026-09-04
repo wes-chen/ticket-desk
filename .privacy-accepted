@@ -1,0 +1,16 @@
+# Accepted privacy findings.
+#
+# Commit SHAs whose history findings have been reviewed and consciously accepted.
+# Only SHAs go here - never the value itself, which would reintroduce the leak into
+# the very file that documents it.
+#
+# The check still reports these; it just stops treating them as fatal. Accepting a
+# finding is a decision that should stay visible, not one that makes the evidence
+# disappear.
+
+# 6d93f37 - commit message used the real season invoice total as an example.
+# Accepted 2026-09-04 by Wesley: the Sharks publish per-section average prices in
+# their public season-ticket marketing, so the figure is derivable from public
+# information and reveals little. Rewriting published history was judged not worth
+# it for this. The commit-msg hook now prevents recurrence.
+6d93f37

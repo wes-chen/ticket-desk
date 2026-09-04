@@ -2,6 +2,19 @@
 
 Read `README.md` for what the project is and why. This file is the rules.
 
+## 0. Start sessions from this directory
+
+`~/Dev/ticket-desk` - the code repo. Not the parent, not the ops repo.
+
+Everything needed is reachable from here: the code, this file, and `.claude/issues.json`
+pointing at the tracker. The ops repo does not need a local clone - `gh --repo
+wes-chen/ticket-desk-ops` reaches its issues fine.
+
+Note that Claude Code keys its memory to the working directory, so a session started
+somewhere else gets a *different* memory set and will silently lack this project's
+context. Memories were migrated here on 2026-09-03; the copy under the parent directory
+is marked stale on purpose.
+
 ## 1. This repo is PUBLIC. Never commit personal data.
 
 Non-negotiable, and it has already been violated once - not through config, but through
@@ -103,3 +116,17 @@ changed - do not paper over it.
   silently discarded every file.
 - No test suite exists yet (ops#17). Until there is one, verify behaviour explicitly
   rather than assuming a clean build means correct.
+
+## Setup on a fresh clone
+
+```bash
+npm install
+git config core.hooksPath .githooks   # enables the commit-msg private-value check
+```
+
+`.private-patterns` is local-only and gitignored, so a fresh clone cannot run the literal
+or history privacy passes, and the commit-msg hook will say so rather than passing
+silently. Recreate it (one private literal per line) before relying on those checks.
+
+`.privacy-accepted` records reviewed-and-accepted history findings by SHA only. Accepted
+findings are still printed - an accepted risk stays visible rather than disappearing.

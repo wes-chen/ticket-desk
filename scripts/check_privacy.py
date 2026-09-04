@@ -49,6 +49,7 @@ HISTORY_FATAL = os.environ.get("PRIVACY_HISTORY_FATAL") == "1" or REMOTE_PUBLIC 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
 PATTERNS_FILE = ROOT / ".private-patterns"
+ACCEPTED_FILE = ROOT / ".privacy-accepted"
 
 # Keys that must never appear in committed JSON - they hold seat-dependent or
 # account-dependent values.
@@ -146,6 +147,19 @@ def history() -> tuple[list[str], bool]:
         if ln.strip() and not ln.startswith("#")
     ]
 
+    # Consciously accepted findings, by SHA. Still reported, just not fatal - an
+    # accepted risk should stay visible rather than being erased from the output.
+    accepted = set()
+    if ACCEPTED_FILE.exists():
+        accepted = {
+            ln.strip()
+            for ln in ACCEPTED_FILE.read_text().splitlines()
+            if ln.strip() and not ln.startswith("#")
+        }
+
+    def is_accepted(sha: str) -> bool:
+        return any(sha.startswith(a) or a.startswith(sha) for a in accepted)
+
     problems = []
     for p in pats:
         # Commits that added or removed this literal in file content.
@@ -154,6 +168,10 @@ def history() -> tuple[list[str], bool]:
             capture_output=True, text=True, check=False,
         )
         for line in r.stdout.splitlines():
+            sha = line.split()[0] if line.split() else ""
+            if is_accepted(sha):
+                print(f"  (accepted) commit {sha} contains a private value in file content")
+                continue
             problems.append(f"history: commit {line.strip()} contains {p!r} in file content")
 
     # Commit messages leak just as readily as files. Use an explicit record separator:
@@ -167,9 +185,13 @@ def history() -> tuple[list[str], bool]:
         if "\x00" not in entry:
             continue
         sha, body = entry.split("\x00", 1)
+        short = sha.strip()[:9]
         for p in pats:
             if p in body:
-                problems.append(f"history: commit message {sha.strip()[:9]} contains {p!r}")
+                if is_accepted(short):
+                    print(f"  (accepted) commit message {short} contains a private value")
+                    continue
+                problems.append(f"history: commit message {short} contains {p!r}")
     return problems, True
 
 
