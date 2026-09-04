@@ -1,0 +1,5 @@
+{
+  "tracker": "wes-chen/ticket-desk-ops",
+  "code": "wes-chen/ticket-desk",
+  "_why": "This repo is PUBLIC and its issues are disabled. All tracking lives in the private ops repo because issues routinely reference seat location, invoice figures, and account details. Never file anything containing personal values against the public repo."
+}

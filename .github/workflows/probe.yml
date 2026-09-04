@@ -1,0 +1,64 @@
+name: Probe source reachability
+
+# Answers one question: does a GitHub Actions runner (datacenter IP) get real content
+# from the ticket marketplaces, or get bot-walled? That decides whether the collector
+# can run free in CI or needs a residential proxy.
+#
+# One polite logged-out page load per platform. Never authenticated - the account holds
+# the season tickets. Screenshots are uploaded so verdicts can be checked by eye rather
+# than trusted from a heuristic.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 14 * * 1" # weekly Monday, to catch changes in blocking posture
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      # Runners have sudo, so --with-deps works here even though it fails locally.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Probe
+        run: node scripts/probe_browser.mjs --label actions --out .probe
+        continue-on-error: true
+
+      - name: Upload screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-actions
+          path: .probe/
+          retention-days: 30
+
+      - name: Summary
+        if: always()
+        run: |
+          if [[ -f .probe/actions-results.json ]]; then
+            echo "## Reachability from a GitHub Actions runner" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Platform | Verdict | Status | Prices seen |" >> $GITHUB_STEP_SUMMARY
+            echo "|---|---|---|---|" >> $GITHUB_STEP_SUMMARY
+            python3 -c "
+          import json
+          d = json.load(open('.probe/actions-results.json'))
+          for r in d['results']:
+              print(f\"| {r['platform']} | {r.get('verdict','?')} | {r.get('status')} | {r.get('uniquePrices',0)} |\")
+          " >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Probe produced no results file." >> $GITHUB_STEP_SUMMARY
+          fi
