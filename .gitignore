@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+
+# Real private values, used only by scripts/check_privacy.py to scan the build.
+# Committing this would defeat its entire purpose.
+.private-patterns
+.probe/

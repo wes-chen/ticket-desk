@@ -1,0 +1,36 @@
+name: Refresh schedule
+
+on:
+  schedule:
+    - cron: "17 13 * * *" # daily, ~6am Pacific
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Exits non-zero if the tier table and the live NHL schedule disagree, so a
+      # rescheduled or relocated game surfaces as a failed run instead of quietly
+      # mispricing itself.
+      - name: Fetch and validate
+        run: python3 scripts/fetch_schedule.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain data/schedule.json)" ]]; then
+            git add data/schedule.json
+            git commit -m "chore: refresh schedule"
+            git push
+          else
+            echo "no schedule change"
+          fi

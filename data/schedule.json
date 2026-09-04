@@ -1,0 +1,666 @@
+{
+  "season": "20262027",
+  "team": "SJS",
+  "games": [
+    {
+      "gameId": 2026010032,
+      "date": "2026-09-22",
+      "startTimeUTC": "2026-09-23T02:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "preseason",
+      "opponent": {
+        "abbrev": "VGK",
+        "name": "Vegas Golden Knights",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/VGK_light.svg"
+      },
+      "tier": "PRESEASON",
+      "ticketsLink": "https://www.nhl.com/sharks/tickets/",
+      "tmEventId": null
+    },
+    {
+      "gameId": 2026010039,
+      "date": "2026-09-24",
+      "startTimeUTC": "2026-09-25T02:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "preseason",
+      "opponent": {
+        "abbrev": "ANA",
+        "name": "Anaheim Ducks",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/ANA_light.svg"
+      },
+      "tier": "PRESEASON",
+      "ticketsLink": "https://www.nhl.com/sharks/tickets/",
+      "tmEventId": null
+    },
+    {
+      "gameId": 2026020016,
+      "date": "2026-10-01",
+      "startTimeUTC": "2026-10-02T02:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "FLA",
+        "name": "Florida Panthers",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/FLA_light.svg"
+      },
+      "tier": "A",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79AA99B1B?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM1&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM1",
+      "tmEventId": "1C0064E79AA99B1B"
+    },
+    {
+      "gameId": 2026020034,
+      "date": "2026-10-03",
+      "startTimeUTC": "2026-10-04T02:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "LAK",
+        "name": "Los Angeles Kings",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/LAK_light.svg"
+      },
+      "tier": "B",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79AB19B37?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM2&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM2",
+      "tmEventId": "1C0064E79AB19B37"
+    },
+    {
+      "gameId": 2026020072,
+      "date": "2026-10-10",
+      "startTimeUTC": "2026-10-10T20:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "EDM",
+        "name": "Edmonton Oilers",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/EDM_light.svg"
+      },
+      "tier": "B",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79AB89B46?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM3&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM3",
+      "tmEventId": "1C0064E79AB89B46"
+    },
+    {
+      "gameId": 2026020105,
+      "date": "2026-10-13",
+      "startTimeUTC": "2026-10-14T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "BOS",
+        "name": "Boston Bruins",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/BOS_light.svg"
+      },
+      "tier": "C",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79ABF9B4F?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM4&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM4",
+      "tmEventId": "1C0064E79ABF9B4F"
+    },
+    {
+      "gameId": 2026020198,
+      "date": "2026-10-27",
+      "startTimeUTC": "2026-10-28T02:30:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "BUF",
+        "name": "Buffalo Sabres",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/BUF_light.svg"
+      },
+      "tier": "D",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79AC59B61?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM5&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM5",
+      "tmEventId": "1C0064E79AC59B61"
+    },
+    {
+      "gameId": 2026020213,
+      "date": "2026-10-29",
+      "startTimeUTC": "2026-10-30T02:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "VAN",
+        "name": "Vancouver Canucks",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/VAN_light.svg"
+      },
+      "tier": "D",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79ACB9B69?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM6&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM6",
+      "tmEventId": "1C0064E79ACB9B69"
+    },
+    {
+      "gameId": 2026020222,
+      "date": "2026-10-31",
+      "startTimeUTC": "2026-10-31T20:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "OTT",
+        "name": "Ottawa Senators",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/OTT_light.svg"
+      },
+      "tier": "B",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79AD19B77?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM7&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM7",
+      "tmEventId": "1C0064E79AD19B77"
+    },
+    {
+      "gameId": 2026020235,
+      "date": "2026-11-02",
+      "startTimeUTC": "2026-11-03T02:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "CGY",
+        "name": "Calgary Flames",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/CGY_light.svg"
+      },
+      "tier": "D",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79AD89B86?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM8&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM8",
+      "tmEventId": "1C0064E79AD89B86"
+    },
+    {
+      "gameId": 2026020285,
+      "date": "2026-11-09",
+      "startTimeUTC": "2026-11-10T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "NYI",
+        "name": "New York Islanders",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/NYI_light.svg"
+      },
+      "tier": "D",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79ADE9B9D?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM9&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM9",
+      "tmEventId": "1C0064E79ADE9B9D"
+    },
+    {
+      "gameId": 2026020298,
+      "date": "2026-11-11",
+      "startTimeUTC": "2026-11-12T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "PIT",
+        "name": "Pittsburgh Penguins",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/PIT_light.svg"
+      },
+      "tier": "C",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79AE49BAC?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM10&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM10",
+      "tmEventId": "1C0064E79AE49BAC"
+    },
+    {
+      "gameId": 2026020330,
+      "date": "2026-11-15",
+      "startTimeUTC": "2026-11-16T02:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "NSH",
+        "name": "Nashville Predators",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/NSH_light.svg"
+      },
+      "tier": "C",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79AEA9BB4?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM11&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM11",
+      "tmEventId": "1C0064E79AEA9BB4"
+    },
+    {
+      "gameId": 2026020343,
+      "date": "2026-11-17",
+      "startTimeUTC": "2026-11-18T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "CGY",
+        "name": "Calgary Flames",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/CGY_light.svg"
+      },
+      "tier": "D",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79AF09BC8?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM12&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM12",
+      "tmEventId": "1C0064E79AF09BC8"
+    },
+    {
+      "gameId": 2026020372,
+      "date": "2026-11-21",
+      "startTimeUTC": "2026-11-22T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "SEA",
+        "name": "Seattle Kraken",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/SEA_light.svg"
+      },
+      "tier": "A",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79AF79BD9?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM13&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM13",
+      "tmEventId": "1C0064E79AF79BD9"
+    },
+    {
+      "gameId": 2026020384,
+      "date": "2026-11-23",
+      "startTimeUTC": "2026-11-24T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "MIN",
+        "name": "Minnesota Wild",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/MIN_light.svg"
+      },
+      "tier": "C",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79AFD9BDE?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM14&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM14",
+      "tmEventId": "1C0064E79AFD9BDE"
+    },
+    {
+      "gameId": 2026020410,
+      "date": "2026-11-27",
+      "startTimeUTC": "2026-11-27T21:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "VGK",
+        "name": "Vegas Golden Knights",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/VGK_light.svg"
+      },
+      "tier": "A+",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B039BF3?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM15&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM15",
+      "tmEventId": "1C0064E79B039BF3"
+    },
+    {
+      "gameId": 2026020495,
+      "date": "2026-12-08",
+      "startTimeUTC": "2026-12-09T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "SEA",
+        "name": "Seattle Kraken",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/SEA_light.svg"
+      },
+      "tier": "D",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B0A9C09?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM16&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM16",
+      "tmEventId": "1C0064E79B0A9C09"
+    },
+    {
+      "gameId": 2026020513,
+      "date": "2026-12-11",
+      "startTimeUTC": "2026-12-12T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "LAK",
+        "name": "Los Angeles Kings",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/LAK_light.svg"
+      },
+      "tier": "A",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B109C23?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM17&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM17",
+      "tmEventId": "1C0064E79B109C23"
+    },
+    {
+      "gameId": 2026020535,
+      "date": "2026-12-14",
+      "startTimeUTC": "2026-12-15T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "VAN",
+        "name": "Vancouver Canucks",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/VAN_light.svg"
+      },
+      "tier": "D",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B169C3B?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM18&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM18",
+      "tmEventId": "1C0064E79B169C3B"
+    },
+    {
+      "gameId": 2026020611,
+      "date": "2026-12-26",
+      "startTimeUTC": "2026-12-27T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "VGK",
+        "name": "Vegas Golden Knights",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/VGK_light.svg"
+      },
+      "tier": "A+",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B1C9C4D?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM19&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM19",
+      "tmEventId": "1C0064E79B1C9C4D"
+    },
+    {
+      "gameId": 2026020653,
+      "date": "2027-01-01",
+      "startTimeUTC": "2027-01-01T21:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "PHI",
+        "name": "Philadelphia Flyers",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/PHI_light.svg"
+      },
+      "tier": "A",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B229C58?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM20&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM20",
+      "tmEventId": "1C0064E79B229C58"
+    },
+    {
+      "gameId": 2026020663,
+      "date": "2027-01-02",
+      "startTimeUTC": "2027-01-03T00:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "TOR",
+        "name": "Toronto Maple Leafs",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/TOR_light.svg"
+      },
+      "tier": "A+",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B289C68?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM21&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM21",
+      "tmEventId": "1C0064E79B289C68"
+    },
+    {
+      "gameId": 2026020680,
+      "date": "2027-01-04",
+      "startTimeUTC": "2027-01-05T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "NJD",
+        "name": "New Jersey Devils",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/NJD_light.svg"
+      },
+      "tier": "D",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B2F9C7D?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM22&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM22",
+      "tmEventId": "1C0064E79B2F9C7D"
+    },
+    {
+      "gameId": 2026020693,
+      "date": "2027-01-06",
+      "startTimeUTC": "2027-01-07T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "DAL",
+        "name": "Dallas Stars",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/DAL_light.svg"
+      },
+      "tier": "C",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B359CB3?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM23&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM23",
+      "tmEventId": "1C0064E79B359CB3"
+    },
+    {
+      "gameId": 2026020708,
+      "date": "2027-01-08",
+      "startTimeUTC": "2027-01-09T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "WSH",
+        "name": "Washington Capitals",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/WSH_secondary_light.svg"
+      },
+      "tier": "A",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B3A9CC5?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM24&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM24",
+      "tmEventId": "1C0064E79B3A9CC5"
+    },
+    {
+      "gameId": 2026020721,
+      "date": "2027-01-09",
+      "startTimeUTC": "2027-01-10T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "NYR",
+        "name": "New York Rangers",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/NYR_light.svg"
+      },
+      "tier": "A+",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B409CD3?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM25&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM25",
+      "tmEventId": "1C0064E79B409CD3"
+    },
+    {
+      "gameId": 2026020781,
+      "date": "2027-01-18",
+      "startTimeUTC": "2027-01-18T21:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "UTA",
+        "name": "Utah Mammoth",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/UTA_light.svg"
+      },
+      "tier": "B",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B459CEA?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM26&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM26",
+      "tmEventId": "1C0064E79B459CEA"
+    },
+    {
+      "gameId": 2026020823,
+      "date": "2027-01-23",
+      "startTimeUTC": "2027-01-24T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "EDM",
+        "name": "Edmonton Oilers",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/EDM_light.svg"
+      },
+      "tier": "A",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B4A9CF4?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM27&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM27",
+      "tmEventId": "1C0064E79B4A9CF4"
+    },
+    {
+      "gameId": 2026020860,
+      "date": "2027-01-28",
+      "startTimeUTC": "2027-01-29T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "NSH",
+        "name": "Nashville Predators",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/NSH_light.svg"
+      },
+      "tier": "C",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B4F9D02?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM28&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM28",
+      "tmEventId": "1C0064E79B4F9D02"
+    },
+    {
+      "gameId": 2026020867,
+      "date": "2027-01-30",
+      "startTimeUTC": "2027-01-30T21:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "CHI",
+        "name": "Chicago Blackhawks",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/CHI_light.svg"
+      },
+      "tier": "A",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B549D0E?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM29&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM29",
+      "tmEventId": "1C0064E79B549D0E"
+    },
+    {
+      "gameId": 2026020902,
+      "date": "2027-02-10",
+      "startTimeUTC": "2027-02-11T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "CHI",
+        "name": "Chicago Blackhawks",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/CHI_light.svg"
+      },
+      "tier": "C",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B599D1C?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM30&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM30",
+      "tmEventId": "1C0064E79B599D1C"
+    },
+    {
+      "gameId": 2026020914,
+      "date": "2027-02-13",
+      "startTimeUTC": "2027-02-13T21:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "DET",
+        "name": "Detroit Red Wings",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/DET_light.svg"
+      },
+      "tier": "A+",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B5E9D22?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM31&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM31",
+      "tmEventId": "1C0064E79B5E9D22"
+    },
+    {
+      "gameId": 2026020935,
+      "date": "2027-02-15",
+      "startTimeUTC": "2027-02-16T00:30:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "WPG",
+        "name": "Winnipeg Jets",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/WPG_light.svg"
+      },
+      "tier": "B",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B649D2F?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM32&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM32",
+      "tmEventId": "1C0064E79B649D2F"
+    },
+    {
+      "gameId": 2026021042,
+      "date": "2027-03-01",
+      "startTimeUTC": "2027-03-02T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "MTL",
+        "name": "Montr\u00e9al Canadiens",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/MTL_light.svg"
+      },
+      "tier": "C",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B699D49?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM33&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM33",
+      "tmEventId": "1C0064E79B699D49"
+    },
+    {
+      "gameId": 2026021055,
+      "date": "2027-03-03",
+      "startTimeUTC": "2027-03-04T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "CBJ",
+        "name": "Columbus Blue Jackets",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/CBJ_light.svg"
+      },
+      "tier": "D",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B6E9D58?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM34&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM34",
+      "tmEventId": "1C0064E79B6E9D58"
+    },
+    {
+      "gameId": 2026021070,
+      "date": "2027-03-05",
+      "startTimeUTC": "2027-03-06T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "COL",
+        "name": "Colorado Avalanche",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/COL_light.svg"
+      },
+      "tier": "B",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B739D6A?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM35&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM35",
+      "tmEventId": "1C0064E79B739D6A"
+    },
+    {
+      "gameId": 2026021079,
+      "date": "2027-03-06",
+      "startTimeUTC": "2027-03-07T03:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "TBL",
+        "name": "Tampa Bay Lightning",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/TBL_light.svg"
+      },
+      "tier": "A",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B789D7A?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM36&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM36",
+      "tmEventId": "1C0064E79B789D7A"
+    },
+    {
+      "gameId": 2026021185,
+      "date": "2027-03-20",
+      "startTimeUTC": "2027-03-21T02:30:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "CAR",
+        "name": "Carolina Hurricanes",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/CAR_light.svg"
+      },
+      "tier": "A+",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B7E9D88?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM37&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM37",
+      "tmEventId": "1C0064E79B7E9D88"
+    },
+    {
+      "gameId": 2026021210,
+      "date": "2027-03-24",
+      "startTimeUTC": "2027-03-25T02:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "ANA",
+        "name": "Anaheim Ducks",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/ANA_light.svg"
+      },
+      "tier": "C",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B839D8C?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM38&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM38",
+      "tmEventId": "1C0064E79B839D8C"
+    },
+    {
+      "gameId": 2026021247,
+      "date": "2027-03-29",
+      "startTimeUTC": "2027-03-30T02:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "COL",
+        "name": "Colorado Avalanche",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/COL_light.svg"
+      },
+      "tier": "C",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B879D9A?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM39&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM39",
+      "tmEventId": "1C0064E79B879D9A"
+    },
+    {
+      "gameId": 2026021295,
+      "date": "2027-04-04",
+      "startTimeUTC": "2027-04-05T01:30:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "STL",
+        "name": "St. Louis Blues",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/STL_light.svg"
+      },
+      "tier": "C",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B8D9DA3?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM40&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM40",
+      "tmEventId": "1C0064E79B8D9DA3"
+    },
+    {
+      "gameId": 2026021323,
+      "date": "2027-04-08",
+      "startTimeUTC": "2027-04-09T02:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "MIN",
+        "name": "Minnesota Wild",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/MIN_light.svg"
+      },
+      "tier": "B",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B929DB3?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM41&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM41",
+      "tmEventId": "1C0064E79B929DB3"
+    },
+    {
+      "gameId": 2026021331,
+      "date": "2027-04-10",
+      "startTimeUTC": "2027-04-10T20:00:00Z",
+      "venueTimezone": "US/Pacific",
+      "gameType": "regular",
+      "opponent": {
+        "abbrev": "ANA",
+        "name": "Anaheim Ducks",
+        "logo": "https://assets.nhle.com/logos/nhl/svg/ANA_light.svg"
+      },
+      "tier": "A+",
+      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B989DC5?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM42&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM42",
+      "tmEventId": "1C0064E79B989DC5"
+    }
+  ]
+}

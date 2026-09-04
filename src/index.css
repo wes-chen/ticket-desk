@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  --color-teal-sharks: #006d75;
+  --color-teal-deep: #04292e;
+  --color-gold-sharks: #e57200;
+}
+
+html {
+  color-scheme: light dark;
+}
