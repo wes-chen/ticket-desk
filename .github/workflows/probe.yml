@@ -34,7 +34,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Probe
-        run: node scripts/probe_browser.mjs --label actions --out .probe
+        run: node scripts/probe_browser.mjs --label actions --out probe-out
         continue-on-error: true
 
       - name: Upload screenshots and results
@@ -42,20 +42,20 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: probe-actions
-          path: .probe/
+          path: probe-out/
           retention-days: 30
 
       - name: Summary
         if: always()
         run: |
-          if [[ -f .probe/actions-results.json ]]; then
+          if [[ -f probe-out/actions-results.json ]]; then
             echo "## Reachability from a GitHub Actions runner" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "| Platform | Verdict | Status | Prices seen |" >> $GITHUB_STEP_SUMMARY
             echo "|---|---|---|---|" >> $GITHUB_STEP_SUMMARY
             python3 -c "
           import json
-          d = json.load(open('.probe/actions-results.json'))
+          d = json.load(open('probe-out/actions-results.json'))
           for r in d['results']:
               print(f\"| {r['platform']} | {r.get('verdict','?')} | {r.get('status')} | {r.get('uniquePrices',0)} |\")
           " >> $GITHUB_STEP_SUMMARY

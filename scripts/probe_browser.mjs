@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
 const label = args[args.indexOf("--label") + 1] ?? "local";
-const outDir = args.includes("--out") ? args[args.indexOf("--out") + 1] : join(ROOT, ".probe");
+const outDir = args.includes("--out") ? args[args.indexOf("--out") + 1] : join(ROOT, "probe-out");
 
 let tmEventId = null;
 const schedPath = join(ROOT, "data", "schedule.json");
@@ -50,7 +50,7 @@ const TARGETS = [
   },
   {
     platform: "gametime",
-    url: "https://gametime.co/nhl-hockey/san-jose-sharks-tickets",
+    url: "https://gametime.co/nhl-tickets",
     note: "last-minute skew",
   },
   {
