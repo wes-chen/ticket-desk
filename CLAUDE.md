@@ -2,7 +2,7 @@
 
 Read `README.md` for what the project is and why. This file is the rules.
 
-## 0. Start sessions from this directory
+## 0. Start sessions from this directory - and if another agent is active, from your own worktree
 
 `~/Dev/ticket-desk` - the code repo. Not the parent, not the ops repo.
 
@@ -14,6 +14,32 @@ Note that Claude Code keys its memory to the working directory, so a session sta
 somewhere else gets a *different* memory set and will silently lack this project's
 context. Memories were migrated here on 2026-09-03; the copy under the parent directory
 is marked stale on purpose.
+
+### More than one agent at a time
+
+**Two agents sharing one checkout is not safe.** `git add -A` from either stages whatever
+the other has in progress, and it happened (ops#41): one commit swallowed another
+agent's mid-debug script plus a stray `.pyc`, under a message describing neither. The
+author of a commit message stops being the author of its changes, which destroys the one
+thing this history is good for.
+
+So when a second agent is active:
+
+```bash
+scripts/agent_worktree.sh <your-session-id>     # own checkout, branch agent/<id>
+scripts/agent_worktree.sh --list
+scripts/agent_worktree.sh --remove <id>
+```
+
+That script exists rather than a bare `git worktree add` because of the memory trap
+above: a worktree at a new path gets a **fresh, empty memory set**, silently losing every
+measured constant this project has accumulated. It symlinks the new path's memory
+directory at the canonical one - one memory set, many checkouts - and copies
+`.private-patterns` across, without which the literal and history privacy passes skip
+and report "clean" on evidence they never gathered.
+
+**Whether or not you use a worktree: stage explicit paths, never `git add -A`.** Cheap,
+and it is the discipline that fails first when an agent is mid-debug at 3am.
 
 ## 1. This repo is PUBLIC. Never commit personal data.
 
