@@ -1,0 +1,60 @@
+{
+  "_fixture": "REAL ld+json SportsEvent block captured 2026-09-05 from the TickPick event page for the 2026-10-01 FLA home game, verbatim. The surrounding HTML is 756KB and is not retained - this block is the entire payload the collector reads.",
+  "event": {
+    "@context": "https://schema.org",
+    "@type": "SportsEvent",
+    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+    "name": "San Jose Sharks vs. Florida Panthers",
+    "description": "Buy tickets for San Jose Sharks vs. Florida Panthers at SAP Center without paying hidden fees!",
+    "startDate": "2026-10-01T19:00:00",
+    "location": {
+      "@type": "EventVenue",
+      "name": "SAP Center",
+      "url": "https://www.tickpick.com/venues/sap-center/tickets/",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "525 W. Santa Clara St.",
+        "addressLocality": "San Jose",
+        "addressRegion": "CA",
+        "addressCountry": "US"
+      }
+    },
+    "performer": {
+      "@type": "SportsTeam",
+      "name": "San Jose Sharks",
+      "image": "https://static.tickpick.com/performers/san-jose-sharks.jpg"
+    },
+    "eventStatus": "https://schema.org/EventScheduled",
+    "organizer": {
+      "@type": "Organization",
+      "name": "TickPick",
+      "url": "https://www.tickpick.com"
+    },
+    "offers": {
+      "@type": "AggregateOffer",
+      "availability": "https://schema.org/InStock",
+      "priceCurrency": "USD",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-florida-panthers-tickets-sap-center-10-1-26-7pm/8135359/",
+      "lowPrice": 86,
+      "price": 86,
+      "highPrice": 1477,
+      "validFrom": "2026-09-05T03:13:11.851Z",
+      "validThrough": "2026-10-01T19:00:00.000Z"
+    },
+    "image": "https://static.tickpick.com/performers/san-jose-sharks.jpg",
+    "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-florida-panthers-tickets-sap-center-10-1-26-7pm/8135359/",
+    "endDate": "2026-10-01T22:00:00.000Z",
+    "sport": {
+      "@type": "Sport",
+      "name": "Hockey"
+    },
+    "homeTeam": {
+      "@type": "SportsTeam",
+      "name": "San Jose Sharks"
+    },
+    "awayTeam": {
+      "@type": "SportsTeam",
+      "name": "Florida Panthers"
+    }
+  }
+}

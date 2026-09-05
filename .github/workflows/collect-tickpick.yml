@@ -1,0 +1,97 @@
+name: Collect TickPick prices
+
+# The project's first working price collector (ops#6, ops#16).
+#
+# This runs in Actions - which ops#4 concluded was impossible - because the block
+# follows the BROWSER, not the IP. Measured 2026-09-05, same URL, both directions:
+#
+#                 plain HTTP              headless Chromium
+#   residential   200, 1.4MB, 31 prices   403 "Just a moment..."
+#   datacenter    200, 1.4MB, 31 prices   403
+#
+# So there is deliberately no Playwright step here. Adding one would break it.
+#
+# Storage split (Wesley's call, 2026-09-05): the per-event min/max aggregate commits to
+# this public repo; the raw ld+json payloads go to an artifact and never into git,
+# because git never forgets and a committed snapshot is permanent.
+
+on:
+  schedule:
+    # Daily at 15:07 UTC (~8am Pacific), after the 13:17 schedule refresh so a newly
+    # resolved event map is available the same day. Off-the-hour minute on purpose.
+    - cron: "7 15 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collect-tickpick
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Parse and upsert logic, against a real captured payload, before any request.
+      - name: Self-test
+        run: python3 scripts/collect_tickpick.py --self-test
+
+      # Cheap and it catches a renamed or repriced event before the collector writes a
+      # row against a stale id. Fails the run rather than collecting the wrong game.
+      - name: Re-resolve event ids
+        run: python3 scripts/collect_tickpick.py --resolve
+
+      - name: Collect
+        run: python3 scripts/collect_tickpick.py
+
+      # Not hidden-file-prefixed: upload-artifact@v4 silently excludes dotted paths and
+      # uploaded nothing at all in ops#4, emitting only a warning.
+      - name: Upload raw payloads
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tickpick-raw-${{ github.run_id }}
+          path: raw-out/
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Commit aggregates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain data/market/tickpick.jsonl data/tickpick_events.json)" ]]; then
+            git add data/market/tickpick.jsonl data/tickpick_events.json
+            git commit -m "chore: tickpick prices $(date -u +%Y-%m-%d)"
+            git pull --rebase --autostash
+            git push
+          else
+            echo "no change"
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## TickPick collection $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          if [[ -f data/market/tickpick.jsonl ]]; then
+            python3 - >> $GITHUB_STEP_SUMMARY <<'PY'
+          import json, pathlib, collections
+          rows = [json.loads(l) for l in pathlib.Path("data/market/tickpick.jsonl").read_text().splitlines() if l.strip()]
+          days = collections.Counter(r["observedDate"] for r in rows)
+          latest = max(days) if days else None
+          today = [r for r in rows if r["observedDate"] == latest and r.get("ok")]
+          print(f"- rows in store: **{len(rows)}** across **{len(days)}** day(s)")
+          print(f"- latest observation: **{latest}**, {len(today)} events priced")
+          if today:
+              lows = [r["low"] for r in today if r.get("low") is not None]
+              if lows:
+                  print(f"- cheapest seat across the season today: **${min(lows)}**")
+          PY
+          else
+            echo "- no store file" >> $GITHUB_STEP_SUMMARY
+          fi

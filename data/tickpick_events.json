@@ -1,0 +1,359 @@
+{
+  "_comment": "TickPick event ids per home game, resolved from TickPick's own sitemap by scripts/collect_tickpick.py. PUBLIC event identifiers only - no prices, no seats, no account data.",
+  "generatedAt": "2026-09-05T03:22:05Z",
+  "source": "https://www.tickpick.com/sitemap/sports.xml",
+  "events": [
+    {
+      "gameId": 2026010032,
+      "date": "2026-09-22",
+      "gameType": "preseason",
+      "opponent": "VGK",
+      "eventId": "8075165",
+      "url": "https://www.tickpick.com/buy-nhl-preseason-san-jose-sharks-vs-vegas-golden-knights-tickets-sap-center-9-22-26-7pm/8075165/"
+    },
+    {
+      "gameId": 2026010039,
+      "date": "2026-09-24",
+      "gameType": "preseason",
+      "opponent": "ANA",
+      "eventId": "8075166",
+      "url": "https://www.tickpick.com/buy-nhl-preseason-san-jose-sharks-vs-anaheim-ducks-tickets-sap-center-9-24-26-7pm/8075166/"
+    },
+    {
+      "gameId": 2026020016,
+      "date": "2026-10-01",
+      "gameType": "regular",
+      "opponent": "FLA",
+      "eventId": "8135359",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-florida-panthers-tickets-sap-center-10-1-26-7pm/8135359/"
+    },
+    {
+      "gameId": 2026020034,
+      "date": "2026-10-03",
+      "gameType": "regular",
+      "opponent": "LAK",
+      "eventId": "8139715",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-los-angeles-kings-tickets-sap-center-10-3-26-7pm/8139715/"
+    },
+    {
+      "gameId": 2026020072,
+      "date": "2026-10-10",
+      "gameType": "regular",
+      "opponent": "EDM",
+      "eventId": "8139718",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-edmonton-oilers-tickets-sap-center-10-10-26-1pm/8139718/"
+    },
+    {
+      "gameId": 2026020105,
+      "date": "2026-10-13",
+      "gameType": "regular",
+      "opponent": "BOS",
+      "eventId": "8139720",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-boston-bruins-tickets-sap-center-10-13-26-8pm/8139720/"
+    },
+    {
+      "gameId": 2026020198,
+      "date": "2026-10-27",
+      "gameType": "regular",
+      "opponent": "BUF",
+      "eventId": "8139722",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-buffalo-sabres-tickets-sap-center-10-27-26-7pm/8139722/"
+    },
+    {
+      "gameId": 2026020213,
+      "date": "2026-10-29",
+      "gameType": "regular",
+      "opponent": "VAN",
+      "eventId": "8139724",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-vancouver-canucks-tickets-sap-center-10-29-26-7pm/8139724/"
+    },
+    {
+      "gameId": 2026020222,
+      "date": "2026-10-31",
+      "gameType": "regular",
+      "opponent": "OTT",
+      "eventId": "8139726",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-ottawa-senators-tickets-sap-center-10-31-26-1pm/8139726/"
+    },
+    {
+      "gameId": 2026020235,
+      "date": "2026-11-02",
+      "gameType": "regular",
+      "opponent": "CGY",
+      "eventId": "8139730",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-calgary-flames-tickets-sap-center-11-2-26-6pm/8139730/"
+    },
+    {
+      "gameId": 2026020285,
+      "date": "2026-11-09",
+      "gameType": "regular",
+      "opponent": "NYI",
+      "eventId": "8139733",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-new-york-islanders-tickets-sap-center-11-9-26-7pm/8139733/"
+    },
+    {
+      "gameId": 2026020298,
+      "date": "2026-11-11",
+      "gameType": "regular",
+      "opponent": "PIT",
+      "eventId": "8139736",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-pittsburgh-penguins-tickets-sap-center-11-11-26-7pm/8139736/"
+    },
+    {
+      "gameId": 2026020330,
+      "date": "2026-11-15",
+      "gameType": "regular",
+      "opponent": "NSH",
+      "eventId": "8139738",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-nashville-predators-tickets-sap-center-11-15-26-6pm/8139738/"
+    },
+    {
+      "gameId": 2026020343,
+      "date": "2026-11-17",
+      "gameType": "regular",
+      "opponent": "CGY",
+      "eventId": "8139740",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-calgary-flames-tickets-sap-center-11-17-26-7pm/8139740/"
+    },
+    {
+      "gameId": 2026020372,
+      "date": "2026-11-21",
+      "gameType": "regular",
+      "opponent": "SEA",
+      "eventId": "8139741",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-seattle-kraken-tickets-sap-center-11-21-26-7pm/8139741/"
+    },
+    {
+      "gameId": 2026020384,
+      "date": "2026-11-23",
+      "gameType": "regular",
+      "opponent": "MIN",
+      "eventId": "8139743",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-minnesota-wild-tickets-sap-center-11-23-26-7pm/8139743/"
+    },
+    {
+      "gameId": 2026020410,
+      "date": "2026-11-27",
+      "gameType": "regular",
+      "opponent": "VGK",
+      "eventId": "8139745",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-vegas-golden-knights-tickets-sap-center-11-27-26-1pm/8139745/"
+    },
+    {
+      "gameId": 2026020495,
+      "date": "2026-12-08",
+      "gameType": "regular",
+      "opponent": "SEA",
+      "eventId": "8139748",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-seattle-kraken-tickets-sap-center-12-8-26-7pm/8139748/"
+    },
+    {
+      "gameId": 2026020513,
+      "date": "2026-12-11",
+      "gameType": "regular",
+      "opponent": "LAK",
+      "eventId": "8139750",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-los-angeles-kings-tickets-sap-center-12-11-26-7pm/8139750/"
+    },
+    {
+      "gameId": 2026020535,
+      "date": "2026-12-14",
+      "gameType": "regular",
+      "opponent": "VAN",
+      "eventId": "8139752",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-vancouver-canucks-tickets-sap-center-12-14-26-7pm/8139752/"
+    },
+    {
+      "gameId": 2026020611,
+      "date": "2026-12-26",
+      "gameType": "regular",
+      "opponent": "VGK",
+      "eventId": "8139755",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-vegas-golden-knights-tickets-sap-center-12-26-26-7pm/8139755/"
+    },
+    {
+      "gameId": 2026020653,
+      "date": "2027-01-01",
+      "gameType": "regular",
+      "opponent": "PHI",
+      "eventId": "8139757",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-philadelphia-flyers-tickets-sap-center-1-1-27-1pm/8139757/"
+    },
+    {
+      "gameId": 2026020663,
+      "date": "2027-01-02",
+      "gameType": "regular",
+      "opponent": "TOR",
+      "eventId": "8139760",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-toronto-maple-leafs-tickets-sap-center-1-2-27-4pm/8139760/"
+    },
+    {
+      "gameId": 2026020680,
+      "date": "2027-01-04",
+      "gameType": "regular",
+      "opponent": "NJD",
+      "eventId": "8139764",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-new-jersey-devils-tickets-sap-center-1-4-27-7pm/8139764/"
+    },
+    {
+      "gameId": 2026020693,
+      "date": "2027-01-06",
+      "gameType": "regular",
+      "opponent": "DAL",
+      "eventId": "8139766",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-dallas-stars-tickets-sap-center-1-6-27-7pm/8139766/"
+    },
+    {
+      "gameId": 2026020708,
+      "date": "2027-01-08",
+      "gameType": "regular",
+      "opponent": "WSH",
+      "eventId": "8139769",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-washington-capitals-tickets-sap-center-1-8-27-7pm/8139769/"
+    },
+    {
+      "gameId": 2026020721,
+      "date": "2027-01-09",
+      "gameType": "regular",
+      "opponent": "NYR",
+      "eventId": "8139771",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-new-york-rangers-tickets-sap-center-1-9-27-7pm/8139771/"
+    },
+    {
+      "gameId": 2026020781,
+      "date": "2027-01-18",
+      "gameType": "regular",
+      "opponent": "UTA",
+      "eventId": "8139775",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-utah-mammoth-tickets-sap-center-1-18-27-1pm/8139775/"
+    },
+    {
+      "gameId": 2026020823,
+      "date": "2027-01-23",
+      "gameType": "regular",
+      "opponent": "EDM",
+      "eventId": "8139777",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-edmonton-oilers-tickets-sap-center-1-23-27-7pm/8139777/"
+    },
+    {
+      "gameId": 2026020860,
+      "date": "2027-01-28",
+      "gameType": "regular",
+      "opponent": "NSH",
+      "eventId": "8139778",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-nashville-predators-tickets-sap-center-1-28-27-7pm/8139778/"
+    },
+    {
+      "gameId": 2026020867,
+      "date": "2027-01-30",
+      "gameType": "regular",
+      "opponent": "CHI",
+      "eventId": "8139779",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-chicago-blackhawks-tickets-sap-center-1-30-27-1pm/8139779/"
+    },
+    {
+      "gameId": 2026020902,
+      "date": "2027-02-10",
+      "gameType": "regular",
+      "opponent": "CHI",
+      "eventId": "8139780",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-chicago-blackhawks-tickets-sap-center-2-10-27-7pm/8139780/"
+    },
+    {
+      "gameId": 2026020914,
+      "date": "2027-02-13",
+      "gameType": "regular",
+      "opponent": "DET",
+      "eventId": "8139782",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-detroit-red-wings-tickets-sap-center-2-13-27-1pm/8139782/"
+    },
+    {
+      "gameId": 2026020935,
+      "date": "2027-02-15",
+      "gameType": "regular",
+      "opponent": "WPG",
+      "eventId": "8139783",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-winnipeg-jets-tickets-sap-center-2-15-27-4pm/8139783/"
+    },
+    {
+      "gameId": 2026021042,
+      "date": "2027-03-01",
+      "gameType": "regular",
+      "opponent": "MTL",
+      "eventId": "8139785",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-montreal-canadiens-tickets-sap-center-3-1-27-7pm/8139785/"
+    },
+    {
+      "gameId": 2026021055,
+      "date": "2027-03-03",
+      "gameType": "regular",
+      "opponent": "CBJ",
+      "eventId": "8139788",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-columbus-blue-jackets-tickets-sap-center-3-3-27-7pm/8139788/"
+    },
+    {
+      "gameId": 2026021070,
+      "date": "2027-03-05",
+      "gameType": "regular",
+      "opponent": "COL",
+      "eventId": "8139789",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-colorado-avalanche-tickets-sap-center-3-5-27-7pm/8139789/"
+    },
+    {
+      "gameId": 2026021079,
+      "date": "2027-03-06",
+      "gameType": "regular",
+      "opponent": "TBL",
+      "eventId": "8139790",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-tampa-bay-lightning-tickets-sap-center-3-6-27-7pm/8139790/"
+    },
+    {
+      "gameId": 2026021185,
+      "date": "2027-03-20",
+      "gameType": "regular",
+      "opponent": "CAR",
+      "eventId": "8139791",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-carolina-hurricanes-tickets-sap-center-3-20-27-7pm/8139791/"
+    },
+    {
+      "gameId": 2026021210,
+      "date": "2027-03-24",
+      "gameType": "regular",
+      "opponent": "ANA",
+      "eventId": "8139797",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-anaheim-ducks-tickets-sap-center-3-24-27-7pm/8139797/"
+    },
+    {
+      "gameId": 2026021247,
+      "date": "2027-03-29",
+      "gameType": "regular",
+      "opponent": "COL",
+      "eventId": "8139804",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-colorado-avalanche-tickets-sap-center-3-29-27-7pm/8139804/"
+    },
+    {
+      "gameId": 2026021295,
+      "date": "2027-04-04",
+      "gameType": "regular",
+      "opponent": "STL",
+      "eventId": "8139811",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-st-louis-blues-tickets-sap-center-4-4-27-6pm/8139811/"
+    },
+    {
+      "gameId": 2026021323,
+      "date": "2027-04-08",
+      "gameType": "regular",
+      "opponent": "MIN",
+      "eventId": "8139812",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-minnesota-wild-tickets-sap-center-4-8-27-6pm/8139812/"
+    },
+    {
+      "gameId": 2026021331,
+      "date": "2027-04-10",
+      "gameType": "regular",
+      "opponent": "ANA",
+      "eventId": "8139814",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-anaheim-ducks-tickets-sap-center-4-10-27-1pm/8139814/"
+    }
+  ]
+}

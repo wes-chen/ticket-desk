@@ -9,3 +9,7 @@ dist/
 # Committing this would defeat its entire purpose.
 .private-patterns
 probe-out/
+
+# Raw collector payloads. Uploaded as Actions artifacts, NEVER committed - git never
+# forgets, so a raw snapshot in history is permanent even after deletion.
+raw-out/

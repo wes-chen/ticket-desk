@@ -13,7 +13,10 @@
     "check:bands": "python3 scripts/check_price_bands.py",
     "test:bands": "python3 scripts/check_price_bands.py --self-test",
     "resolve:tm": "python3 scripts/resolve_tm_events.py",
-    "test:tm": "python3 scripts/resolve_tm_events.py --self-test"
+    "test:tm": "python3 scripts/resolve_tm_events.py --self-test",
+    "collect:tickpick": "python3 scripts/collect_tickpick.py",
+    "resolve:tickpick": "python3 scripts/collect_tickpick.py --resolve",
+    "test:tickpick": "python3 scripts/collect_tickpick.py --self-test"
   },
   "dependencies": {
     "react": "^19.0.0",
