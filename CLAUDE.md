@@ -113,6 +113,19 @@ visibility, rewriting history, adding a secret, or deleting data.
   SeatGeek, TickPick, and StubHub. TM's block page names the network as the cause and
   prints the Azure runner IP. This is IP reputation, not fingerprinting - browser flags
   will not fix it. See ops#4 / ops#16.
+- **A residential IP is necessary but not sufficient.** Measured 2026-09-05 from
+  Wesley's machine, against the same targets ops#4 probed from Actions:
+  **TickPick** 403 -> **200 with real listing content** (1.4MB, 31 distinct prices);
+  **SeatGeek** 403 -> **403, blocked on residential too**;
+  **Ticketmaster** 403 IP-block page -> **401 `{"response":"identify"}` with a `tm-bl: 1`
+  header, which is a bot/device check rather than an IP refusal** - plain HTTP cannot
+  settle whether a real browser gets through, so that question needs ops#2;
+  **StubHub** 403 -> 200 but a JS shell with no prices in the HTML, and it returned 403
+  on a second attempt minutes later, so its posture is inconsistent;
+  **Gametime** still untested, its URL 404s. See ops#16.
+- **The Discovery API is NOT subject to the ops#4 block.** `resolve_tm_events.py`
+  resolved all 44 events from a GitHub Actions runner. The block applies to TM's web
+  properties, not `app.ticketmaster.com`.
 - **The Ticketmaster Discovery API publishes no prices for this venue.** Measured
   2026-09-05 with a live key: `priceRanges` is absent from all 44 home events on both
   the search and detail endpoints, at HTTP 200. Discovery is an id and metadata
@@ -139,6 +152,8 @@ npm run check:privacy  # privacy checks alone
 npm run check:bands    # validate config/price_bands.json (section -> price band map)
 npm run resolve:tm     # TM Discovery event ids -> data/tm_events.json
 npm run test:tm        # resolver self-test against real captured fixtures; no key, no network
+python3 scripts/probe_sources.py --label local  # HTTP-level reachability (no browser needed)
+python3 scripts/probe_sources.py --self-test    # replay measured responses through verdict()
 node scripts/probe_browser.mjs --label local   # source reachability (needs local Chromium)
 ```
 
@@ -168,7 +183,12 @@ changed - do not paper over it.
 - Verify claims by running something. This codebase has repeatedly produced
   confident-looking wrong answers - a probe that could not distinguish "blocked" from
   "needs JavaScript", a privacy check that missed git history, an artifact upload that
-  silently discarded every file.
+  silently discarded every file, self-test fixtures that asserted an API field copied
+  from documentation nobody had checked, and a probe that truncated responses at 400KB
+  and scored a working 1.4MB source as empty.
+- **Check the instrument before believing the measurement.** Four of those failures were
+  the measuring tool, not the thing measured. When a probe says a source is unusable,
+  confirm it independently - `curl` the URL by hand - before acting on it.
 - No test suite exists yet (ops#17). Until there is one, verify behaviour explicitly
   rather than assuming a clean build means correct.
 

@@ -1,0 +1,60 @@
+{
+  "_fixture": "MEASURED response characteristics, not invented ones. Captured 2026-09-05 from a residential IP (Wesley's WSL machine) and, for the actions rows, from the GitHub Actions runs recorded in ops#4. Bodies are not stored - TickPick's alone is 1.4MB - but every field here was computed from a real response. These are the inputs scripts/probe_sources.py's verdict() must classify correctly.",
+  "_whyThisExists": "The verdict logic got two of five wrong on the first residential run: it called TickPick's 1.4MB listing page 'thin' because a generic-word counter scored 2 instead of 3, and it called StubHub BLOCKED on the presence of an ordinary reCAPTCHA script tag. ops#4 documents that exact false positive from the first probe generation. Encoding the real observations is what stops it recurring a third time.",
+  "observations": [
+    {
+      "label": "tickpick residential - real listing page",
+      "ranFrom": "local", "platform": "tickpick",
+      "status": 200, "bytes": 1434760,
+      "title": "Cheap San Jose Sharks Tickets 2026 | No Hidden Fees",
+      "distinctPrices": 31, "teamMentions": 1089, "venueMentions": 152,
+      "challengeSignals": [],
+      "expect": "OK"
+    },
+    {
+      "label": "stubhub residential - challenge stub",
+      "ranFrom": "local", "platform": "stubhub",
+      "status": 403, "bytes": 771,
+      "title": "stubhub.com",
+      "distinctPrices": 0, "teamMentions": 0, "venueMentions": 0,
+      "challengeSignals": [],
+      "expect": "BLOCKED"
+    },
+    {
+      "label": "seatgeek residential - challenge stub, blocked on residential too",
+      "ranFrom": "local", "platform": "seatgeek",
+      "status": 403, "bytes": 783,
+      "title": "seatgeek.com",
+      "distinctPrices": 0, "teamMentions": 0, "venueMentions": 0,
+      "challengeSignals": ["captcha"],
+      "expect": "BLOCKED"
+    },
+    {
+      "label": "ticketmaster residential - bot challenge, NOT an IP block. Body was {\"response\":\"identify\"} with a tm-bl:1 header.",
+      "ranFrom": "local", "platform": "ticketmaster",
+      "status": 401, "bytes": 23,
+      "title": null,
+      "distinctPrices": 0, "teamMentions": 0, "venueMentions": 0,
+      "challengeSignals": ["tm-identify"],
+      "expect": "CHALLENGE"
+    },
+    {
+      "label": "stubhub residential, earlier attempt minutes before - same URL returned 200 with a large body. StubHub's posture is INCONSISTENT; recorded so the variance is not forgotten.",
+      "ranFrom": "local", "platform": "stubhub",
+      "status": 200, "bytes": 359311,
+      "title": "stubhub.com",
+      "distinctPrices": 0, "teamMentions": 0, "venueMentions": 0,
+      "challengeSignals": ["recaptcha"],
+      "expect": "INCONCLUSIVE"
+    },
+    {
+      "label": "ticketmaster from a GitHub Actions runner - the ops#4 IP block page naming the Azure IP",
+      "ranFrom": "actions", "platform": "ticketmaster",
+      "status": 403, "bytes": 4000,
+      "title": null,
+      "distinctPrices": 0, "teamMentions": 0, "venueMentions": 0,
+      "challengeSignals": ["ip-block"],
+      "expect": "BLOCKED"
+    }
+  ]
+}

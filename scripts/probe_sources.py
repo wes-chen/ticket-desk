@@ -17,6 +17,7 @@ tickets; risking it to save a few requests would be a terrible trade.
 import argparse
 import json
 import pathlib
+import re
 import ssl
 import sys
 import time
@@ -86,6 +87,28 @@ def targets(sample_event: str | None) -> list[dict]:
     return t
 
 
+# What a real listing page contains that a challenge page never does. Counting subject
+# matter is far more discriminating than the old generic word list, which scored block
+# pages and listing pages almost identically.
+MAX_BODY = 5_000_000
+
+TEAM_TOKEN = "sharks"
+VENUE_TOKEN = "sap center"
+PRICE_RE = re.compile(r"\$\s?(\d{2,4})(?:\.\d\d)?\b")
+TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
+
+
+def characterize(body: str) -> dict:
+    low = body.lower()
+    m = TITLE_RE.search(body)
+    return {
+        "title": (m.group(1).strip()[:80] if m else None),
+        "distinctPrices": len(set(PRICE_RE.findall(body))),
+        "teamMentions": low.count(TEAM_TOKEN),
+        "venueMentions": low.count(VENUE_TOKEN),
+    }
+
+
 def probe(url: str, timeout: int = 25) -> dict:
     req = urllib.request.Request(
         url,
@@ -99,11 +122,16 @@ def probe(url: str, timeout: int = 25) -> dict:
     t0 = time.time()
     try:
         with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
-            body = r.read(400_000).decode("utf-8", errors="ignore")
+            # 5MB, not the original 400KB. TickPick's listing page is 1.4MB and its
+            # prices sit past the 400KB mark, so the old cap truncated away the very
+            # evidence the verdict depends on and scored a working source as empty.
+            # A cap is still needed - this is a probe, not a downloader - but it has to
+            # be larger than a real listing page, not smaller.
+            body = r.read(MAX_BODY).decode("utf-8", errors="ignore")
             status = r.status
             final = r.url
     except urllib.error.HTTPError as e:
-        body = e.read(400_000).decode("utf-8", errors="ignore") if e.fp else ""
+        body = e.read(MAX_BODY).decode("utf-8", errors="ignore") if e.fp else ""
         status = e.code
         final = url
     except Exception as e:  # noqa: BLE001 - the failure mode itself is the datum
@@ -111,7 +139,12 @@ def probe(url: str, timeout: int = 25) -> dict:
 
     low = body.lower()
     blocks = sorted({label for sig, label in BLOCK_SIGNS if sig in low})
-    content = sum(1 for s in CONTENT_SIGNS if s in low)
+    if body.strip().startswith('{"response":"identify"'):
+        # Ticketmaster's device check. Distinct from its 403 IP block page, and the
+        # distinction decides whether a residential browser could get through at all.
+        blocks.append("tm-identify")
+
+    chars = characterize(body)
 
     return {
         "status": status,
@@ -119,34 +152,108 @@ def probe(url: str, timeout: int = 25) -> dict:
         "bytes": len(body),
         "redirected": final != url,
         "blockSignals": blocks,
-        "contentSignals": content,
-        "verdict": verdict(status, blocks, content, len(body)),
+        **chars,
+        "verdict": verdict(status, blocks, len(body),
+                           chars["distinctPrices"], chars["teamMentions"], chars["venueMentions"]),
     }
 
 
-def verdict(status, blocks, content, size) -> str:
+def verdict(status, signals, size, prices=0, team=0, venue=0) -> str:
+    """Classify one response.
+
+    Rewritten 2026-09-05 after the first residential run got two of five wrong, both in
+    the direction that would have changed a decision:
+
+      * TickPick returned a 1.4MB page titled "Cheap San Jose Sharks Tickets 2026" with
+        31 distinct dollar amounts and 1089 mentions of the team. The old rule needed 3
+        hits from a generic word list, scored 2, and called it "thin - possibly a soft
+        block". It is the one source measured to work.
+      * StubHub was called BLOCKED because the body contained the string "recaptcha" -
+        an ordinary script tag. ops#4 records the first probe generation making exactly
+        this mistake; repeating it is the reason this function now looks at what a page
+        CONTAINS rather than what words appear in it.
+
+    So the positive test is subject-matter content - dollar amounts and mentions of the
+    team and venue - which a challenge page never has, and the negative test is a small
+    body, which real listing pages never are. Generic words like "price" and "ticket"
+    appear in block pages too and are no longer load-bearing.
+
+    Verdicts are deliberately distinct:
+      BLOCKED      - refused. Nothing a better parser can recover.
+      CHALLENGE    - a bot/device check, NOT an IP refusal. A real browser may pass it,
+                     so plain HTTP cannot settle this one; it needs Chromium (ops#2).
+                     Collapsing this into BLOCKED would have hidden the single most
+                     important open question about Ticketmaster.
+      INCONCLUSIVE - 200, but nothing that proves real content came back.
+      OK           - real listing content, verified by subject matter.
+    """
     if status is None:
         return "unreachable"
-    if blocks:
-        return "BLOCKED"
-    if status == 403:
-        return "BLOCKED (403)"
+    if "tm-identify" in signals:
+        return "CHALLENGE (bot check, not an IP block - needs a real browser)"
     if status == 404:
         return "not found (wrong URL, not a block)"
-    if status >= 500:
+    if status and status >= 500:
         return "server error"
-    if status == 200 and size > 20_000 and content >= 3:
+
+    # Real content beats every other signal: a page carrying prices and the team name is
+    # not a block page, whatever scripts it happens to load.
+    has_content = prices >= 5 and (team + venue) >= 10
+    if has_content:
         return "OK - real content"
+
+    if status == 403:
+        return "BLOCKED (403)"
+    if "ip-block" in signals:
+        return "BLOCKED (IP block page)"
+    if status == 200 and size < 20_000:
+        return "BLOCKED (200 but stub-sized - soft block)"
     if status == 200:
-        return "200 but thin - possibly a shell or soft block"
+        return "INCONCLUSIVE - 200 with no listing content found"
+    if status == 401:
+        return "CHALLENGE (401 - authentication or bot check)"
     return f"http {status}"
+
+
+def self_test() -> int:
+    """Replay MEASURED responses through verdict().
+
+    tests/fixtures/probe_observations.json holds the characteristics of responses that
+    were actually received, not invented ones. Two of these rows are the exact cases the
+    previous logic misclassified, so a regression fails here instead of in a decision.
+    """
+    fx = json.loads((ROOT / "tests" / "fixtures" / "probe_observations.json").read_text())
+    fails = []
+    for o in fx["observations"]:
+        got = verdict(o["status"], o["challengeSignals"], o["bytes"],
+                      o["distinctPrices"], o["teamMentions"], o["venueMentions"])
+        want = o["expect"]
+        if not got.startswith(want):
+            fails.append(f"{o['platform']} ({o['ranFrom']}): got {got!r}, expected {want}*\n      {o['label']}")
+
+    # The two regressions that motivated the rewrite, asserted directly.
+    tp = next(o for o in fx["observations"] if o["platform"] == "tickpick")
+    if "thin" in verdict(tp["status"], tp["challengeSignals"], tp["bytes"],
+                         tp["distinctPrices"], tp["teamMentions"], tp["venueMentions"]):
+        fails.append("TickPick's 1.4MB listing page is being called thin again")
+    if not verdict(200, ["recaptcha"], 359_311, 40, 500, 80).startswith("OK"):
+        fails.append("a real page is still being failed for carrying a recaptcha script tag")
+
+    for f in fails:
+        print(f"  FAIL {f}", file=sys.stderr)
+    print(f"self-test: {'FAILED' if fails else 'passed'} ({len(fails)} failure(s))")
+    return 1 if fails else 0
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--label", default="local", help="where this ran, e.g. local / actions")
     ap.add_argument("--json", action="store_true", help="emit machine-readable output")
+    ap.add_argument("--self-test", action="store_true", help="replay measured observations, no network")
     args = ap.parse_args()
+
+    if args.self_test:
+        return self_test()
 
     sample = None
     sched = ROOT / "data" / "schedule.json"
@@ -165,7 +272,8 @@ def main() -> int:
             print(f"   {t['url']}")
             detail = f"   status={r.get('status')} {r.get('ms')}ms"
             if "bytes" in r:
-                detail += f" {r['bytes']:,}B contentSignals={r['contentSignals']}"
+                detail += (f" {r['bytes']:,}B prices={r.get('distinctPrices', 0)}"
+                           f" team={r.get('teamMentions', 0)} venue={r.get('venueMentions', 0)}")
             if r.get("blockSignals"):
                 detail += f" blocked_by={','.join(r['blockSignals'])}"
             if r.get("error"):
