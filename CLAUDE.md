@@ -109,10 +109,24 @@ visibility, rewriting history, adding a secret, or deleting data.
 
 ## 6. Known constraints
 
-- **GitHub Actions cannot scrape.** Measured, not assumed: 403 from Ticketmaster,
-  SeatGeek, TickPick, and StubHub. TM's block page names the network as the cause and
-  prints the Azure runner IP. This is IP reputation, not fingerprinting - browser flags
-  will not fix it. See ops#4 / ops#16.
+- **The block follows the BROWSER, not the IP - for TickPick.** This rule used to read
+  "GitHub Actions cannot scrape... this is IP reputation, not fingerprinting", which was
+  drawn from one cell of a 2x2 and was wrong as a generalisation. The full grid, measured
+  2026-09-05 on the same URL:
+
+  |  | plain HTTP | headless Chromium |
+  | --- | --- | --- |
+  | residential | TickPick 200, 1.4MB, 31 prices | TickPick 403 `Just a moment...` |
+  | datacenter (Actions) | TickPick 200, 1.4MB, 31 prices | TickPick 403 |
+
+  So **TickPick collects fine from free CI over plain HTTP**, and reaching for Playwright
+  is what breaks it. `scripts/collect_tickpick.py` therefore uses `urllib` on purpose;
+  do not "upgrade" it to a real browser.
+- **Ticketmaster, SeatGeek and StubHub are still blocked**, and that part of ops#4 holds.
+  TM serves a 403 IP-block page to a runner (naming the Azure IP) and a `tm-bl` device
+  challenge to residential plain HTTP; SeatGeek 403s everywhere measured; StubHub returns
+  a JS shell with no prices and 403s intermittently. TM is the channel actually sold on,
+  so its prices remain uncollected - see ops#16.
 - **A residential IP is necessary but not sufficient.** Measured 2026-09-05 from
   Wesley's machine, against the same targets ops#4 probed from Actions:
   **TickPick** 403 -> **200 with real listing content** (1.4MB, 31 distinct prices);
@@ -136,8 +150,9 @@ visibility, rewriting history, adding a secret, or deleting data.
   `G5vYZ_...`. Both are real and both are needed - the legacy id keys TM's web pages,
   which is what the scraper will use. `data/tm_events.json` carries both for all 44
   games.
-- **Local Chromium is missing system libs** (`libnspr4`). Needs
-  `sudo npx playwright install-deps chromium`. See ops#2.
+- **Local Chromium works** as of 2026-09-05 (`sudo npx playwright install-deps chromium`
+  was run; verified by launching it). ops#2 is closed. Note it is of limited use for
+  collection - see the browser-fingerprinting row above.
 - **Git never forgets.** Anything committed is permanent. Do not commit raw scrape
   snapshots and plan to prune them - deleting a file does not remove its blobs. Raw data
   goes to Actions artifacts; only small aggregates get committed.
@@ -150,6 +165,10 @@ npm run build          # type-check, build, enforce privacy checks
 npm run schedule       # refresh + VALIDATE data/schedule.json against the NHL API
 npm run check:privacy  # privacy checks alone
 npm run check:bands    # validate config/price_bands.json (section -> price band map)
+npm run check:tiermarket   # cross-check the tier table against collected market prices
+npm run collect:tickpick   # TickPick prices -> data/market/tickpick.jsonl (+ raw to raw-out/)
+npm run resolve:tickpick   # rebuild data/tickpick_events.json from TickPick's sitemap
+npm run summarize:market   # derive data/market/summary.json, which the app imports
 npm run resolve:tm     # TM Discovery event ids -> data/tm_events.json
 npm run test:tm        # resolver self-test against real captured fixtures; no key, no network
 python3 scripts/probe_sources.py --label local  # HTTP-level reachability (no browser needed)
@@ -170,6 +189,20 @@ assignment is missing - the band prices are transcribed but no section has been 
 yet. Its placement checks (arc contiguity and mirror symmetry around each level's ring)
 are written and self-tested against a deliberately misfiled section, so they work the
 moment the chart is transcribed. See ops#19.
+
+`scripts/collect_tickpick.py` is the working price collector. Plain HTTP, no browser,
+44/44 home games, running daily in Actions. **Aggregates commit; raw ld+json goes to a
+90-day Actions artifact and never into git** (~102KB/day raw). It is NOT seat-level:
+TickPick's listing grid is behind an `/ajax/` path its `robots.txt` disallows, so
+section-level comps need a different source. It is also a **comp market, not the channel
+these tickets are sold on** - never read these numbers as achievable prices.
+
+`scripts/check_tier_market.py` is an independent check on `config/tiers.json`, which was
+transcribed by hand from a JPEG. Thousands of unrelated TickPick sellers have never seen
+that graphic, so if a better tier commands a higher ask, the transcription is probably
+right. First measurement: Spearman -0.914, tier medians perfectly monotone, no outliers.
+It tests CONSISTENCY, not correctness - two adjacent tiers swapped where demand is equal
+would still pass.
 
 `scripts/fetch_schedule.py` validates rather than trusts: the tier table was transcribed
 by hand from a graphic, so every entry is cross-checked against the live NHL schedule on

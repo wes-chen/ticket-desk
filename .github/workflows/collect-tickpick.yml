@@ -50,6 +50,17 @@ jobs:
       - name: Collect
         run: python3 scripts/collect_tickpick.py
 
+      # The app imports data/market/summary.json at build time, so it has to be
+      # regenerated in the same run that adds a day to the store - otherwise the
+      # deployed dashboard silently lags the series by a day.
+      - name: Summarise
+        run: python3 scripts/summarize_market.py
+
+      # Independent check on the hand-transcribed tier table. Every new day of prices
+      # makes it stronger, and a misfiled game shows up as an outlier.
+      - name: Cross-check tiers against the market
+        run: python3 scripts/check_tier_market.py
+
       # Not hidden-file-prefixed: upload-artifact@v4 silently excludes dotted paths and
       # uploaded nothing at all in ops#4, emitting only a warning.
       - name: Upload raw payloads
@@ -65,8 +76,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [[ -n "$(git status --porcelain data/market/tickpick.jsonl data/tickpick_events.json)" ]]; then
-            git add data/market/tickpick.jsonl data/tickpick_events.json
+          if [[ -n "$(git status --porcelain data/market/ data/tickpick_events.json)" ]]; then
+            git add data/market/ data/tickpick_events.json
             git commit -m "chore: tickpick prices $(date -u +%Y-%m-%d)"
             git pull --rebase --autostash
             git push

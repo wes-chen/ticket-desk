@@ -20,6 +20,7 @@ import {
   type Tier,
 } from "./lib/profile";
 import { useLocalStorage } from "./lib/store";
+import { market, marketFor, standing, standingNote } from "./lib/market";
 
 const GAMES = scheduleData.games as Game[];
 const FEE = economics.resale.platforms.ticketmaster.sellerFeeRate;
@@ -102,7 +103,8 @@ function Dashboard({
       const list = profile.listPrices[String(g.gameId)] ?? null;
       const net = list == null ? null : netPayout(list, FEE);
       const delta = net == null || credit == null ? null : net - credit;
-      return { g, credit, be, list, net, delta, guide: guidance(g, credit, now) };
+      const mk = marketFor(g.gameId);
+      return { g, credit, be, list, net, delta, mk, guide: guidance(g, credit, now) };
     });
   }, [profile, now]);
 
@@ -178,6 +180,12 @@ function Dashboard({
                 <th className="px-4 py-3 font-medium">Tier</th>
                 <th className="px-4 py-3 text-right font-medium">Credit</th>
                 <th className="px-4 py-3 text-right font-medium">Break-even</th>
+                <th
+                  className="px-4 py-3 text-right font-medium"
+                  title="Cheapest and priciest listing in the WHOLE ARENA on TickPick, all-in. Not a comp for your section, and not the channel you sell on."
+                >
+                  Arena ask <span className="font-normal normal-case opacity-60">(TickPick)</span>
+                </th>
                 <th className="px-4 py-3 text-right font-medium">Your list</th>
                 <th className="px-4 py-3 text-right font-medium">Net</th>
                 <th className="px-4 py-3 text-right font-medium">vs exchange</th>
@@ -204,6 +212,33 @@ function Dashboard({
                       {fmt(r.credit)}
                     </td>
                     <td className="px-4 py-2.5 text-right font-medium tabular-nums">{fmt(r.be)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-600 dark:text-slate-400">
+                      {r.mk == null ? (
+                        <span className="text-slate-400">--</span>
+                      ) : (
+                        <span
+                          title={
+                            `${r.mk.observations} observation(s), latest ${r.mk.observedDate}. ` +
+                            (r.be != null ? standingNote(standing(r.be, r.mk)) : "")
+                          }
+                        >
+                          ${r.mk.low}
+                          <span className="opacity-50">&ndash;{r.mk.high}</span>
+                          {r.mk.lowDelta != null && r.mk.lowDelta !== 0 && (
+                            <span
+                              className={
+                                r.mk.lowDelta > 0
+                                  ? "ml-1 text-xs text-red-600 dark:text-red-400"
+                                  : "ml-1 text-xs text-emerald-600 dark:text-emerald-400"
+                              }
+                            >
+                              {r.mk.lowDelta > 0 ? "\u2191" : "\u2193"}
+                              {Math.abs(r.mk.lowDelta)}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-2.5 text-right">
                       <input
                         type="number"
@@ -234,11 +269,34 @@ function Dashboard({
           </table>
         </section>
 
-        <p className="mt-6 text-xs text-slate-500">
-          Market comps and the sell-timing curve are not in this build. With no prior selling history,
-          any probability-of-sale estimate would be invented rather than measured &mdash; so the tool
-          shows the tradeoff and leaves the call to you until real data accumulates.
-        </p>
+        <section className="mt-6 space-y-2 text-xs text-slate-500">
+          <p>
+            <strong className="text-slate-600 dark:text-slate-400">Arena ask</strong> is the cheapest
+            and priciest listing in the whole building on TickPick, all-in &mdash;{" "}
+            {market().observationDays === 1 ? (
+              <>a single observation from {market().lastObservedDate}, so there is no trend yet.</>
+            ) : (
+              <>
+                {market().observationDays} observation days, {market().firstObservedDate} to{" "}
+                {market().lastObservedDate}. The arrow is the change in the cheapest ask since the
+                first observation.
+              </>
+            )}
+          </p>
+          <p>
+            Two things it is not. It is <strong>not a comp for your seats</strong> &mdash; the low is
+            almost always an upper-deck single, and section-level listings sit behind a path
+            TickPick&rsquo;s robots.txt disallows. And it is{" "}
+            <strong>not the channel you sell on</strong> &mdash; Ticketmaster blocks collection, so
+            this is a neighbouring market, not your achievable price.
+          </p>
+          <p>
+            The sell-timing curve is still deliberately unbuilt. {market().observationDays} day
+            {market().observationDays === 1 ? "" : "s"} of history cannot support a
+            probability-of-sale estimate, and a fabricated one would look authoritative while being
+            invented. The tool shows the tradeoff and leaves the call to you.
+          </p>
+        </section>
       </main>
     </div>
   );

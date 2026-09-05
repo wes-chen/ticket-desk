@@ -1,0 +1,365 @@
+{
+  "_comment": "Derived from data/market/tickpick.jsonl by scripts/summarize_market.py. low/high are the cheapest and priciest listings in the WHOLE ARENA, all-in, on TickPick - NOT a comp for any specific seat, and NOT the channel these tickets are sold on. See the script docstring.",
+  "generatedAt": "2026-09-05T03:26:24Z",
+  "source": "tickpick",
+  "priceBasis": "all_in_whole_arena",
+  "isOwnChannel": false,
+  "confidence": "measured_single_point",
+  "observationDays": 1,
+  "firstObservedDate": "2026-09-05",
+  "lastObservedDate": "2026-09-05",
+  "games": [
+    {
+      "gameId": 2026010032,
+      "date": "2026-09-22",
+      "low": 17,
+      "high": 1826,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026010039,
+      "date": "2026-09-24",
+      "low": 12,
+      "high": 2188,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020016,
+      "date": "2026-10-01",
+      "low": 86,
+      "high": 1477,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020034,
+      "date": "2026-10-03",
+      "low": 63,
+      "high": 2081,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020072,
+      "date": "2026-10-10",
+      "low": 58,
+      "high": 2119,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020105,
+      "date": "2026-10-13",
+      "low": 32,
+      "high": 1607,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020198,
+      "date": "2026-10-27",
+      "low": 22,
+      "high": 2192,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020213,
+      "date": "2026-10-29",
+      "low": 24,
+      "high": 2201,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020222,
+      "date": "2026-10-31",
+      "low": 47,
+      "high": 1316,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020235,
+      "date": "2026-11-02",
+      "low": 23,
+      "high": 1317,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020285,
+      "date": "2026-11-09",
+      "low": 23,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020298,
+      "date": "2026-11-11",
+      "low": 33,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020330,
+      "date": "2026-11-15",
+      "low": 33,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020343,
+      "date": "2026-11-17",
+      "low": 23,
+      "high": 998,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020372,
+      "date": "2026-11-21",
+      "low": 54,
+      "high": 1528,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020384,
+      "date": "2026-11-23",
+      "low": 37,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020410,
+      "date": "2026-11-27",
+      "low": 69,
+      "high": 2303,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020495,
+      "date": "2026-12-08",
+      "low": 23,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020513,
+      "date": "2026-12-11",
+      "low": 51,
+      "high": 1409,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020535,
+      "date": "2026-12-14",
+      "low": 23,
+      "high": 1341,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020611,
+      "date": "2026-12-26",
+      "low": 83,
+      "high": 1339,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020653,
+      "date": "2027-01-01",
+      "low": 73,
+      "high": 1224,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020663,
+      "date": "2027-01-02",
+      "low": 67,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020680,
+      "date": "2027-01-04",
+      "low": 25,
+      "high": 1331,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020693,
+      "date": "2027-01-06",
+      "low": 30,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020708,
+      "date": "2027-01-08",
+      "low": 60,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020721,
+      "date": "2027-01-09",
+      "low": 76,
+      "high": 1541,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020781,
+      "date": "2027-01-18",
+      "low": 32,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020823,
+      "date": "2027-01-23",
+      "low": 70,
+      "high": 1409,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020860,
+      "date": "2027-01-28",
+      "low": 31,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020867,
+      "date": "2027-01-30",
+      "low": 67,
+      "high": 1409,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020902,
+      "date": "2027-02-10",
+      "low": 39,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020914,
+      "date": "2027-02-13",
+      "low": 62,
+      "high": 1541,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026020935,
+      "date": "2027-02-15",
+      "low": 41,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026021042,
+      "date": "2027-03-01",
+      "low": 36,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026021055,
+      "date": "2027-03-03",
+      "low": 33,
+      "high": 1341,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026021070,
+      "date": "2027-03-05",
+      "low": 58,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026021079,
+      "date": "2027-03-06",
+      "low": 59,
+      "high": 1409,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026021185,
+      "date": "2027-03-20",
+      "low": 60,
+      "high": 1541,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026021210,
+      "date": "2027-03-24",
+      "low": 41,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026021247,
+      "date": "2027-03-29",
+      "low": 39,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026021295,
+      "date": "2027-04-04",
+      "low": 48,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026021323,
+      "date": "2027-04-08",
+      "low": 43,
+      "high": 1355,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    },
+    {
+      "gameId": 2026021331,
+      "date": "2027-04-10",
+      "low": 85,
+      "high": 1541,
+      "observedDate": "2026-09-05",
+      "observations": 1
+    }
+  ]
+}
