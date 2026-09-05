@@ -1,19 +1,38 @@
 {
   "_comment": "PUBLIC model constants only. Nothing here identifies a seat, a price paid, or an account. Anything personal - seat location, season invoice, tier credit amounts, list prices - lives in the user's browser profile and is never committed or served. See src/lib/profile.ts.",
-
   "resale": {
     "primaryPlatform": "ticketmaster",
     "platforms": {
       "ticketmaster": {
         "label": "Ticketmaster / NHL Ticket Exchange",
         "sellerFeeRate": 0.1,
-        "source": "MEASURED at ONE price point: a $77.00 listing displayed 'You will make $69.30 per ticket'. 69.30 / 77.00 = 0.9000 exactly.",
-        "confidence": "measured_single_point",
-        "openQuestion": "Third-party sources cite a 10-15% seller fee. We have only ONE direct observation, at one price, on one game. Unknown whether the rate is flat or varies by price level, tier, or event. Corroborating evidence is suggestive but circular: dividing three instant offers by 0.9 yields exact round dollars ($27 / $97 / $107), which would not happen at 0.85 ($28.59 / $102.71 / $113.29) - but that assumed 0.9 to begin with.",
+        "source": "MEASURED at TWO independent price points, both exactly 0.9000: a $77.00 listing displayed 'You will make $69.30 per ticket' (69.30/77.00), and two separate $70.00 listings each displayed 'You will make $63.00 per ticket' (63.00/70.00).",
+        "confidence": "measured",
+        "openQuestion": "RESOLVED 2026-09-05. Third-party sources cite 10-15%, but the rate is flat 10% across the two price points measured. The earlier corroboration (dividing instant offers by 0.9 yielding round dollars) was circular because it assumed 0.9; the $70 -> $63.00 observation is direct and independent of it. Still unmeasured: whether the rate holds at much higher prices, or differs by tier. Both $77 and $70 are low-priced listings on preseason inventory.",
         "whyItMatters": "Break-even = credit / (1 - feeRate). At 10% an A+ break-even is credit/0.90; at 15% it is credit/0.85 - roughly 6% higher on every game. A systematic error here biases every pricing decision in the same direction.",
-        "validationPlan": "Vary list price on the 'Set Your Own Price' page and record the live 'You will make' figure at several price points, on at least two different tiers. Flat ratio across all of them => flat rate. See feeObservations below.",
+        "validationPlan": "Largely done. To close the remaining gap, record 'You will make' at a materially higher list price (say $150+) on a regular-season tier.",
         "feeObservations": [
-          { "list": 77.0, "net": 69.3, "impliedRate": 0.1, "game": "2026-09-22 VGK", "tier": "PRESEASON" }
+          {
+            "list": 77.0,
+            "net": 69.3,
+            "impliedRate": 0.1,
+            "game": "2026-09-22 VGK",
+            "tier": "PRESEASON"
+          },
+          {
+            "list": 70.0,
+            "net": 63.0,
+            "impliedRate": 0.1,
+            "game": "2026-09-22 VGK",
+            "tier": "PRESEASON"
+          },
+          {
+            "list": 70.0,
+            "net": 63.0,
+            "impliedRate": 0.1,
+            "game": "2026-09-24 ANA",
+            "tier": "PRESEASON"
+          }
         ],
         "payoutDelayDays": 7,
         "payoutNote": "Deposited ~7 days after the event, and requires taxpayer/TIN info on file before any payout is released.",
@@ -35,7 +54,6 @@
       }
     }
   },
-
   "exchange": {
     "label": "Sharks Exchange (Return For Credit)",
     "deadlineHoursBeforePuckDrop": 48,
@@ -55,27 +73,52 @@
       "_comment": "Set below 1.0 to discount account credit against cash. 1.0 = treat credit as worth full face."
     }
   },
-
   "instantOffer": {
     "label": "Ticketmaster 'Sell Your Tickets Now' instant buyout",
     "impliedBidFormula": "impliedBid = offerPerTicket / (1 - sellerFeeRate)",
     "isBidNotAsk": true,
     "visibleOnlyWhenLoggedIn": true,
     "notes": [
-      "SOLVED: the offer is a buyer's BID at a round dollar price, paid out net of the same 10% seller fee. Three samples, all exact:",
+      "SOLVED: the offer is a buyer's BID at a round dollar price, paid out net of the same 10% seller fee. FOUR samples, all exact:",
       "  $24.30 / 0.9 = $27.00   (2026-09-22 VGK, preseason)",
+      "  $27.90 / 0.9 = $31.00   (2026-09-24 ANA, preseason)",
       "  $87.30 / 0.9 = $97.00   (2026-11-27 VGK, A+)",
       "  $96.30 / 0.9 = $107.00  (2027-01-09 NYR, A+)",
       "CONSEQUENCE: the seller page leaks a live market price for free. No scraping needed for this number.",
       "IMPORTANT: this is a BID, not an ask. It is a floor on market value, not fair value. A patient listing should clear above it - measuring that spread is a core job of the collector.",
       "Ticketmaster states it does not set the offer amount.",
-      "OBSERVATION: in all three samples the implied bid net was BELOW the tier exchange credit, including for marquee A+ opponents. If that holds, the instant offer is never the right exit while the exchange window is open.",
+      "OBSERVATION: in all four samples the implied bid net was BELOW the tier exchange credit, including for marquee A+ opponents. If that holds, the instant offer is never the right exit while the exchange window is open.",
       "Only visible on the authenticated seller page, so this is manual-paste data, not scraped."
     ],
     "samples": [
-      { "date": "2026-09-22", "opp": "VGK", "tier": "PRESEASON", "offerPerTicket": 24.3, "impliedBid": 27.0 },
-      { "date": "2026-11-27", "opp": "VGK", "tier": "A+", "offerPerTicket": 87.3, "impliedBid": 97.0 },
-      { "date": "2027-01-09", "opp": "NYR", "tier": "A+", "offerPerTicket": 96.3, "impliedBid": 107.0 }
+      {
+        "date": "2026-09-22",
+        "opp": "VGK",
+        "tier": "PRESEASON",
+        "offerPerTicket": 24.3,
+        "impliedBid": 27.0
+      },
+      {
+        "date": "2026-09-24",
+        "opp": "ANA",
+        "tier": "PRESEASON",
+        "offerPerTicket": 27.9,
+        "impliedBid": 31.0
+      },
+      {
+        "date": "2026-11-27",
+        "opp": "VGK",
+        "tier": "A+",
+        "offerPerTicket": 87.3,
+        "impliedBid": 97.0
+      },
+      {
+        "date": "2027-01-09",
+        "opp": "NYR",
+        "tier": "A+",
+        "offerPerTicket": 96.3,
+        "impliedBid": 107.0
+      }
     ]
   }
 }

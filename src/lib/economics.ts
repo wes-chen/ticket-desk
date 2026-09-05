@@ -6,14 +6,17 @@
  *   1. List on Ticketmaster and it sells  -> list x 0.90  (10% seller fee, measured)
  *   2. Sharks Exchange "Return For Credit" -> tier credit, but as ACCOUNT CREDIT, and
  *                                             only until 48h before puck drop
- *   3. Ticketmaster instant "Get Paid"     -> guaranteed cash, historically ~35% of list-net
+ *   3. Ticketmaster instant "Get Paid"     -> a buyer's BID at a round dollar, paid net of
+ *                                             the same 10% fee. Four samples, all below the
+ *                                             tier credit - so never the right exit while
+ *                                             the exchange window is open.
  *   4. Don't sell it                       -> $0
  *
  * The 48-hour exchange deadline is the load-bearing detail. Before it, exit 2 is a
  * guaranteed floor under exit 1, which changes the optimal strategy completely.
  */
 
-export const FEE_RATE = 0.1; // measured: $77.00 list -> $69.30 net
+export const FEE_RATE = 0.1; // measured at two price points: $77 -> $69.30, $70 -> $63.00
 export const EXCHANGE_DEADLINE_HOURS = 48;
 
 export type Tier = "A+" | "A" | "B" | "C" | "D" | "PRESEASON";
