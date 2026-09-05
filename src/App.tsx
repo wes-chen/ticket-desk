@@ -158,6 +158,14 @@ function Dashboard({
               <span className="mx-2 opacity-50">|</span>
               {Math.round(FEE * 100)}% seller fee
             </p>
+            <p className="mt-1 text-xs text-teal-200/70">
+              {/* ops#18: make staleness visible rather than invisible. A precaching
+                  service worker means what you are looking at may predate the last
+                  deploy, and the app's highest-value moment is an irreversible
+                  deadline. */}
+              Build {__BUILD_TIME__.slice(0, 16).replace("T", " ")}Z &middot; market data{" "}
+              {market().lastObservedDate ?? "none"}
+            </p>
           </div>
           <button
             onClick={onOpenSetup}
