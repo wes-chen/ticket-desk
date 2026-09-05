@@ -1,0 +1,15 @@
+{
+  "errors": [
+    {
+      "_links": {
+        "about": {
+          "href": "/discovery/v2/errors.html#DIS1004"
+        }
+      },
+      "code": "DIS1004",
+      "detail": "Resource not found with provided criteria (locale=*, id=1C0064E79AA99B1B)",
+      "status": "404"
+    }
+  ],
+  "_fixture": "REAL 404 from GET /discovery/v2/events/1C0064E79AA99B1B.json - a LEGACY web-URL id sent to Discovery, which uses a different id namespace. This is what every stored tmEventId did on the first live run."
+}

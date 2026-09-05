@@ -1,5 +1,10 @@
 name: Refresh schedule
 
+# Two syncs against external truth, in dependency order: the NHL schedule, then the
+# Ticketmaster event ids keyed to it. Both validate rather than trust, and both fail the
+# run instead of committing something wrong - a bad id map would misdirect the collector
+# at every game for a whole season.
+
 on:
   schedule:
     - cron: "17 13 * * *" # daily, ~6am Pacific
@@ -20,17 +25,31 @@ jobs:
       # Exits non-zero if the tier table and the live NHL schedule disagree, so a
       # rescheduled or relocated game surfaces as a failed run instead of quietly
       # mispricing itself.
-      - name: Fetch and validate
+      - name: Fetch and validate schedule
         run: python3 scripts/fetch_schedule.py
+
+      # Fixture-backed checks before any network call, so a broken join is caught here
+      # rather than by writing a wrong id map. Fixtures are REAL captured responses.
+      - name: Resolver self-test
+        run: python3 scripts/resolve_tm_events.py --self-test
+
+      # Runs after the schedule refresh on purpose: it joins against the file the
+      # previous step just wrote, and validates on date, opponent name, and the legacy
+      # id already stored there.
+      - name: Resolve Ticketmaster event ids
+        env:
+          TM_DISCOVERY_API_KEY: ${{ secrets.TM_DISCOVERY_API_KEY }}
+        run: python3 scripts/resolve_tm_events.py
 
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [[ -n "$(git status --porcelain data/schedule.json)" ]]; then
-            git add data/schedule.json
-            git commit -m "chore: refresh schedule"
+          if [[ -n "$(git status --porcelain data/schedule.json data/tm_events.json)" ]]; then
+            git add data/schedule.json data/tm_events.json
+            git commit -m "chore: refresh schedule and TM event ids"
+            git pull --rebase --autostash
             git push
           else
-            echo "no schedule change"
+            echo "no change"
           fi

@@ -75,6 +75,10 @@ def walk(obj, path=""):
             yield from walk(v, f"{path}[{i}]")
 
 
+def scanned_dirs() -> tuple[str, ...]:
+    return ("config", "data", "tests")
+
+
 def _docs(f: pathlib.Path):
     """Yield (label, parsed) for a committed data file.
 
@@ -104,10 +108,15 @@ def structural() -> list[str]:
     problems = []
     # Recursive: the market series lives in data/market/, and a check that only sees
     # the top level would silently stop covering new data surfaces as they are added.
+    # tests/ is included because fixtures are CAPTURED API RESPONSES, not hand-written
+    # stubs. A capture is exactly the kind of file that can carry something personal in
+    # without anyone reading it first.
+    scanned = scanned_dirs()
     files = sorted(
-        list((ROOT / "config").rglob("*.json"))
-        + list((ROOT / "data").rglob("*.json"))
-        + list((ROOT / "data").rglob("*.jsonl"))
+        f
+        for d in scanned
+        for pat in ("*.json", "*.jsonl")
+        for f in (ROOT / d).rglob(pat)
     )
     for f in files:
         for label, data in _docs(f):
@@ -232,7 +241,7 @@ def main() -> int:
     problems += lit
     hist, ran_history = history()
 
-    print(f"structural check: {len(FORBIDDEN_KEYS)} forbidden keys across config/ and data/ (.json + .jsonl, recursive)")
+    print(f"structural check: {len(FORBIDDEN_KEYS)} forbidden keys across {'/ '.join(scanned_dirs())}/ (.json + .jsonl, recursive)")
     if ran_literal:
         print(f"literal check:    dist/ + tracked files scanned against {PATTERNS_FILE.name}")
     else:

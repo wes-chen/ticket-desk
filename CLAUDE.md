@@ -41,9 +41,17 @@ formula, public listing prices - are fine here.
 
 | Pass | Covers | Runs |
 | --- | --- | --- |
-| structural | forbidden keys in committed JSON and JSONL, recursively under `config/` and `data/` | everywhere, including CI |
+| structural | forbidden keys in committed JSON and JSONL, recursively under `config/`, `data/`, `tests/` | everywhere, including CI |
 | literal | `dist/` + every git-tracked file | only when `.private-patterns` exists |
 | history | git log content **and** commit messages | only when `.private-patterns` exists |
+
+The structural pass walks `config/`, `data/`, and `tests/` **recursively**, and parses `.jsonl`
+line by line as well as `.json`. It originally globbed only the top level for `*.json`,
+which meant the first collector to land a nested or line-delimited store would have
+created a committed data surface the check silently ignored - and whole-file
+`json.loads` on a JSONL store would have reported a false "invalid JSON", training
+people to ignore the output. When you add a new committed data surface, check that this
+pass actually covers it.
 
 `.private-patterns` is gitignored and local-only - committing it would defeat its
 purpose. **A fresh clone will not have it, so the literal and history passes silently
@@ -82,12 +90,39 @@ because there is no sell-through history to fit it against, and a fabricated
 probability-of-sale curve would look authoritative while being made up. Show the tradeoff
 and say what is unknown.
 
-## 5. Known constraints
+## 5. Autonomous sessions should push
+
+Commit and **push** work that is finished and passes `npm run build`. Do not leave it
+sitting on local `main`.
+
+A scheduled workflow only exists on the remote: a cron on a local branch never fires, so
+unpushed collector work collects nothing, and collected data only accrues forward.
+Holding a clean commit back costs days of market data that cannot be recovered later.
+
+The privacy checks are the gate, not a review by Wesley. Before pushing, confirm
+`npm run build` is clean **and** that the literal and history passes actually ran rather
+than skipping - a fresh clone without `.private-patterns` reports "clean" on evidence it
+never gathered.
+
+Stop and ask for anything that is not an ordinary push: force-pushing, changing repo
+visibility, rewriting history, adding a secret, or deleting data.
+
+## 6. Known constraints
 
 - **GitHub Actions cannot scrape.** Measured, not assumed: 403 from Ticketmaster,
   SeatGeek, TickPick, and StubHub. TM's block page names the network as the cause and
   prints the Azure runner IP. This is IP reputation, not fingerprinting - browser flags
   will not fix it. See ops#4 / ops#16.
+- **The Ticketmaster Discovery API publishes no prices for this venue.** Measured
+  2026-09-05 with a live key: `priceRanges` is absent from all 44 home events on both
+  the search and detail endpoints, at HTTP 200. Discovery is an id and metadata
+  resolver, not a price source. `resolve_tm_events.py` re-probes for the field every
+  run and says so loudly if it ever appears. See ops#5.
+- **There are two Ticketmaster id namespaces.** The `tmEventId` in `schedule.json` is a
+  LEGACY web-URL id (`1C0064E7...`) and Discovery 404s on it; Discovery uses
+  `G5vYZ_...`. Both are real and both are needed - the legacy id keys TM's web pages,
+  which is what the scraper will use. `data/tm_events.json` carries both for all 44
+  games.
 - **Local Chromium is missing system libs** (`libnspr4`). Needs
   `sudo npx playwright install-deps chromium`. See ops#2.
 - **Git never forgets.** Anything committed is permanent. Do not commit raw scrape
@@ -102,16 +137,18 @@ npm run build          # type-check, build, enforce privacy checks
 npm run schedule       # refresh + VALIDATE data/schedule.json against the NHL API
 npm run check:privacy  # privacy checks alone
 npm run check:bands    # validate config/price_bands.json (section -> price band map)
-npm run collect:discovery  # TM Discovery API price ranges -> data/market/discovery.jsonl
-npm run test:discovery     # collector self-test; no API key, no network
+npm run resolve:tm     # TM Discovery event ids -> data/tm_events.json
+npm run test:tm        # resolver self-test against real captured fixtures; no key, no network
 node scripts/probe_browser.mjs --label local   # source reachability (needs local Chromium)
 ```
 
-`collect_discovery.py` needs `TM_DISCOVERY_API_KEY`, from the environment or from
+`resolve_tm_events.py` needs `TM_DISCOVERY_API_KEY`, from the environment or from
 `.env.local` (gitignored). It is a read-only public-data key with no connection to the
-seller account. One row per event per UTC day, upserted - a same-day re-run corrects
-that day rather than appending. A run where *every* request fails writes nothing, so a
-bad key cannot bury the series in error rows.
+seller account. It runs inside the schedule workflow, after `fetch_schedule.py`, and
+validates the join on **three independent keys** - local date, the opponent's name inside
+the TM event name, and the legacy id parsed from the TM event `url` matching the
+`tmEventId` already in `schedule.json`. Any disagreement fails the run and writes
+nothing: a wrong id map is worse than a stale one.
 
 `scripts/check_price_bands.py` reports **NOT CHECKED**, not "clean", while the section
 assignment is missing - the band prices are transcribed but no section has been placed

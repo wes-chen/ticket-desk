@@ -10,10 +10,10 @@
     "schedule": "python3 scripts/fetch_schedule.py",
     "icons": "python3 scripts/make_icons.py",
     "check:privacy": "python3 scripts/check_privacy.py",
-    "collect:discovery": "python3 scripts/collect_discovery.py",
-    "test:discovery": "python3 scripts/collect_discovery.py --self-test",
     "check:bands": "python3 scripts/check_price_bands.py",
-    "test:bands": "python3 scripts/check_price_bands.py --self-test"
+    "test:bands": "python3 scripts/check_price_bands.py --self-test",
+    "resolve:tm": "python3 scripts/resolve_tm_events.py",
+    "test:tm": "python3 scripts/resolve_tm_events.py --self-test"
   },
   "dependencies": {
     "react": "^19.0.0",

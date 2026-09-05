@@ -81,8 +81,13 @@ def main():
             },
             "tier": tier,
             "ticketsLink": g.get("ticketsLink"),
-            # The NHL schedule embeds the Ticketmaster event id, which is the exact key
-            # TM's own systems use. Saves fuzzy-matching games to listings later.
+            # The NHL schedule embeds a Ticketmaster event id - but a LEGACY web-URL
+            # one, not the id the Discovery API uses. Discovery 404s (DIS1004) on all
+            # 42 of these. Measured 2026-09-05; the earlier claim that this was "the
+            # exact key TM's own systems use" was wrong and cost a rewrite.
+            # It is still the right key for TM's *web* pages, which the scraper needs.
+            # scripts/resolve_tm_events.py maps it to the Discovery namespace, and uses
+            # this field as an independent cross-check on that mapping.
             "tmEventId": tm_event_id(g.get("ticketsLink")),
         })
 
