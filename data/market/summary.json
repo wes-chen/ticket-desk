@@ -1,6 +1,6 @@
 {
   "_comment": "Derived from data/market/tickpick.jsonl by scripts/summarize_market.py. low/high are the cheapest and priciest listings in the WHOLE ARENA, all-in, on TickPick - NOT a comp for any specific seat, and NOT the channel these tickets are sold on. See the script docstring.",
-  "generatedAt": "2026-09-05T03:26:24Z",
+  "generatedAt": "2026-09-05T03:54:59Z",
   "source": "tickpick",
   "priceBasis": "all_in_whole_arena",
   "isOwnChannel": false,
@@ -173,7 +173,7 @@
       "gameId": 2026020611,
       "date": "2026-12-26",
       "low": 83,
-      "high": 1339,
+      "high": 1355,
       "observedDate": "2026-09-05",
       "observations": 1
     },
@@ -228,7 +228,7 @@
     {
       "gameId": 2026020781,
       "date": "2027-01-18",
-      "low": 32,
+      "low": 34,
       "high": 1355,
       "observedDate": "2026-09-05",
       "observations": 1
