@@ -94,6 +94,36 @@ File issues there, not here, and note that personal values *are* allowed there -
 the entire reason for the split. Check `gh issue list --repo wes-chen/ticket-desk-ops`
 before starting work; the backlog is real and current.
 
+### Close what you resolve, and say why
+
+**An issue whose work is done gets a closing comment and then gets closed, in the same
+sitting.** Not "suggest closing" - closed. Fourteen issues once sat open with their
+resolutions already written in comments, which makes the backlog lie about what is left
+and makes the next session re-read finished work to find out.
+
+A closing comment records the **resolution**, not just the fact of it: what shipped,
+where the delivered thing deviated from what was asked and why, and what was
+deliberately *not* done. Start it with the literal marker so it is machine-findable:
+
+```
+**Closing - <why>**
+```
+
+Two rules, both checkable:
+
+- an issue with a resolution written must not be open
+- a closed issue must carry a closing comment - a resolution nobody recorded is one
+  nobody can audit six months later
+
+`npm run issues:audit` checks both against the live tracker. It needs network and `gh`
+auth, so it is **not** part of `npm test`, which is deliberately offline; its classifier
+is pure and self-tested. Run it after any batch of issue work.
+
+Do **not** close an issue that is merely blocked, waiting on Wesley, or partially
+delivered - say so in a comment and leave it open. Where the remaining work is genuinely
+a different problem, close it and point at the issue that owns that problem, rather than
+retitling and carrying two issues for one gap.
+
 ## 3. Never touch the authenticated Ticketmaster session
 
 The collector scrapes **logged out, always**. That account holds the season tickets. An

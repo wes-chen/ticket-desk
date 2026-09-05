@@ -26,7 +26,9 @@
     "test:freshness": "python3 scripts/check_data_freshness.py --self-test",
     "test": "python3 scripts/run_tests.py",
     "collect:gametime": "python3 scripts/collect_gametime.py",
-    "collect": "python3 scripts/collect_tickpick.py && python3 scripts/collect_gametime.py && python3 scripts/summarize_market.py"
+    "collect": "python3 scripts/collect_tickpick.py && python3 scripts/collect_gametime.py && python3 scripts/summarize_market.py",
+    "issues:audit": "python3 scripts/check_issues.py",
+    "test:issues": "python3 scripts/check_issues.py --self-test"
   },
   "dependencies": {
     "react": "^19.0.0",
