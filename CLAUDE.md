@@ -222,8 +222,16 @@ changed - do not paper over it.
 - **Check the instrument before believing the measurement.** Four of those failures were
   the measuring tool, not the thing measured. When a probe says a source is unusable,
   confirm it independently - `curl` the URL by hand - before acting on it.
-- No test suite exists yet (ops#17). Until there is one, verify behaviour explicitly
-  rather than assuming a clean build means correct.
+- **`npm test` runs the suite** (ops#17). Nine scripts self-test against *real captured
+  fixtures* - responses actually received from the APIs, plus a throwaway git repo for
+  the privacy history pass - never against shapes copied from documentation. That
+  distinction is not pedantry: the Discovery collector's fixtures asserted a
+  `priceRanges` field taken from TM's docs, passed cleanly, and were wrong about the one
+  field the whole design rested on.
+- The runner **fails if a script has neither a self-test nor a stated exemption**, so
+  adding untested code is caught rather than going unnoticed. Exemptions live in
+  `scripts/run_tests.py` with reasons.
+- A clean build still is not proof of correctness. Verify behaviour by running the thing.
 
 ## Setup on a fresh clone
 

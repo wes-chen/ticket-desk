@@ -1,0 +1,44 @@
+name: Tests
+
+# ops#17. Nine scripts self-test against REAL captured fixtures - responses actually
+# received from Ticketmaster, Discovery and TickPick, plus a temp git repo for the
+# privacy history pass. The runner also fails if a script has neither a self-test nor a
+# stated exemption, so adding untested code is caught rather than going unnoticed.
+#
+# No network: every suite runs against fixtures. That is deliberate - a test that needs
+# the internet fails for reasons unrelated to the code, and this project has enough
+# genuine failure modes without adding flaky ones.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The privacy self-test builds its own throwaway repo, but the real history
+          # pass needs full history to be meaningful if it ever runs here.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Self-test suites
+        run: npm test
+
+      - name: Type check
+        run: npx tsc --noEmit

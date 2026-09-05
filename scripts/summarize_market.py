@@ -83,7 +83,62 @@ def summarize(rows: list[dict], games: list[dict]) -> dict:
     }
 
 
+def self_test() -> int:
+    fails = []
+
+    def check(label, got, want):
+        if got != want:
+            fails.append(f"{label}: got {got!r}, want {want!r}")
+
+    games = [{"gameId": 1, "date": "2026-10-01"}, {"gameId": 2, "date": "2026-10-03"}]
+
+    def row(day, gid, low, high=500, ok=True):
+        return {"observedDate": day, "gameId": gid, "low": low, "high": high, "ok": ok}
+
+    # Latest observation wins, and the first is retained for the delta.
+    s = summarize([row("2026-09-05", 1, 80), row("2026-09-06", 1, 95)], games)
+    g = s["games"][0]
+    check("latest low", g["low"], 95)
+    check("observation count", g["observations"], 2)
+    check("first low retained", g["lowFirst"], 80)
+    check("delta computed", g["lowDelta"], 15)
+    check("two days -> measured", s["confidence"], "measured")
+
+    # A single observation must NOT emit a delta. Rendering 0 would read as "flat",
+    # which one point cannot support - this is the assertion that keeps the UI honest.
+    s = summarize([row("2026-09-05", 1, 80)], games)
+    check("single point has no delta", "lowDelta" in s["games"][0], False)
+    check("single point confidence", s["confidence"], "measured_single_point")
+
+    # Out-of-order input must still resolve to the true latest.
+    s = summarize([row("2026-09-07", 1, 70), row("2026-09-05", 1, 80)], games)
+    check("unsorted input picks latest by date", s["games"][0]["low"], 70)
+    check("unsorted input picks earliest as first", s["games"][0]["lowFirst"], 80)
+
+    # Failed and unpriced rows must not become observations.
+    s = summarize([row("2026-09-05", 1, None, ok=True), row("2026-09-06", 1, 60, ok=False)], games)
+    check("null and failed rows excluded", s["games"], [])
+
+    # Games with no data are omitted rather than emitted as zero.
+    s = summarize([row("2026-09-05", 1, 80)], games)
+    check("only games with data appear", [g["gameId"] for g in s["games"]], [1])
+
+    # Provenance flags the app relies on to caveat the numbers.
+    check("flagged as not our channel", s["isOwnChannel"], False)
+    check("price basis recorded", s["priceBasis"], "all_in_whole_arena")
+
+    check("empty input", summarize([], games)["games"], [])
+    check("empty input has no dates", summarize([], games)["lastObservedDate"], None)
+
+    for f in fails:
+        print(f"  FAIL {f}", file=sys.stderr)
+    print(f"self-test: {'FAILED' if fails else 'passed'} ({len(fails)} failure(s))")
+    return 1 if fails else 0
+
+
 def main() -> int:
+    if "--self-test" in sys.argv:
+        return self_test()
     rows = load_rows(STORE)
     games = json.loads(SCHEDULE.read_text())["games"]
     summary = summarize(rows, games)
