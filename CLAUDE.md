@@ -202,9 +202,10 @@ visibility, rewriting history, adding a secret, or deleting data.
   `G5vYZ_...`. Both are real and both are needed - the legacy id keys TM's web pages,
   which is what the scraper will use. `data/tm_events.json` carries both for all 44
   games.
-- **Actions cron times are nominal, not actual.** Observed once (n=1, so do not treat the
-  magnitude as typical): the schedule refresh nominally at 13:17 UTC actually ran at
-  16:52 UTC - **215 minutes late**. GitHub queues scheduled runs at low priority, and
+- **Actions cron times are nominal, not actual.** Observed twice, both on the schedule
+  refresh nominally at 13:17 UTC: it ran at 16:52 UTC (**215 min late**) and at 16:04 UTC
+  (**167 min late**). So hours-late is the norm here, not an outlier - but n=2, so treat
+  the range rather than either number as the expectation. GitHub queues scheduled runs at low priority, and
   off-the-hour minutes help but do not eliminate it. Consequences: a "daily" collector is
   really "roughly daily, whenever GitHub gets to it", and a run that looks hours overdue
   is probably delayed rather than broken - check `gh run list` for a queued run and the
