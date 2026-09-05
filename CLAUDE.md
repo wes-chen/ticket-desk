@@ -124,6 +124,48 @@ delivered - say so in a comment and leave it open. Where the remaining work is g
 a different problem, close it and point at the issue that owns that problem, rather than
 retitling and carrying two issues for one gap.
 
+### Issue types are contracts, not labels
+
+Wesley is the **product manager**: he decides, agents implement, and this tracker is the
+interface between those two jobs. That only works unattended if a session can route an
+issue without him. So every issue carries exactly one `type:` label, and **the type says
+who acts and what closing it has to show**:
+
+| type | who acts | closing requires |
+| --- | --- | --- |
+| `type:decision` | Wesley | `**Decision (recorded)**` - the choice, his own words quoted, and what changed |
+| `type:input` | Wesley | `**Input accepted**` - the paste received **and** its validator's output |
+| `type:build` | agent | merged PR, acceptance met, a test or a stated exemption |
+| `type:research` | agent | `**Finding**` - a measurement with its `confidence` level |
+| `type:meta` | agent | the actual rule diff, merged |
+| `type:incident` | agent | `**Cause**` **and** `**Guard**`, separately |
+
+`npm run issues:audit` enforces all of it, plus: an **open** issue with no type is
+unroutable and flagged; two types at once is flagged; a `claimed` label with no
+`**Claiming**` comment is a stale lock from an agent that died mid-run. Closed issues are
+exempt from the type requirement - 21 of them predate the scheme, and reflagging history
+forever is the noise that got the old empty-issue rule deleted.
+
+`type:build` and `type:meta` deliberately carry no extra marker. Their real contract is a
+merged PR, which lives in git rather than in a comment, and a regex hunting for commit
+references would flag every legitimately abandoned build issue. Enforcing it here would
+be theatre - the gap is deliberate and documented rather than quietly missing.
+
+**An agent never idles waiting for Wesley.** Hitting a fork whose answer is a *preference*
+rather than a *fact* means filing a `type:decision` issue - with options, consequences, a
+recommendation with honest confidence, and a self-contained copy-paste prompt - and then
+moving to the next ticket. "You decide" is not an acceptable output: it hands work back to
+the PM, which is the one thing this arrangement exists to remove.
+
+Likewise a `type:input` issue must carry numbered steps, a format spec, a **worked example
+in absurd values**, and the name of the validator that grades the paste. An input contract
+with no validator is a wish - say so in the header and file the `type:build` for the
+validator, rather than asking for data nothing can check.
+
+The full protocol, the ranking rubric, the trust ladder and the four agent role prompts
+live in `harness/` in the ops repo. `scripts/check_issues.py` here is the source of truth
+for the contracts themselves, because CI cannot read a private repo.
+
 ## 3. Never touch the authenticated Ticketmaster session
 
 The collector scrapes **logged out, always**. That account holds the season tickets. An
@@ -158,6 +200,33 @@ never gathered.
 
 Stop and ask for anything that is not an ordinary push: force-pushing, changing repo
 visibility, rewriting history, adding a secret, or deleting data.
+
+### What an agent may merge unattended
+
+Trust rung **2**, recorded in `harness/trust.json` in the ops repo. Everything merges
+without Wesley **except** a protected set - the privacy checks, the git hooks,
+`.private-patterns`, `.privacy-accepted`, and `trust.json` itself - plus repo settings,
+secrets, history rewrites, and anything touching money or the seller account.
+
+That set is not "the risky files". It is precisely **the surfaces that, if wrong, disable
+the ability to notice they are wrong.** An agent may open a PR against them and argue for
+it; merging needs a decision.
+
+Self-*started* work - work an agent proposed rather than was assigned - additionally needs
+the blast-radius rule in `trust.json` to pass, all six clauses: reversible by one revert,
+no model constant, no money math, no new external dependency, under ~400 lines, and both
+`npm run build` and `npm test` green. The rule is self-assessed, which is exactly why it
+is written down rather than judged, and why a reviewer agent with fresh context reads
+every PR. **A worker does not merge its own PR** - the same context agreeing with itself
+is not a review, and this project's characteristic failure is confident-looking wrongness
+that more tests do not catch.
+
+Rung 4 is actions that move money. It is **not granted**.
+
+Every run appends to `log/YYYY-MM-DD.md` in the ops repo, including what was **abandoned**
+and why. That field is required: the reject and revert rates in those files are the only
+evidence for ever widening any of this, and a search process that records only its
+successes cannot be audited.
 
 ## 6. Known constraints
 
