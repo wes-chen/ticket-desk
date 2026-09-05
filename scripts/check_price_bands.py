@@ -118,6 +118,63 @@ def arcs(ring: list[str], members: set[str]) -> list[list[str]]:
     return [[ring[i] for i in r] for r in runs]
 
 
+def check_rings(cfg: dict) -> tuple[list[str], list[str]]:
+    """Sanity-check the transcribed ring geometry itself.
+
+    The rings were read off a PNG by eye, which is the same error mode the whole of
+    ops#19 warns about - so they get corroborated rather than trusted. The strongest
+    available check is SYMMETRY: an arena is mirror-symmetric, so a numeric ring read
+    correctly has its gaps in mirror-image positions. A misread - a section skipped, two
+    transposed, a gap invented - almost certainly breaks that.
+    """
+    problems, skipped = [], []
+    rings = cfg.get("rings") or {}
+    if not rings:
+        skipped.append("rings: not transcribed")
+        return problems, skipped
+
+    for name, ring in rings.items():
+        if len(set(ring)) != len(ring):
+            dupes = sorted({x for x in ring if ring.count(x) > 1})
+            problems.append(f"ring {name!r} repeats section(s) {dupes}")
+
+        nums = [int(x) for x in ring if str(x).isdigit()]
+        if len(nums) != len(ring):
+            continue  # non-numeric ring (PL boxes); nothing further to assert
+
+        lo, hi = min(nums), max(nums)
+        gaps = sorted(set(range(lo, hi + 1)) - set(nums))
+
+        # Clockwise from centre ice, numbers descend, so the ring should be a rotation of
+        # the descending sequence. Anything else means sections were read out of order.
+        want = [lo] + sorted((n for n in nums if n != lo), reverse=True)
+        if [int(x) for x in ring] != want:
+            problems.append(
+                f"ring {name!r} is not a clean rotation of its own numbering - "
+                f"sections look out of order"
+            )
+
+        # Mirror symmetry, done POSITIONALLY rather than arithmetically.
+        #
+        # A first attempt reflected section numbers with a formula and reported the real,
+        # correct ring as asymmetric. The reflection of a ring has TWO fixed points, not
+        # one - here 101 and 115, which sit at opposite centre-ice positions - so a
+        # single-pivot formula is simply the wrong shape. Reflecting POSITIONS about
+        # index 0 needs no arithmetic and no guess about where the axis is.
+        full = [lo] + list(range(hi, lo, -1))  # the complete clockwise ring, gaps included
+        present = set(nums)
+        n = len(full)
+        asym = [full[i] for i in range(n)
+                if (full[i] in present) != (full[(n - i) % n] in present)]
+        if asym:
+            problems.append(
+                f"ring {name!r} is not mirror-symmetric: {sorted(asym)} have no "
+                f"counterpart across the axis. An arena is symmetric, so the "
+                f"transcription is probably wrong."
+            )
+    return problems, skipped
+
+
 def check_placement(cfg: dict) -> tuple[list[str], list[str]]:
     """Returns (problems, skipped). A skip is a reported gap, never a silent pass."""
     problems, skipped = [], []
@@ -193,8 +250,16 @@ def check_placement(cfg: dict) -> tuple[list[str], list[str]]:
 
 def run(cfg: dict) -> int:
     price = check_prices(cfg)
+    ring_problems, ring_skipped = check_rings(cfg)
     place, skipped = check_placement(cfg)
+    price += ring_problems
+    skipped += ring_skipped
 
+    rings = cfg.get("rings") or {}
+    if rings:
+        print("rings:            " + ", ".join(
+            f"{k} {len(v)}" for k, v in sorted(rings.items())) +
+            f" -> {'CLEAN' if not ring_problems else f'{len(ring_problems)} finding(s)'}")
     n_priced = sum(1 for b in cfg["bands"] if b.get("avgPerGame"))
     n_placed = sum(1 for b in cfg["bands"] if b.get("sections"))
     print(f"price checks:     {n_priced}/{len(cfg['bands'])} bands priced -> "
@@ -265,6 +330,30 @@ def self_test() -> int:
     check("wraps the seam", arcs(ring, {"8", "1", "2"}), [["8", "1", "2"]])
     check("whole ring is one arc", len(arcs(ring, set(ring))), 1)
     check("empty", arcs(ring, set()), [])
+
+    # --- rings: the geometry transcription, corroborated by symmetry
+    good_lower = ["101","128","127","126","124","123","121","120","118","117","116","115",
+                  "114","113","112","110","109","107","106","104","103","102"]
+    check("real lower ring passes", check_rings({"rings": {"lower": good_lower}})[0], [])
+    check("non-numeric ring is accepted",
+          check_rings({"rings": {"plaza": ["PL1", "PL2", "PL3"]}})[0], [])
+    check("absent rings are skipped not passed",
+          check_rings({})[1], ["rings: not transcribed"])
+
+    dup = good_lower[:-1] + ["101"]
+    check("a repeated section is caught",
+          any("repeats" in m for m in check_rings({"rings": {"lower": dup}})[0]), True)
+
+    # Two sections transposed - the classic transcription slip.
+    swapped = good_lower.copy()
+    swapped[3], swapped[4] = swapped[4], swapped[3]
+    check("transposed sections are caught",
+          any("out of order" in m for m in check_rings({"rings": {"lower": swapped}})[0]), True)
+
+    # A dropped section breaks gap symmetry.
+    dropped = [x for x in good_lower if x != "104"]
+    check("a dropped section is caught",
+          len(check_rings({"rings": {"lower": dropped}})[0]) > 0, True)
 
     # --- placement: the case this whole file exists for. Two bands, mirror halves,
     # then one section misfiled from band A's right arc into band B.
