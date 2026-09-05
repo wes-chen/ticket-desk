@@ -50,9 +50,10 @@ import pathlib
 import re
 import sys
 import time
-import urllib.error
-import urllib.request
 from datetime import datetime, timezone
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import market_store as ms  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCHEDULE = ROOT / "data" / "schedule.json"
@@ -61,22 +62,9 @@ STORE = ROOT / "data" / "market" / "tickpick.jsonl"
 
 SITEMAP = "https://www.tickpick.com/sitemap/sports.xml"
 
-# An ordinary desktop Chrome UA. Not a disguise - it is what a normal client sends, and
-# the alternative (a bot-identifying UA on a site whose robots.txt permits these paths)
-# gets nothing useful. The politeness lever here is request VOLUME, which is ~44/day.
-UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
-
+# Politeness is request VOLUME, not disguise: 44 page fetches once a day, spaced.
+# robots.txt sets no crawl-delay. Less traffic than one person browsing the site.
 SLEEP_BETWEEN = 1.5
-TIMEOUT = 45
-
-# Two caps, and a TRUNCATION CHECK, because a silent cap is how this project keeps
-# producing confident wrong answers. A 5MB cap on the 7.4MB sitemap quietly dropped it
-# to 39 of 44 events and the resolver reported that as a real coverage gap - the same
-# shape as the probe that capped at 400KB and scored a working source as empty. A read
-# that hits its cap is now an ERROR, never data.
-MAX_BODY_PAGE = 5_000_000
-MAX_BODY_SITEMAP = 40_000_000
 
 # /buy-[nhl-preseason-]san-jose-sharks-vs-<opp>-tickets-sap-center[-at-san-jose]-M-D-YY-Hpm/<id>/
 EVENT_URL_RE = re.compile(
@@ -85,26 +73,6 @@ EVENT_URL_RE = re.compile(
     r"-(\d{1,2})-(\d{1,2})-(\d{2})-\d{1,2}(?:am|pm)/(\d+)/?$"
 )
 LDJSON_RE = re.compile(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', re.S)
-
-
-def get(url: str, max_body: int = MAX_BODY_PAGE) -> tuple[str | None, str | None]:
-    req = urllib.request.Request(url, headers={
-        "User-Agent": UA,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-    })
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-            # Read one byte past the cap so hitting it is detectable.
-            data = r.read(max_body + 1)
-    except urllib.error.HTTPError as e:
-        return None, f"http {e.code}"
-    except Exception as e:  # noqa: BLE001
-        return None, f"{type(e).__name__}: {e}"
-    if len(data) > max_body:
-        return None, (f"response exceeded {max_body:,}B cap and was truncated - "
-                      f"raise the cap rather than treating a partial body as data")
-    return data.decode("utf-8", "ignore"), None
 
 
 def parse_event_url(url: str) -> dict | None:
@@ -154,7 +122,7 @@ def resolve() -> int:
     games = {g["date"]: g for g in schedule["games"]}
 
     print(f"fetching {SITEMAP} (robots.txt advertises it; ~7.4MB and growing)")
-    body, err = get(SITEMAP, MAX_BODY_SITEMAP)
+    body, err = ms.get(SITEMAP, ms.MAX_BODY_SITEMAP)
     if err:
         print(f"sitemap fetch failed: {err}", file=sys.stderr)
         return 1
@@ -224,42 +192,15 @@ def resolve() -> int:
         "source": SITEMAP,
         "events": out,
     }, indent=2) + "\n")
-    print(f"wrote {rel(EVENT_MAP)}")
+    print(f"wrote {ms.rel(EVENT_MAP, ROOT)}")
     return 0
 
 
 # ------------------------------------------------------------------ collecting
 
-def rel(path: pathlib.Path) -> str:
-    """Display path, tolerating a --store outside the repo (scratch dirs, smoke tests)."""
-    try:
-        return str(path.relative_to(ROOT))
-    except ValueError:
-        return str(path)
-
-
-def read_store(path: pathlib.Path) -> list[dict]:
-    if not path.exists():
-        return []
-    return [json.loads(ln) for ln in path.read_text().splitlines() if ln.strip()]
-
-
-def merge(existing: list[dict], new: list[dict]) -> list[dict]:
-    """Upsert on (observedDate, eventId), then sort. A same-day re-run corrects."""
-    keyed = {(r["observedDate"], r["eventId"]): r for r in existing}
-    for r in new:
-        keyed[(r["observedDate"], r["eventId"])] = r
-    return sorted(keyed.values(), key=lambda r: (r["observedDate"], r["date"], r["eventId"]))
-
-
-def write_store(path: pathlib.Path, rows: list[dict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in rows))
-
-
 def collect(store: pathlib.Path, raw_dir: pathlib.Path | None, limit: int | None) -> int:
     if not EVENT_MAP.exists():
-        print(f"No {rel(EVENT_MAP)} - run --resolve first.", file=sys.stderr)
+        print(f"No {ms.rel(EVENT_MAP, ROOT)} - run --resolve first.", file=sys.stderr)
         return 2
     events = json.loads(EVENT_MAP.read_text())["events"]
     if limit:
@@ -272,7 +213,7 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None, limit: int | None
     rows, raw, ok, no_offer, failed, http_403 = [], [], 0, 0, 0, 0
 
     for i, ev in enumerate(events):
-        html, err = get(ev["url"])
+        html, err = ms.get(ev["url"])
         row = {"observedAt": observed_at, "observedDate": observed_date,
                "eventId": ev["eventId"], "gameId": ev["gameId"], "date": ev["date"],
                "source": "tickpick"}
@@ -306,19 +247,14 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None, limit: int | None
 
     total_failure = bool(events) and failed == len(events)
 
-    # Same guard the Discovery collector needed: a wholesale failure means the source or
-    # our access changed, not that the market went quiet. Writing 44 identical error
-    # rows a day would bury the series.
-    if total_failure:
-        merged = read_store(store)
-    else:
-        merged = merge(read_store(store), rows)
-        write_store(store, merged)
-        if raw_dir:
-            raw_dir.mkdir(parents=True, exist_ok=True)
-            p = raw_dir / f"tickpick-{observed_date}.json"
-            p.write_text(json.dumps({"observedAt": observed_at, "events": raw}, indent=2) + "\n")
-            print(f"raw -> {p} ({p.stat().st_size:,}B, artifact only, never git)")
+    # The total-failure guard and its reasoning live in market_store.commit_rows, shared
+    # with the Gametime collector so the two cannot drift apart on it.
+    merged = ms.commit_rows(store, rows, total_failure)
+    if not total_failure and raw_dir:
+        raw_dir.mkdir(parents=True, exist_ok=True)
+        p = raw_dir / f"tickpick-{observed_date}.json"
+        p.write_text(json.dumps({"observedAt": observed_at, "events": raw}, indent=2) + "\n")
+        print(f"raw -> {p} ({p.stat().st_size:,}B, artifact only, never git)")
 
     print(f"observed {observed_at}")
     print(f"  events queried:  {len(events)}")
@@ -328,7 +264,7 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None, limit: int | None
     if total_failure:
         print(f"  store UNCHANGED ({len(merged)} rows) - nothing written")
     else:
-        print(f"  store now holds: {len(merged)} rows -> {rel(store)}")
+        print(f"  store now holds: {len(merged)} rows -> {ms.rel(store, ROOT)}")
 
     if http_403 and http_403 == len(events):
         print("\nEVERY request got 403. TickPick was measured reachable over plain HTTP "
@@ -389,13 +325,14 @@ def self_test() -> int:
     check("an away game must not parse",
           parse_event_url("/buy-anaheim-ducks-vs-san-jose-sharks-tickets-honda-center-9-20-26-1pm/8075153/"), None)
 
-    # Upsert semantics.
+    # Upsert semantics. Covered more thoroughly in market_store.py's own self-test;
+    # kept here as a smoke check that this collector is wired to the shared store.
     def row(d, ev_id, low):
         return {"observedDate": d, "eventId": ev_id, "date": "2026-10-01", "low": low}
-    m = merge([row("2026-09-05", "E1", 86)], [row("2026-09-05", "E1", 91)])
+    m = ms.merge([row("2026-09-05", "E1", 86)], [row("2026-09-05", "E1", 91)])
     check("same-day rerun upserts", len(m), 1)
     check("same-day rerun takes the new value", m[0]["low"], 91)
-    check("new day appends", len(merge(m, [row("2026-09-06", "E1", 80)])), 2)
+    check("new day appends", len(ms.merge(m, [row("2026-09-06", "E1", 80)])), 2)
 
     # The resolved map, if present, must cover the schedule exactly.
     if EVENT_MAP.exists():
