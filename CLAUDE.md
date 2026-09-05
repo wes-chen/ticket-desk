@@ -150,6 +150,14 @@ visibility, rewriting history, adding a secret, or deleting data.
   `G5vYZ_...`. Both are real and both are needed - the legacy id keys TM's web pages,
   which is what the scraper will use. `data/tm_events.json` carries both for all 44
   games.
+- **Actions cron times are nominal, not actual.** Observed once (n=1, so do not treat the
+  magnitude as typical): the schedule refresh nominally at 13:17 UTC actually ran at
+  16:52 UTC - **215 minutes late**. GitHub queues scheduled runs at low priority, and
+  off-the-hour minutes help but do not eliminate it. Consequences: a "daily" collector is
+  really "roughly daily, whenever GitHub gets to it", and a run that looks hours overdue
+  is probably delayed rather than broken - check `gh run list` for a queued run and the
+  workflow's `state` before diagnosing further. This is why the gap detector's staleness
+  threshold is **2 days rather than hours**, and it should stay that way.
 - **Local Chromium works** as of 2026-09-05 (`sudo npx playwright install-deps chromium`
   was run; verified by launching it). ops#2 is closed. Note it is of limited use for
   collection - see the browser-fingerprinting row above.
