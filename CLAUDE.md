@@ -299,6 +299,20 @@ successes cannot be audited.
   numeric ld+json fields with no dollar sign anywhere. Fifth instance in this project of
   the instrument being the thing that was wrong.
 
+  **Both now measured from a runner too** (2026-09-05, ops#39): TicketNetwork 200 /
+  202,701B / 20 prices, ScoreBig 200 / 316,460B / 34 prices. Both collect daily. So the
+  reachability grid over plain HTTP is now **four for four** - TickPick, Gametime,
+  TicketNetwork and ScoreBig all work from residential *and* datacenter; Ticketmaster,
+  SeatGeek and StubHub refuse from both. The same run re-confirmed TickPick is blocked
+  under headless Chromium from the runner while fine over plain HTTP, so the browser row
+  of the 2x2 still holds.
+
+  One loose end, deliberately left as a log line to read rather than an issue:
+  TicketNetwork's runner body is 202KB against 288KB residential with the same price
+  count. Because it is a rolling source, being served fewer events would not fail - it
+  would silently move the horizon. Compare the first scheduled run against the
+  residential baselines of TicketNetwork 29/44 and ScoreBig 19/44.
+
 - **The two new sources disagree about time, and both are right in their own way. Do not
   unify their joins.** Measured 2026-09-05:
 
