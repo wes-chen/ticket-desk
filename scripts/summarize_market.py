@@ -37,6 +37,10 @@ STORES = [
     # covers a rolling window rather than the season, so it is absent for late-season
     # games by design rather than by failure. See collect_ticketnetwork.py.
     ("ticketnetwork", ROOT / "data" / "market" / "ticketnetwork.jsonl"),
+    # Rolling window too, and its declared UTC offset is a fixed -08:00 that is wrong
+    # for half the season - collect_scorebig.py joins on wall clock. Prices arrive as
+    # STRINGS from this source and are coerced at its boundary, not here.
+    ("scorebig", ROOT / "data" / "market" / "scorebig.jsonl"),
 ]
 PRIMARY = "tickpick"
 

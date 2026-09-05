@@ -1,16 +1,17 @@
 {
   "_comment": "Derived from the per-source stores in data/market/ by scripts/summarize_market.py. low/high are the cheapest and priciest listings in the WHOLE ARENA, all-in, on TickPick - NOT a comp for any specific seat, and NOT the channel these tickets are sold on. See the script docstring.",
-  "generatedAt": "2026-09-05T20:37:51Z",
+  "generatedAt": "2026-09-05T20:44:46Z",
   "source": "tickpick",
   "sources": [
     "gametime",
+    "scorebig",
     "ticketnetwork",
     "tickpick"
   ],
   "crossSource": {
-    "comparedGames": 73,
-    "medianRatioToPrimary": 1.0435,
-    "minRatio": 0.9412,
+    "comparedGames": 92,
+    "medianRatioToPrimary": 1.0333,
+    "minRatio": 0.8878,
     "maxRatio": 1.1667,
     "_comment": "Each secondary source's low divided by the primary's, per game. Measured 2026-09-05: Gametime sat 1.4%-16.7% above TickPick on ALL 44 games, median +6.2%, while ranking the games near-identically (Spearman +0.9944). Agreeing on ORDER but differing in LEVEL is the expected shape - they price the same demand with different inventory and fee treatment. A sudden move in this ratio means a SOURCE changed, not the market."
   },
@@ -38,6 +39,11 @@
           "low": 16,
           "high": null,
           "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 15.2,
+          "high": 2380.95,
+          "observedDate": "2026-09-05"
         }
       }
     },
@@ -57,6 +63,11 @@
         "ticketnetwork": {
           "low": 12,
           "high": null,
+          "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 11.1,
+          "high": 2197.8,
           "observedDate": "2026-09-05"
         }
       }
@@ -78,6 +89,11 @@
           "low": 84,
           "high": null,
           "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 79.8,
+          "high": 1648.35,
+          "observedDate": "2026-09-05"
         }
       }
     },
@@ -97,6 +113,11 @@
         "ticketnetwork": {
           "low": 68,
           "high": null,
+          "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 64.6,
+          "high": 1558.44,
           "observedDate": "2026-09-05"
         }
       }
@@ -118,6 +139,11 @@
           "low": 58,
           "high": null,
           "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 55.22,
+          "high": 2627.37,
+          "observedDate": "2026-09-05"
         }
       }
     },
@@ -137,6 +163,11 @@
         "ticketnetwork": {
           "low": 33,
           "high": null,
+          "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 31.04,
+          "high": 1648.35,
           "observedDate": "2026-09-05"
         }
       }
@@ -158,6 +189,11 @@
           "low": 24,
           "high": null,
           "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 22.13,
+          "high": 1185.0,
+          "observedDate": "2026-09-05"
         }
       }
     },
@@ -177,6 +213,11 @@
         "ticketnetwork": {
           "low": 24,
           "high": null,
+          "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 22.68,
+          "high": 1159.0,
           "observedDate": "2026-09-05"
         }
       }
@@ -198,6 +239,11 @@
           "low": 49,
           "high": null,
           "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 45.73,
+          "high": 1406.69,
+          "observedDate": "2026-09-05"
         }
       }
     },
@@ -217,6 +263,11 @@
         "ticketnetwork": {
           "low": 24,
           "high": null,
+          "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 22.0,
+          "high": 1159.0,
           "observedDate": "2026-09-05"
         }
       }
@@ -238,6 +289,11 @@
           "low": 24,
           "high": null,
           "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 22.43,
+          "high": 1159.0,
+          "observedDate": "2026-09-05"
         }
       }
     },
@@ -257,6 +313,11 @@
         "ticketnetwork": {
           "low": 32,
           "high": null,
+          "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 30.28,
+          "high": 1415.32,
           "observedDate": "2026-09-05"
         }
       }
@@ -278,6 +339,11 @@
           "low": 33,
           "high": null,
           "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 30.63,
+          "high": 1255.0,
+          "observedDate": "2026-09-05"
         }
       }
     },
@@ -297,6 +363,11 @@
         "ticketnetwork": {
           "low": 22,
           "high": null,
+          "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 20.42,
+          "high": 1159.0,
           "observedDate": "2026-09-05"
         }
       }
@@ -318,6 +389,11 @@
           "low": 53,
           "high": null,
           "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 49.98,
+          "high": 1490.0,
+          "observedDate": "2026-09-05"
         }
       }
     },
@@ -337,6 +413,11 @@
         "ticketnetwork": {
           "low": 37,
           "high": null,
+          "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 35.0,
+          "high": 1255.0,
           "observedDate": "2026-09-05"
         }
       }
@@ -358,6 +439,11 @@
           "low": 71,
           "high": null,
           "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 66.96,
+          "high": 2082.95,
+          "observedDate": "2026-09-05"
         }
       }
     },
@@ -378,6 +464,11 @@
           "low": 24,
           "high": null,
           "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 22.2,
+          "high": 1159.0,
+          "observedDate": "2026-09-05"
         }
       }
     },
@@ -397,6 +488,11 @@
         "ticketnetwork": {
           "low": 51,
           "high": null,
+          "observedDate": "2026-09-05"
+        },
+        "scorebig": {
+          "low": 47.97,
+          "high": 1421.0,
           "observedDate": "2026-09-05"
         }
       }

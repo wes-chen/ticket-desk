@@ -1,0 +1,101 @@
+{
+ "_fixture": "REAL schema.org blocks captured 2026-09-05 from https://www.scorebig.com/performers/san-jose-sharks-904/venues/san-jose-sap-center-31, trimmed to the fields the collector reads. Includes a priceless season-ticket package and a DUPLICATE, so those filters have something genuine to reject. CRITICAL: startDate declares -08:00 on EVERY month including September, which is PDT (-07:00). The offset is a fixed year-round constant and is WRONG for half the season - trusting it and normalising to UTC matched 10/44 games instead of 19/19. The collector joins on local wall-clock time and ignores the offset entirely.",
+ "events": [
+  {
+   "@context": "https://schema.org",
+   "@type": "SportsEvent",
+   "name": "NHL Preseason: San Jose Sharks vs. Vegas Golden Knights",
+   "startDate": "2026-09-22T19:00:00-08:00",
+   "url": "https://www.scorebig.com/tickets/nhl-preseason-san-jose-sharks-vs-vegas-golden-knights-sap-center-san-jose-ca-tue-sep-22-8075165",
+   "location": {
+    "@type": "EventVenue",
+    "name": "SAP Center"
+   },
+   "awayTeam": {
+    "@type": "SportsTeam",
+    "name": "Vegas Golden Knights"
+   },
+   "homeTeam": {
+    "@type": "SportsTeam",
+    "name": "San Jose Sharks"
+   },
+   "offers": {
+    "@type": "AggregateOffer",
+    "lowPrice": "15.20",
+    "highPrice": "2380.95",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock",
+    "url": "https://www.scorebig.com/tickets/nhl-preseason-san-jose-sharks-vs-vegas-golden-knights-sap-center-san-jose-ca-tue-sep-22-8075165"
+   }
+  },
+  {
+   "@context": "https://schema.org",
+   "@type": "SportsEvent",
+   "name": "NHL Preseason: San Jose Sharks vs. Anaheim Ducks",
+   "startDate": "2026-09-24T19:00:00-08:00",
+   "url": "https://www.scorebig.com/tickets/nhl-preseason-san-jose-sharks-vs-anaheim-ducks-sap-center-san-jose-ca-thu-sep-24-8075166",
+   "location": {
+    "@type": "EventVenue",
+    "name": "SAP Center"
+   },
+   "awayTeam": {
+    "@type": "SportsTeam",
+    "name": "Anaheim Ducks"
+   },
+   "homeTeam": {
+    "@type": "SportsTeam",
+    "name": "San Jose Sharks"
+   },
+   "offers": {
+    "@type": "AggregateOffer",
+    "lowPrice": "11.10",
+    "highPrice": "2197.80",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock",
+    "url": "https://www.scorebig.com/tickets/nhl-preseason-san-jose-sharks-vs-anaheim-ducks-sap-center-san-jose-ca-thu-sep-24-8075166"
+   }
+  },
+  {
+   "@context": "https://schema.org",
+   "@type": "SportsEvent",
+   "name": "NHL Preseason: San Jose Sharks vs. Vegas Golden Knights",
+   "startDate": "2026-09-22T19:00:00-08:00",
+   "url": "https://www.scorebig.com/tickets/nhl-preseason-san-jose-sharks-vs-vegas-golden-knights-sap-center-san-jose-ca-tue-sep-22-8075165",
+   "location": {
+    "@type": "EventVenue",
+    "name": "SAP Center"
+   },
+   "awayTeam": {
+    "@type": "SportsTeam",
+    "name": "Vegas Golden Knights"
+   },
+   "homeTeam": {
+    "@type": "SportsTeam",
+    "name": "San Jose Sharks"
+   },
+   "offers": {
+    "@type": "AggregateOffer",
+    "lowPrice": "15.20",
+    "highPrice": "2380.95",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock",
+    "url": "https://www.scorebig.com/tickets/nhl-preseason-san-jose-sharks-vs-vegas-golden-knights-sap-center-san-jose-ca-tue-sep-22-8075165"
+   }
+  },
+  {
+   "@context": "https://schema.org",
+   "@type": "SportsEvent",
+   "name": "2026-2027 San Jose Sharks Season Tickets (Includes Tickets To All Regular Season Home Games)",
+   "startDate": "2026-09-30",
+   "url": "https://www.scorebig.com/tickets/2026-2027-san-jose-sharks-season-tickets-(includes-tickets-to-all-regular-season-home-games)-sap-center-san-jose-ca-wed-sep-30-8082548",
+   "location": {
+    "@type": "EventVenue",
+    "name": "SAP Center"
+   },
+   "homeTeam": {
+    "@type": "SportsTeam",
+    "name": "San Jose Sharks"
+   }
+  }
+ ]
+}

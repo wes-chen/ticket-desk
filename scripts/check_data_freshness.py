@@ -46,6 +46,7 @@ STORES = [
     ("tickpick", ROOT / "data" / "market" / "tickpick.jsonl", True, False),
     ("gametime", ROOT / "data" / "market" / "gametime.jsonl", False, False),
     ("ticketnetwork", ROOT / "data" / "market" / "ticketnetwork.jsonl", False, True),
+    ("scorebig", ROOT / "data" / "market" / "scorebig.jsonl", False, True),
 ]
 STORE = STORES[0][1]
 
