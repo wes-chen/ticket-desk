@@ -33,6 +33,22 @@ UA = (
 
 # Signatures that mean "you were identified as a bot", as distinct from an ordinary
 # 404. Distinguishing these matters: a 404 is a wrong URL, a challenge is a wall.
+# Signs that only count inside <title>. A bare substring search over the whole body
+# produces false positives on ordinary English, and a probe that cries wolf is worse than
+# no probe: TicketNetwork serves a real 288KB listing page containing
+# `<h2 class="heading">just a moment</h2>` - a loading modal in its OWN UI - and was
+# flagged as "cloudflare challenge" while plainly working (ops#39).
+#
+# That matters beyond the cosmetics. If TicketNetwork ever IS challenged for real, the
+# marker would be indistinguishable from this benign case, which is exactly the
+# "cannot tell two states apart" failure this probe was rewritten to fix.
+#
+# Cloudflare's interstitial puts the phrase in the TITLE - "Just a moment..." - so scoping
+# it there keeps the real signal and drops the noise.
+TITLE_ONLY_SIGNS = [
+    ("just a moment", "cloudflare challenge"),
+]
+
 BLOCK_SIGNS = [
     ("captcha", "captcha"),
     ("recaptcha", "recaptcha"),
@@ -41,7 +57,7 @@ BLOCK_SIGNS = [
     ("incapsula", "incapsula"),
     ("cf-browser-verification", "cloudflare challenge"),
     ("cf_chl", "cloudflare challenge"),
-    ("just a moment", "cloudflare challenge"),
+    # NOTE: "just a moment" is NOT in this list. See TITLE_ONLY_SIGNS below.
     ("access denied", "access denied"),
     ("are you a human", "bot wall"),
     ("unusual traffic", "rate limited"),
@@ -77,6 +93,24 @@ def targets(sample_event: str | None) -> list[dict]:
             "url": "https://www.stubhub.com/san-jose-sharks-tickets",
             "note": "large secondary volume",
         },
+        {
+            "platform": "ticketnetwork",
+            # Resolved from sitemap/performers/1, which robots.txt advertises. ops#26
+            # recorded this platform as a 404 block; that URL had been GUESSED, and a
+            # guessed 404 reads identically to a refusal - the same confusion that left
+            # Gametime unmeasured through all of ops#4.
+            "url": "https://www.ticketnetwork.com/performers/san-jose-sharks-tickets",
+            "note": "47 SAP Center events in ONE fetch; collecting since ops#36. This probe exists to measure the DATACENTER cell, which has never been tested.",
+        },
+        {
+            "platform": "scorebig",
+            # Resolved from dynamic-sitemap-venues-performer-0.xml. The performer page
+            # and the venue page both exist and both carry fewer of our games; this
+            # performer-at-venue page is the specific one the collector uses.
+            "url": ("https://www.scorebig.com/performers/san-jose-sharks-904"
+                    "/venues/san-jose-sap-center-31"),
+            "note": "19 SAP Center events in one fetch; collecting since ops#36. Datacenter cell never measured.",
+        },
     ]
     if sample_event:
         t.insert(
@@ -99,6 +133,16 @@ TEAM_TOKEN = "sharks"
 VENUE_TOKEN = "sap center"
 PRICE_RE = re.compile(r"\$\s?(\d{2,4})(?:\.\d\d)?\b")
 TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.S | re.I)
+
+
+def _signals(body: str) -> list[str]:
+    """Challenge markers found in a body. Split out of characterize() so the self-test can
+    assert it directly - the title-scoping rule is the part most likely to regress."""
+    low = body.lower()
+    tm = TITLE_RE.search(low)
+    title = tm.group(1) if tm else ""
+    return sorted({label for sig, label in BLOCK_SIGNS if sig in low}
+                  | {label for sig, label in TITLE_ONLY_SIGNS if sig in title})
 
 
 def characterize(body: str) -> dict:
@@ -141,7 +185,7 @@ def probe(url: str, timeout: int = 25) -> dict:
         return {"status": None, "error": f"{type(e).__name__}: {e}", "ms": int((time.time() - t0) * 1000)}
 
     low = body.lower()
-    blocks = sorted({label for sig, label in BLOCK_SIGNS if sig in low})
+    blocks = _signals(body)
     if body.strip().startswith('{"response":"identify"'):
         # Ticketmaster's device check. Distinct from its 403 IP block page, and the
         # distinction decides whether a residential browser could get through at all.
@@ -233,6 +277,24 @@ def self_test() -> int:
         want = o["expect"]
         if not got.startswith(want):
             fails.append(f"{o['platform']} ({o['ranFrom']}): got {got!r}, expected {want}*\n      {o['label']}")
+
+    # ---- title-scoped challenge markers (ops#39) ----
+    # TicketNetwork serves a real 288KB listing page whose own loading modal contains
+    # `<h2 class="heading">just a moment</h2>`. A body-wide substring search flagged it as
+    # a Cloudflare challenge while it was plainly working. That is not cosmetic: if it
+    # ever IS challenged, the marker would be indistinguishable from this benign case -
+    # the same "cannot separate two states" failure this probe was rewritten to fix.
+    from_page = _signals('<html><head><title>San Jose Sharks Tickets</title></head>'
+                         '<body><h2>just a moment</h2></body></html>')
+    if "cloudflare challenge" in from_page:
+        fails.append("ordinary page copy saying 'just a moment' is flagged as a challenge")
+    real_cf = _signals('<html><head><title>Just a moment...</title></head>'
+                       '<body>checking your browser</body></html>')
+    if "cloudflare challenge" not in real_cf:
+        fails.append("a REAL Cloudflare interstitial is no longer detected by its title")
+    # Body-scoped signs must keep working - only this one moved.
+    if "captcha" not in _signals("<html><body>please solve the captcha</body></html>"):
+        fails.append("body-scoped block signs stopped working")
 
     # The two regressions that motivated the rewrite, asserted directly.
     tp = next(o for o in fx["observations"] if o["platform"] == "tickpick")
