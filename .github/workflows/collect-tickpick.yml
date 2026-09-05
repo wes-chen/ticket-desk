@@ -44,6 +44,8 @@ jobs:
           python3 scripts/market_store.py --self-test
           python3 scripts/collect_tickpick.py --self-test
           python3 scripts/collect_gametime.py --self-test
+          python3 scripts/collect_ticketnetwork.py --self-test
+          python3 scripts/collect_scorebig.py --self-test
           python3 scripts/summarize_market.py --self-test
 
       # Cheap and it catches a renamed or repriced event before the collector writes a
@@ -60,6 +62,30 @@ jobs:
       # source missing, and a red run still surfaces it.
       - name: Collect Gametime
         run: python3 scripts/collect_gametime.py
+        continue-on-error: true
+
+      # Third and fourth sources (ops#36). Both measured OK over plain HTTP from THIS
+      # runner before being added here - ops#39 exists because adding them on residential
+      # evidence alone would have repeated the ops#4 mistake of generalising from one cell
+      # of a 2x2. Measured 2026-09-05 from an Actions runner:
+      #
+      #   ticketnetwork  200  202,701B  20 prices
+      #   scorebig       200  316,460B  34 prices
+      #
+      # WATCH THE FIRST SCHEDULED RUN. TicketNetwork's runner body is 202KB against 288KB
+      # residential - same price count, 30% less markup. That may be nothing, or it may
+      # mean the runner is served fewer events. Because these are ROLLING sources, a
+      # smaller event set does not fail: it just moves the horizon, silently. Residential
+      # baselines to compare against are TicketNetwork 29/44 and ScoreBig 19/44.
+      #
+      # Both are single-page fetches covering their whole window, so this is one request
+      # each per day - the cheapest sources in the project.
+      - name: Collect TicketNetwork
+        run: python3 scripts/collect_ticketnetwork.py
+        continue-on-error: true
+
+      - name: Collect ScoreBig
+        run: python3 scripts/collect_scorebig.py
         continue-on-error: true
 
       # The app imports data/market/summary.json at build time, so it has to be
