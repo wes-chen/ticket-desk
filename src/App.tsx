@@ -19,6 +19,7 @@ import {
   EMPTY_PROFILE,
   consumeProfileFromHash,
   isConfigured,
+  recordListPrice,
   type Profile,
   type Tier,
 } from "./lib/profile";
@@ -168,10 +169,10 @@ function Dashboard({
   };
 
   const setList = (gameId: number, v: string) => {
-    const next = { ...profile.listPrices };
-    if (v === "") delete next[String(gameId)];
-    else next[String(gameId)] = Number(v);
-    setProfile({ ...profile, listPrices: next });
+    // Through recordListPrice so the previous ask is preserved rather than overwritten.
+    // Before this, changing a price destroyed its predecessor and we had no record of
+    // our own asks at all - see listPriceHistory in profile.ts.
+    setProfile(recordListPrice(profile, gameId, v === "" ? null : Number(v)));
   };
 
   return (
