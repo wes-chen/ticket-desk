@@ -55,10 +55,21 @@ def tracker() -> str:
 
 # Canonical form first. The rest are historical variants kept so the check does not
 # nag about comments written before the convention existed.
-CANONICAL = re.compile(r"\*\*Closing\b", re.I)
+#
+# ANCHORED TO THE START OF A LINE, and that is not cosmetic. An unanchored search matched
+# prose *about* the marker: a comment on ops#20 reading "same reasoning as the `**Closing`
+# marker" was read as a resolution, and the audit demanded the issue be closed. A checker
+# that cannot tell a resolution from a discussion of resolutions is the same
+# two-states-look-identical failure the marker exists to prevent.
+#
+# Real closing comments open with the marker, so requiring it at line start (allowing
+# leading whitespace and blockquote markers) keeps every genuine one and drops the
+# mentions. A backticked inline mention can never sit at line start after a backtick,
+# because the backtick itself is not whitespace.
+CANONICAL = re.compile(r"^[ \t>]*\*\*Closing\b", re.I | re.M)
 LEGACY = [
     re.compile(r"^\s*Closing\.\s*$", re.I | re.M),
-    re.compile(r"\bClosing\s+[-—]", re.I),
+    re.compile(r"^[ \t>]*Closing\s+[-—]", re.I | re.M),
     re.compile(r"\bSuggest closing\b", re.I),
     re.compile(r"\bClosing rather than\b", re.I),
 ]
@@ -247,6 +258,20 @@ def self_test() -> int:
     check("bare 'Closing.' line", has_resolution(["all done\n\nClosing."]), "legacy")
     check("em-dash form", has_resolution(["Closing — delivered"]), "legacy")
     check("suggest-closing form", has_resolution(["Suggest closing."]), "legacy")
+    # Prose ABOUT the marker must not count as using it. This fired for real: a comment
+    # on ops#20 explaining the convention - "same reasoning as the `**Closing` marker" -
+    # was read as a resolution and the audit demanded the issue be closed.
+    check("an inline mention of the marker is not a resolution",
+          has_resolution(["same reasoning as the `**Closing` marker"]), None)
+    check("mid-sentence mention is not a resolution",
+          has_resolution(["I will add a **Closing note later"]), None)
+    check("a real closing comment still counts",
+          has_resolution(["**Closing - built and merged.**"]), "canonical")
+    check("a closing marker after a blank line still counts",
+          has_resolution(["Some preamble.\n\n**Closing - done.**"]), "canonical")
+    check("a quoted closing line still counts",
+          has_resolution(["> **Closing - done.**"]), "canonical")
+
     # Prose that must NOT count. This is the whole reason for an explicit marker.
     check("ordinary prose is not a resolution",
           has_resolution(["I am closing in on the bug", "nearly done", "built a prototype"]), None)
