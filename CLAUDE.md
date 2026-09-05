@@ -41,7 +41,7 @@ formula, public listing prices - are fine here.
 
 | Pass | Covers | Runs |
 | --- | --- | --- |
-| structural | forbidden keys in committed JSON | everywhere, including CI |
+| structural | forbidden keys in committed JSON and JSONL, recursively under `config/` and `data/` | everywhere, including CI |
 | literal | `dist/` + every git-tracked file | only when `.private-patterns` exists |
 | history | git log content **and** commit messages | only when `.private-patterns` exists |
 
@@ -101,8 +101,16 @@ npm run dev            # local app
 npm run build          # type-check, build, enforce privacy checks
 npm run schedule       # refresh + VALIDATE data/schedule.json against the NHL API
 npm run check:privacy  # privacy checks alone
+npm run collect:discovery  # TM Discovery API price ranges -> data/market/discovery.jsonl
+npm run test:discovery     # collector self-test; no API key, no network
 node scripts/probe_browser.mjs --label local   # source reachability (needs local Chromium)
 ```
+
+`collect_discovery.py` needs `TM_DISCOVERY_API_KEY`, from the environment or from
+`.env.local` (gitignored). It is a read-only public-data key with no connection to the
+seller account. One row per event per UTC day, upserted - a same-day re-run corrects
+that day rather than appending. A run where *every* request fails writes nothing, so a
+bad key cannot bury the series in error rows.
 
 `scripts/fetch_schedule.py` validates rather than trusts: the tier table was transcribed
 by hand from a graphic, so every entry is cross-checked against the live NHL schedule on

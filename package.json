@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "schedule": "python3 scripts/fetch_schedule.py",
     "icons": "python3 scripts/make_icons.py",
-    "check:privacy": "python3 scripts/check_privacy.py"
+    "check:privacy": "python3 scripts/check_privacy.py",
+    "collect:discovery": "python3 scripts/collect_discovery.py",
+    "test:discovery": "python3 scripts/collect_discovery.py --self-test"
   },
   "dependencies": {
     "react": "^19.0.0",

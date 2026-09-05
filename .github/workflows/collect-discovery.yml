@@ -1,0 +1,56 @@
+name: Collect Discovery price ranges
+
+# The baseline price series (ops#5). Officially sanctioned API, not a scrape, so it is
+# the one source expected to survive both scraper rot and the datacenter block that
+# ops#4 measured against the web properties.
+#
+# That expectation is NOT yet measured. TM's web properties 403 an Actions runner; the
+# API may or may not share that posture. collect_discovery.py exits non-zero if every
+# request 403s, so the first runs answer the question instead of assuming it.
+
+on:
+  schedule:
+    - cron: "41 14 * * *" # daily, ~7:41am Pacific - after the schedule refresh at 13:17
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collect-discovery
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Cheap guard: the parse and merge paths are checked before any network call, so
+      # a refactor that breaks the store format fails here rather than by writing a
+      # corrupted series that is then committed.
+      - name: Self-test
+        run: python3 scripts/collect_discovery.py --self-test
+
+      - name: Collect
+        env:
+          TM_DISCOVERY_API_KEY: ${{ secrets.TM_DISCOVERY_API_KEY }}
+        run: python3 scripts/collect_discovery.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain data/market/discovery.jsonl)" ]]; then
+            git add data/market/discovery.jsonl
+            git commit -m "chore: discovery price ranges $(date -u +%Y-%m-%d)"
+            # Rebase rather than fail: the daily schedule refresh commits to the same
+            # branch and the two jobs can overlap.
+            git pull --rebase --autostash
+            git push
+          else
+            echo "no change"
+          fi

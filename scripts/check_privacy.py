@@ -75,20 +75,51 @@ def walk(obj, path=""):
             yield from walk(v, f"{path}[{i}]")
 
 
+def _docs(f: pathlib.Path):
+    """Yield (label, parsed) for a committed data file.
+
+    .jsonl is a separate case, not a nicety: the collector stores its series one JSON
+    object per line, so json.loads on the whole file raises and the old code would have
+    reported "invalid JSON" for a perfectly good store - a false alarm that trains
+    people to ignore this check. Each line is parsed on its own instead.
+    """
+    text = f.read_text()
+    rel = f.relative_to(ROOT)
+    if f.suffix == ".jsonl":
+        for i, ln in enumerate(text.splitlines(), 1):
+            if not ln.strip():
+                continue
+            try:
+                yield f"{rel}:{i}", json.loads(ln)
+            except json.JSONDecodeError as e:
+                yield f"{rel}:{i}", e
+    else:
+        try:
+            yield str(rel), json.loads(text)
+        except json.JSONDecodeError as e:
+            yield str(rel), e
+
+
 def structural() -> list[str]:
     problems = []
-    for f in sorted(list((ROOT / "config").glob("*.json")) + list((ROOT / "data").glob("*.json"))):
-        try:
-            data = json.loads(f.read_text())
-        except json.JSONDecodeError as e:
-            problems.append(f"{f.relative_to(ROOT)}: invalid JSON ({e})")
-            continue
-        for path, key, _ in walk(data):
-            if key in FORBIDDEN_KEYS:
-                problems.append(
-                    f"{f.relative_to(ROOT)}: forbidden key '{key}' at {path or '<root>'} "
-                    f"- personal values belong in the browser profile, not the repo"
-                )
+    # Recursive: the market series lives in data/market/, and a check that only sees
+    # the top level would silently stop covering new data surfaces as they are added.
+    files = sorted(
+        list((ROOT / "config").rglob("*.json"))
+        + list((ROOT / "data").rglob("*.json"))
+        + list((ROOT / "data").rglob("*.jsonl"))
+    )
+    for f in files:
+        for label, data in _docs(f):
+            if isinstance(data, json.JSONDecodeError):
+                problems.append(f"{label}: invalid JSON ({data})")
+                continue
+            for path, key, _ in walk(data):
+                if key in FORBIDDEN_KEYS:
+                    problems.append(
+                        f"{label}: forbidden key '{key}' at {path or '<root>'} "
+                        f"- personal values belong in the browser profile, not the repo"
+                    )
     return problems
 
 
@@ -201,7 +232,7 @@ def main() -> int:
     problems += lit
     hist, ran_history = history()
 
-    print(f"structural check: {len(FORBIDDEN_KEYS)} forbidden keys across config/ and data/")
+    print(f"structural check: {len(FORBIDDEN_KEYS)} forbidden keys across config/ and data/ (.json + .jsonl, recursive)")
     if ran_literal:
         print(f"literal check:    dist/ + tracked files scanned against {PATTERNS_FILE.name}")
     else:
