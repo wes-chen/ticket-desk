@@ -168,8 +168,8 @@ function Dashboard({
               <span className="mx-2 opacity-50">|</span>
               {GAMES.length} home games
               <span className="mx-2 opacity-50">|</span>
-              {(feeRate * 100).toFixed(feeRate * 100 % 1 === 0 ? 0 : 2)}% seller fee
-              {feeRate !== FEE && <span className="ml-1 opacity-75">(calibrated)</span>}
+              {(feeRate * 100).toFixed((feeRate * 100) % 1 === 0 ? 0 : 2)}% seller fee
+              {feeRate !== FEE && <> <span className="opacity-75">(calibrated)</span></>}
             </p>
             <p className="mt-1 text-xs text-teal-200/70">
               {/* ops#18: make staleness visible rather than invisible. A precaching
