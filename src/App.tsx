@@ -25,6 +25,7 @@ import { FIT_THRESHOLD, OUTCOME_LABEL, outcomeFor, sellRate, tally } from "./lib
 import type { OutcomeKind } from "./lib/profile";
 import { calibrate } from "./lib/fees";
 import SellerObservations from "./components/SellerObservations";
+import SeasonPnlPanel from "./components/SeasonPnl";
 
 const GAMES = scheduleData.games as Game[];
 const FEE = economics.resale.platforms.ticketmaster.sellerFeeRate;
@@ -360,6 +361,8 @@ function Dashboard({
             </tbody>
           </table>
         </section>
+
+        <SeasonPnlPanel profile={profile} setProfile={setProfile} games={GAMES} />
 
         <SellerObservations
           profile={profile}

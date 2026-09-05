@@ -34,6 +34,15 @@ export interface Outcome {
   atList: number | null;
   /** Actual net received per ticket, if known. */
   netPerSeat: number | null;
+  /**
+   * For `exchanged` only: has the account credit actually been SPENT?
+   *
+   * ops#13 is explicit that unspent credit is not the same as cash, and
+   * economics.json says credit "only has value if it gets spent". Treating an unspent
+   * balance as recovered money would overstate the season's recovery - so this is
+   * tracked rather than assumed, and undefined means "not yet known" rather than false.
+   */
+  creditSpent?: boolean;
   note?: string;
 }
 

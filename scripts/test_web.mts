@@ -277,6 +277,109 @@ sr = series(1, undefined);
 check("no offers -> no latest", sr.latest, null);
 check("no offers -> no delta", sr.delta, null);
 
+// --- pnl: season roll-up --------------------------------------------------------
+
+import { grossCashProceeds, seasonPnl } from "../src/lib/pnl.ts";
+
+const pnlGames: Game[] = [
+  { ...game("2026-10-01T02:00:00Z"), gameId: 1, tier: "A" },
+  { ...game("2026-10-03T02:00:00Z"), gameId: 2, tier: "A" },
+  { ...game("2026-10-05T02:00:00Z"), gameId: 3, tier: "B" },
+  { ...game("2026-10-07T02:00:00Z"), gameId: 4, tier: "B" },
+];
+
+const pnlProfile = (outcomes: Profile["outcomes"], extra: Partial<Profile> = {}): Profile => ({
+  ...EMPTY_PROFILE,
+  seats: { section: "1", row: "1", seats: ["1", "2"] },
+  invoiceTotal: 800,           // 2 seats -> $400/seat
+  credits: { A: 100, B: 90 },  // face proxy: 2x100 + 2x90 = $380/seat
+  outcomes,
+  ...extra,
+});
+
+// Nothing recorded: everything is unresolved basis, and none of it is a loss.
+let pl = seasonPnl(pnlProfile({}), pnlGames);
+check("face total sums the tier credits", pl.faceTotal, 380);
+near("invoice per seat divides by seats", pl.invoicePerSeat!, 400);
+near("residual is invoice minus face", pl.nonRefundableResidual!, 20);
+near("all basis unresolved", pl.unresolvedBasis, 380);
+check("nothing written off before anything resolves", pl.writtenOff, 0);
+check("no games resolved", pl.resolved, 0);
+
+// A sale recovers CASH; an exchange recovers CREDIT and the two must not be conflated.
+pl = seasonPnl(
+  pnlProfile({
+    "1": { kind: "sold", on: "2026-09-05", atList: 130, netPerSeat: 117 },
+    "2": { kind: "exchanged", on: "2026-09-05", atList: null, netPerSeat: null },
+  }),
+  pnlGames,
+);
+near("cash from the sale", pl.cash, 117);
+near("credit from the exchange", pl.credit, 100);
+check("unspent credit is not counted as spent", pl.creditSpent, 0);
+near("unspent credit reported separately", pl.creditUnspent, 100);
+near("sale beat its basis", pl.lines[0].delta!, 17);
+near("exchange exactly matched its basis", pl.lines[1].delta!, 0);
+near("unresolved basis excludes resolved games", pl.unresolvedBasis, 180);
+check("two games resolved", pl.resolved, 2);
+
+// Spent credit is tracked distinctly - this is ops#13's explicit requirement.
+pl = seasonPnl(
+  pnlProfile({
+    "2": { kind: "exchanged", on: "2026-09-05", atList: null, netPerSeat: null, creditSpent: true },
+  }),
+  pnlGames,
+);
+near("spent credit counted as spent", pl.creditSpent, 100);
+check("nothing left unspent", pl.creditUnspent, 0);
+
+// An unsold game writes off its basis.
+pl = seasonPnl(
+  pnlProfile({ "3": { kind: "unsold", on: "2026-09-05", atList: 95, netPerSeat: null } }),
+  pnlGames,
+);
+near("unsold writes off basis", pl.writtenOff, 90);
+near("unsold delta is the full basis lost", pl.lines[2].delta!, -90);
+
+// An instant sale is cash, not credit.
+pl = seasonPnl(
+  pnlProfile({ "1": { kind: "instant", on: "2026-09-05", atList: null, netPerSeat: 27 } }),
+  pnlGames,
+);
+near("instant offer counts as cash", pl.cash, 27);
+check("instant offer is not credit", pl.credit, 0);
+
+// 1099-K: GROSS cash, before basis, and excluding credit. Netting basis here would
+// produce a number that does not match the form.
+pl = seasonPnl(
+  pnlProfile({
+    "1": { kind: "sold", on: "2026-09-05", atList: 130, netPerSeat: 117 },
+    "2": { kind: "exchanged", on: "2026-09-05", atList: null, netPerSeat: null },
+    "3": { kind: "unsold", on: "2026-09-05", atList: null, netPerSeat: null },
+  }),
+  pnlGames,
+);
+near("gross proceeds are cash only", grossCashProceeds(pl), 117);
+
+// A missing tier credit must make face and the residual UNKNOWN rather than understated.
+pl = seasonPnl(pnlProfile({}, { credits: { A: 100 } }), pnlGames);
+check("missing basis counted", pl.missingBasis, 2);
+check("face is null when any game's basis is unknown", pl.faceTotal, null);
+check("residual is null when face is unknown", pl.nonRefundableResidual, null);
+
+// No invoice entered -> no residual claim.
+pl = seasonPnl(pnlProfile({}, { invoiceTotal: null }), pnlGames);
+check("no invoice -> no per-seat invoice", pl.invoicePerSeat, null);
+check("no invoice -> no residual", pl.nonRefundableResidual, null);
+check("face still computable without an invoice", pl.faceTotal, 380);
+
+// A sold outcome with no recorded net must not invent one from the list price.
+pl = seasonPnl(
+  pnlProfile({ "1": { kind: "sold", on: "2026-09-05", atList: 130, netPerSeat: null } }),
+  pnlGames,
+);
+check("no net recorded -> no cash invented", pl.cash, 0);
+
 // --- report ---------------------------------------------------------------------
 
 for (const f of fails) console.error(`  FAIL ${f}`);
