@@ -18,3 +18,8 @@ raw-out/
 # by vite. Not committed: it is build output, and committing it would put a generated
 # file in every collector commit.
 public/deadlines.ics
+
+# Python bytecode. Committed once by a `git add -A` that swept up another agent
+# working in the same tree; see the shared-worktree hazard issue.
+__pycache__/
+*.pyc
