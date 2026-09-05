@@ -258,6 +258,21 @@ successes cannot be audited.
   **StubHub** 403 -> 200 but a JS shell with no prices in the HTML, and it returned 403
   on a second attempt minutes later, so its posture is inconsistent;
   **Gametime** still untested, its URL 404s. See ops#16.
+- **ScoreBig and TicketNetwork are usable, and were only ever UNREAD.** Measured
+  2026-09-05, residential, plain HTTP, logged out: both return **200** with prices in
+  `ld+json` - ScoreBig as `AggregateOffer` (`lowPrice`/`highPrice`), TicketNetwork as
+  `Offer` (`price`). TicketNetwork carries **47 SAP Center events in a single page
+  fetch**; ScoreBig carried 11. Both were previously recorded as 404 in ops#26 because
+  **the URLs were guessed**, which is indistinguishable from a block and is precisely
+  what left Gametime unmeasured through all of ops#4. Their own sitemaps resolved them in
+  minutes. Neither needs a browser or a spoofed User-Agent - plain `urllib` gets the same
+  bytes. **Untested from a datacenter IP**, so probe the runner before scheduling
+  anything (ops#33, ops#36).
+
+  A `grep` for `$`-prefixed tokens scored both pages as having zero prices. The prices are
+  numeric ld+json fields with no dollar sign anywhere. Fifth instance in this project of
+  the instrument being the thing that was wrong.
+
 - **The Discovery API is NOT subject to the ops#4 block.** `resolve_tm_events.py`
   resolved all 44 events from a GitHub Actions runner. The block applies to TM's web
   properties, not `app.ticketmaster.com`.
