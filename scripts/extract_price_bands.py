@@ -332,6 +332,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--image", type=pathlib.Path)
     ap.add_argument("--out", type=pathlib.Path)
+    ap.add_argument("--search-centre", type=int, default=0, metavar="PX",
+                    help="search the bowl centre +/- PX and keep the best-scoring one")
     ap.add_argument("--tol", type=int, default=14,
                     help="max-channel colour tolerance; raise for a JPEG-derived image")
     ap.add_argument("--min-agreement", type=float, default=0.95,
@@ -382,56 +384,72 @@ def main() -> int:
             pts, used = cand, thr
             break
     print(f"darkness threshold <{used} -> {len(pts)} discs (expected {want})")
+    if len(pts) != want:
+        print(f"disc count does not match the known geometry - refusing to guess",
+              file=sys.stderr)
+        return 1
     print(f"section label discs: {len(pts)}")
     if len(pts) < 20:
         print("too few discs found - is this the pricing chart, and is --centre right?",
               file=sys.stderr)
         return 1
 
-    inner, outer, a, b = split_rings(pts, cx, cy)
-    print(f"rings: inner {len(inner)} (expect {len(r['lower'])}), "
-          f"outer {len(outer)} (expect {len(r['upper'])})")
-    if len(inner) != len(r["lower"]) or len(outer) != len(r["upper"]):
-        print("ring sizes do not match the known geometry - refusing to guess",
-              file=sys.stderr)
-        return 1
-
     pal = legend()
 
-    # DIRECTION IS DERIVED, NOT ASSUMED.
-    #
-    # Discs are sorted by increasing atan2 angle, which with screen y growing downward
-    # runs clockwise. The ring order in config/price_bands.json is counter-clockwise.
-    # Getting that backwards mirrors every section onto its opposite - which is a
-    # plausible-looking map that is comprehensively wrong, and it cost a debugging round
-    # when the repo version scored worse than the prototype for exactly this reason.
-    #
-    # So try both directions and keep whichever the symmetry check prefers. The signal
-    # is decisive: a wrong direction measured 0/10 where the right one measured 7/11.
-    def best(ring, order, axis, r_lo, r_hi):
-        out = []
-        for label, seq in (("as-listed", order), ("reversed", list(reversed(order)))):
-            ex = sector_bands(im, anchor(ring, seq, axis[0]), cx, cy, a, b,
-                              r_lo, r_hi, pal, tol=args.tol)
-            frac, ok, n, bad = agreement(ex, mirror_pairs(seq, *axis))
-            out.append((ok, label, ex, ok, n, bad))
-        out.sort(reverse=True, key=lambda t: t[0])
-        chosen = out[0]
-        print(f"  direction {chosen[1]}: {chosen[3]}/{chosen[4]}   "
-              f"(other: {out[1][3]}/{out[1][4]})")
-        return chosen[2], chosen[3], chosen[4], chosen[5]
+    def evaluate(ccx, ccy, verbose=False):
+        """Extract at a given bowl centre and score it. Returns (ok, total, extraction)."""
+        inner, outer, a, b = split_rings(pts, ccx, ccy)
+        if len(inner) != len(r["lower"]) or len(outer) != len(r["upper"]):
+            return -1, 1, {}
+        parts, ok, tot = {}, 0, 0
+        for ring, order, axis, lo, hi, label in (
+                (inner, r["lower"], ("101", "115"), 0.46, 0.88, "lower"),
+                (outer, r["upper"], ("201", "215"), 0.95, 1.18, "upper")):
+            best = None
+            for dname, seq in (("as-listed", order), ("reversed", list(reversed(order)))):
+                ex = sector_bands(im, anchor(ring, seq, axis[0]), ccx, ccy, a, b,
+                                  lo, hi, pal, tol=args.tol)
+                _, o, n, bad = agreement(ex, mirror_pairs(seq, *axis))
+                if best is None or o > best[0]:
+                    best = (o, n, ex, dname, bad)
+            if verbose:
+                print(f"  {label} ring, direction {best[3]}: {best[0]}/{best[1]}")
+                for x, y, A, B in best[4]:
+                    print(f"    MISMATCH {x} {A}")
+                    print(f"             {y} {B}")
+            parts.update(best[2])
+            ok += best[0]
+            tot += best[1]
+        return ok, tot, parts
 
-    print("lower ring:")
-    lo_ex, lo_ok, lo_n, lo_bad = best(inner, r["lower"], ("101", "115"), 0.46, 0.88)
-    print("upper ring:")
-    up_ex, up_ok, up_n, up_bad = best(outer, r["upper"], ("201", "215"), 0.95, 1.18)
-    ex = {**lo_ex, **up_ex}
-    frac = (lo_ok + up_ok) / (lo_n + up_n)
-    print(f"mirror agreement overall: {lo_ok + up_ok}/{lo_n + up_n} "
-          f"-> {frac:.0%} (need {args.min_agreement:.0%})")
-    for x, y, A, B in (lo_bad + up_bad):
-        print(f"  MISMATCH {x} {A}")
-        print(f"           {y} {B}")
+    # THE BOWL CENTRE IS THE MOST SENSITIVE PARAMETER IN THIS TOOL, by a wide margin.
+    # Measured on the 300dpi chart: (1273,1367) scored 62% and (1275,1355) scored 83% -
+    # twelve pixels of vertical offset cost twenty-one points. Every sector angle is
+    # measured from it, so a small offset rotates every wedge slightly and starts
+    # sampling neighbours.
+    #
+    # The centroid of the label discs is NOT the bowl centre: there are 28 upper discs
+    # against 22 lower, and none for the plaza boxes, so the centroid is pulled off by
+    # the uneven distribution. Rather than derive it more cleverly, search it - agreement
+    # is a scoreable objective with a known right answer, exactly like the threshold and
+    # direction searches above.
+    if args.search_centre:
+        step = max(4, args.search_centre // 3)
+        best = None
+        for dy in range(-args.search_centre, args.search_centre + 1, step):
+            for dx in range(-args.search_centre, args.search_centre + 1, step):
+                ok, tot, _ = evaluate(cx + dx, cy + dy)
+                if best is None or ok > best[0]:
+                    best = (ok, tot, cx + dx, cy + dy)
+        print(f"centre search: best {best[0]}/{best[1]} at ({best[2]}, {best[3]}) "
+              f"- started from ({cx}, {cy})")
+        cx, cy = best[2], best[3]
+
+    lo_ok, lo_tot, _ = 0, 0, None
+    ok, tot, ex = evaluate(cx, cy, verbose=True)
+    frac = ok / tot if tot else 0.0
+    print(f"mirror agreement overall: {ok}/{tot} -> {frac:.0%} "
+          f"(need {args.min_agreement:.0%})")
 
     if frac < args.min_agreement:
         print(f"\nREFUSING to write a map at {frac:.0%} agreement. The arena is "
