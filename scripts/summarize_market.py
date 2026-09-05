@@ -27,9 +27,20 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCHEDULE = ROOT / "data" / "schedule.json"
 DEST = ROOT / "data" / "market" / "summary.json"
 
-# Primary first. TickPick is primary because its prices are all-in by design, and because
-# it is measured consistently LOWER than Gametime on every game - so using it for the
-# headline figure is the conservative choice.
+# Primary first. TickPick is primary because its prices are all-in by design and because
+# it covers all 44 home games. Both matter: a headline low that hides fees would misprice
+# every break-even downstream, and a source publishing only a rolling window cannot be the
+# spine of a season-long series.
+#
+# It is NOT chosen for being the cheapest, and the comment here used to say it was -
+# "measured consistently LOWER than Gametime on every game, so the conservative choice".
+# That rested on a two-source comparison, and a third source contradicts it: ScoreBig asks
+# ~5% less than TickPick on all 19 games they share (max ratio 1.025, so essentially never
+# above). Recorded rather than quietly corrected, because a rule the codebase visibly
+# contradicts is one people stop reading (ops#21, ops#46).
+#
+# Revisit deliberately, not by drift, if a full-coverage all-in source is ever measured
+# consistently below TickPick across the whole season.
 STORES = [
     ("tickpick", ROOT / "data" / "market" / "tickpick.jsonl"),
     ("gametime", ROOT / "data" / "market" / "gametime.jsonl"),
