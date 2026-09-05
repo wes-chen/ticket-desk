@@ -33,6 +33,10 @@ DEST = ROOT / "data" / "market" / "summary.json"
 STORES = [
     ("tickpick", ROOT / "data" / "market" / "tickpick.jsonl"),
     ("gametime", ROOT / "data" / "market" / "gametime.jsonl"),
+    # Publishes Offer.price - a scalar ask, so it contributes a LOW and no high. It also
+    # covers a rolling window rather than the season, so it is absent for late-season
+    # games by design rather than by failure. See collect_ticketnetwork.py.
+    ("ticketnetwork", ROOT / "data" / "market" / "ticketnetwork.jsonl"),
 ]
 PRIMARY = "tickpick"
 

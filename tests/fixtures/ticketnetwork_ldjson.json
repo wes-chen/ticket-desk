@@ -1,0 +1,124 @@
+{
+ "_fixture": "REAL schema.org blocks captured 2026-09-05 from https://www.ticketnetwork.com/performers/san-jose-sharks-tickets, trimmed to the fields the collector reads. Deliberately includes an AWAY game, a priceless season-ticket package, and a DUPLICATE of one home game - the real page emits 45 priced SAP blocks that reduce to 29 unique events - so each filter has something genuine to reject. Note startDate carries an explicit -07:00 offset, unlike Gametime's naive-UTC strings; joining on the local date instead would misattribute every night game.",
+ "events": [
+  {
+   "@context": "http://schema.org",
+   "@type": "SportsEvent",
+   "name": "NHL Preseason: San Jose Sharks vs. Vegas Golden Knights",
+   "startDate": "2026-09-22T19:00:00-07:00",
+   "url": "https://www.ticketnetwork.com/tickets/8075165/nhl-preseason-san-jose-sharks-vs-vegas-golden-knights-tickets-tue-sep-22-2026-sap-center",
+   "location": {
+    "@type": "Place",
+    "name": "SAP Center"
+   },
+   "awayTeam": {
+    "@type": "SportsTeam",
+    "name": "Vegas Golden Knights"
+   },
+   "homeTeam": {
+    "@type": "SportsTeam",
+    "name": "San Jose Sharks"
+   },
+   "offers": {
+    "@type": "Offer",
+    "price": 16,
+    "priceCurrency": "USD",
+    "availability": "http://schema.org/InStock",
+    "url": "https://www.ticketnetwork.com/tickets/8075165/nhl-preseason-san-jose-sharks-vs-vegas-golden-knights-tickets-tue-sep-22-2026-sap-center"
+   }
+  },
+  {
+   "@context": "http://schema.org",
+   "@type": "SportsEvent",
+   "name": "NHL Preseason: San Jose Sharks vs. Anaheim Ducks",
+   "startDate": "2026-09-24T19:00:00-07:00",
+   "url": "https://www.ticketnetwork.com/tickets/8075166/nhl-preseason-san-jose-sharks-vs-anaheim-ducks-tickets-thu-sep-24-2026-sap-center",
+   "location": {
+    "@type": "Place",
+    "name": "SAP Center"
+   },
+   "awayTeam": {
+    "@type": "SportsTeam",
+    "name": "Anaheim Ducks"
+   },
+   "homeTeam": {
+    "@type": "SportsTeam",
+    "name": "San Jose Sharks"
+   },
+   "offers": {
+    "@type": "Offer",
+    "price": 12,
+    "priceCurrency": "USD",
+    "availability": "http://schema.org/InStock",
+    "url": "https://www.ticketnetwork.com/tickets/8075166/nhl-preseason-san-jose-sharks-vs-anaheim-ducks-tickets-thu-sep-24-2026-sap-center"
+   }
+  },
+  {
+   "@context": "http://schema.org",
+   "@type": "SportsEvent",
+   "name": "NHL Preseason: San Jose Sharks vs. Vegas Golden Knights",
+   "startDate": "2026-09-22T19:00:00-07:00",
+   "url": "https://www.ticketnetwork.com/tickets/8075165/nhl-preseason-san-jose-sharks-vs-vegas-golden-knights-tickets-tue-sep-22-2026-sap-center",
+   "location": {
+    "@type": "Place",
+    "name": "SAP Center"
+   },
+   "awayTeam": {
+    "@type": "SportsTeam",
+    "name": "Vegas Golden Knights"
+   },
+   "homeTeam": {
+    "@type": "SportsTeam",
+    "name": "San Jose Sharks"
+   },
+   "offers": {
+    "@type": "Offer",
+    "price": 16,
+    "priceCurrency": "USD",
+    "availability": "http://schema.org/InStock",
+    "url": "https://www.ticketnetwork.com/tickets/8075165/nhl-preseason-san-jose-sharks-vs-vegas-golden-knights-tickets-tue-sep-22-2026-sap-center"
+   }
+  },
+  {
+   "@context": "http://schema.org",
+   "@type": "SportsEvent",
+   "name": "NHL Preseason: Anaheim Ducks vs. San Jose Sharks",
+   "startDate": "2026-09-20T13:00:00-07:00",
+   "url": "https://www.ticketnetwork.com/tickets/8075153/nhl-preseason-anaheim-ducks-vs-san-jose-sharks-tickets-sun-sep-20-2026-honda-center",
+   "location": {
+    "@type": "Place",
+    "name": "Honda Center"
+   },
+   "awayTeam": {
+    "@type": "SportsTeam",
+    "name": "San Jose Sharks"
+   },
+   "homeTeam": {
+    "@type": "SportsTeam",
+    "name": "Anaheim Ducks"
+   },
+   "offers": {
+    "@type": "Offer",
+    "price": 40,
+    "priceCurrency": "USD",
+    "availability": "http://schema.org/InStock",
+    "url": "https://www.ticketnetwork.com/tickets/8075153/nhl-preseason-anaheim-ducks-vs-san-jose-sharks-tickets-sun-sep-20-2026-honda-center"
+   }
+  },
+  {
+   "@context": "http://schema.org",
+   "@type": "SportsEvent",
+   "name": "2026-2027 San Jose Sharks Season Tickets (Includes Tickets To All Regular Season Home Games)",
+   "startDate": "2026-09-30",
+   "url": "https://www.ticketnetwork.com/tickets/8082548/2026-2027-san-jose-sharks-season-tickets-includes-tickets-to-all-regular-season-home-games-tickets-wed-sep-30-2026-sap-center",
+   "location": {
+    "@type": "Place",
+    "name": "SAP Center"
+   },
+   "homeTeam": {
+    "@type": "SportsTeam",
+    "name": "San Jose Sharks"
+   }
+  }
+ ]
+}

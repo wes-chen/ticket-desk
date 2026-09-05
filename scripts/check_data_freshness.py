@@ -40,8 +40,12 @@ SCHEDULE = ROOT / "data" / "schedule.json"
 # looks like "only one source configured" rather than "a source broke". Missing entirely
 # is tolerated (it may not be set up); going STALE after having data is not.
 STORES = [
-    ("tickpick", ROOT / "data" / "market" / "tickpick.jsonl", True),
-    ("gametime", ROOT / "data" / "market" / "gametime.jsonl", False),
+    # (name, path, required, rolling). `rolling` means the source publishes a WINDOW
+    # rather than the whole season, so games beyond its horizon are unlisted rather than
+    # missing. Only set it where that is measured - it trades away a real guarantee.
+    ("tickpick", ROOT / "data" / "market" / "tickpick.jsonl", True, False),
+    ("gametime", ROOT / "data" / "market" / "gametime.jsonl", False, False),
+    ("ticketnetwork", ROOT / "data" / "market" / "ticketnetwork.jsonl", False, True),
 ]
 STORE = STORES[0][1]
 
@@ -60,7 +64,8 @@ def load(path: pathlib.Path) -> list[dict]:
     return [json.loads(ln) for ln in path.read_text().splitlines() if ln.strip()]
 
 
-def analyse(rows: list[dict], games: list[dict], today: date) -> dict:
+def analyse(rows: list[dict], games: list[dict], today: date,
+            rolling: bool = False) -> dict:
     days = sorted({r["observedDate"] for r in rows})
     ok_by_day = collections.Counter()
     tot_by_day = collections.Counter()
@@ -72,8 +77,12 @@ def analyse(rows: list[dict], games: list[dict], today: date) -> dict:
     findings = []
 
     if not days:
+        # Every key the full return provides. Callers index some of these directly, so an
+        # early return with a narrower shape is a KeyError waiting for the first run of a
+        # newly added source - which is exactly when it would fire.
         return {"days": [], "findings": [("fatal", "the market store is empty")],
-                "staleDays": None}
+                "staleDays": None, "okByDay": {}, "totByDay": {},
+                "horizon": None, "beyondHorizon": []}
 
     last = date.fromisoformat(days[-1])
     stale = (today - last).days
@@ -104,7 +113,32 @@ def analyse(rows: list[dict], games: list[dict], today: date) -> dict:
             seen_per_game[r["gameId"]].add(r["observedDate"])
 
     future = [g for g in games if g["date"] >= today.isoformat()]
-    never = [g for g in future if g["gameId"] not in seen_per_game]
+
+    # THE COVERAGE HORIZON. A source may publish a ROLLING WINDOW rather than the whole
+    # season: TicketNetwork lists 29 of 44 home games, and every one of the 15 it omits is
+    # late-season, with zero orphans (ops#33). Those games are NOT YET LISTED, which is a
+    # publisher's editorial choice, not a broken event map.
+    #
+    # Calling them "never priced" would fire a fatal on every single run, forever. A check
+    # that cries wolf daily is precisely how people learn to skip its output - the same
+    # reasoning that deleted the empty-issue rule from check_issues.py, and the same
+    # reasoning behind the 2-day staleness threshold rather than an hours-based one.
+    #
+    # So the horizon is the latest game THIS SOURCE has actually priced. A gap at or
+    # before it is real and stays fatal. Beyond it, absence of evidence is not evidence of
+    # absence, and it is reported as coverage rather than as a fault.
+    # OPT-IN, per source. Applying this to every source would silently weaken the
+    # guarantee where it matters most: TickPick resolves all 44 events, so a game it has
+    # never priced IS a stale event map, and excusing it because it happens to be the
+    # latest game would hide exactly the bug this check was written for.
+    unpriced = [g for g in future if g["gameId"] not in seen_per_game]
+    if rolling:
+        priced_dates = [g["date"] for g in games if g["gameId"] in seen_per_game]
+        horizon = max(priced_dates) if priced_dates else None
+        never = [g for g in unpriced if horizon is None or g["date"] <= horizon]
+        beyond = [g for g in unpriced if horizon is not None and g["date"] > horizon]
+    else:
+        horizon, never, beyond = None, unpriced, []
     if never:
         findings.append(("fatal", f"{len(never)} upcoming game(s) have NEVER been priced: "
                                   f"{[g['date'] for g in never][:5]}. The event map may be "
@@ -139,7 +173,8 @@ def analyse(rows: list[dict], games: list[dict], today: date) -> dict:
                                      f"on {cur} - a partial failure leaves CI green."))
 
     return {"days": days, "findings": findings, "staleDays": stale,
-            "okByDay": dict(ok_by_day), "totByDay": dict(tot_by_day)}
+            "okByDay": dict(ok_by_day), "totByDay": dict(tot_by_day),
+            "horizon": horizon, "beyondHorizon": [g["date"] for g in beyond]}
 
 
 def run(strict: bool, today: date) -> int:
@@ -148,7 +183,7 @@ def run(strict: bool, today: date) -> int:
     warn: list[str] = []
     any_data = False
 
-    for name, path, required in STORES:
+    for name, path, required, rolling in STORES:
         rows = load(path)
         if not rows:
             if required:
@@ -158,11 +193,15 @@ def run(strict: bool, today: date) -> int:
                 print(f"{name}: not collected (optional source, skipped)")
             continue
         any_data = True
-        a = analyse(rows, games, today)
+        a = analyse(rows, games, today, rolling)
         print(f"{name}: {len(rows)} rows across {len(a['days'])} day(s), "
               f"{a['days'][0]} .. {a['days'][-1]}, last {a['staleDays']} day(s) ago")
         for d in a["days"][-3:]:
             print(f"    {d}: {a['okByDay'].get(d, 0)}/{a['totByDay'].get(d, 0)} priced")
+        if a["beyondHorizon"]:
+            print(f"    coverage horizon {a['horizon']}: "
+                  f"{len(a['beyondHorizon'])} later game(s) not yet listed "
+                  f"(rolling-window source, expected)")
         for lvl, m in a["findings"]:
             (fatal if lvl == "fatal" else warn).append(f"[{name}] {m}")
 
@@ -236,6 +275,35 @@ def self_test() -> int:
     a = analyse(r, gs, today)
     check("one missed day for a game is not flagged", any("per-game hole" in m
                                                           for _, m in a["findings"]), False)
+
+    # ---- the coverage horizon (ops#33, ops#36) ----
+    # A rolling-window source that has priced games 0 and 1 but not the later game 2 is
+    # covering what it publishes, not failing. Fatal here would fire every run forever.
+    a = analyse(rows(healthy, [0, 1]), gs, today, rolling=True)
+    check("beyond the horizon is not fatal",
+          any("NEVER been priced" in m for _, m in a["findings"]), False)
+    check("beyond-horizon games are reported as coverage", a["beyondHorizon"],
+          ["2026-09-22"])
+    check("horizon is the latest game actually priced", a["horizon"], "2026-09-21")
+
+    # But a hole INSIDE the covered window is a real gap and must stay fatal - otherwise
+    # the horizon rule would excuse exactly the failure this check exists to catch.
+    a = analyse(rows(healthy, [0, 2]), gs, today, rolling=True)
+    check("a gap inside the covered window is still fatal",
+          any("NEVER been priced" in m for _, m in a["findings"]), True)
+    check("and nothing is excused as beyond-horizon", a["beyondHorizon"], [])
+
+    # A source with no data at all has no horizon, so every future game is required -
+    # otherwise a totally broken source would silently excuse itself.
+    a = analyse(rows(healthy, []), gs, today, rolling=True)
+    check("no data means no horizon, so nothing is excused", a["horizon"], None)
+
+    # The guarantee TickPick relies on must survive all of the above: without rolling,
+    # an unpriced later game is still a stale-event-map fatal.
+    a = analyse(rows(healthy, [0, 1]), gs, today, rolling=False)
+    check("a non-rolling source still fails on a never-priced game",
+          any("NEVER been priced" in m for _, m in a["findings"]), True)
+    check("and nothing is excused for it", a["beyondHorizon"], [])
 
     # A game never priced at all.
     a = analyse(rows(healthy, [0, 1]), gs, today)
