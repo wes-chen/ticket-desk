@@ -1,6 +1,6 @@
 {
   "_comment": "Derived from the per-source stores in data/market/ by scripts/summarize_market.py. low/high are the cheapest and priciest listings in the WHOLE ARENA, all-in, on TickPick - NOT a comp for any specific seat, and NOT the channel these tickets are sold on. See the script docstring.",
-  "generatedAt": "2026-09-05T20:44:46Z",
+  "generatedAt": "2026-09-05T21:53:19Z",
   "source": "tickpick",
   "sources": [
     "gametime",
@@ -9,11 +9,28 @@
     "tickpick"
   ],
   "crossSource": {
-    "comparedGames": 92,
-    "medianRatioToPrimary": 1.0333,
-    "minRatio": 0.8878,
-    "maxRatio": 1.1667,
-    "_comment": "Each secondary source's low divided by the primary's, per game. Measured 2026-09-05: Gametime sat 1.4%-16.7% above TickPick on ALL 44 games, median +6.2%, while ranking the games near-identically (Spearman +0.9944). Agreeing on ORDER but differing in LEVEL is the expected shape - they price the same demand with different inventory and fee treatment. A sudden move in this ratio means a SOURCE changed, not the market."
+    "perSource": {
+      "gametime": {
+        "games": 44,
+        "medianRatioToPrimary": 1.0602,
+        "minRatio": 1.0143,
+        "maxRatio": 1.1667
+      },
+      "scorebig": {
+        "games": 19,
+        "medianRatioToPrimary": 0.9459,
+        "minRatio": 0.8878,
+        "maxRatio": 1.0254
+      },
+      "ticketnetwork": {
+        "games": 29,
+        "medianRatioToPrimary": 1.0,
+        "minRatio": 0.9412,
+        "maxRatio": 1.16
+      }
+    },
+    "commonGames": 19,
+    "_comment": "Each secondary source's low divided by the primary's, PER SOURCE and never pooled. Pooling was wrong and is why this shape changed (ops#43/ops#44): the rolling-window sources publish only a forward slice, and that slice is measurably cheaper - ScoreBig's covered games had a $33 median low against $48 for the ones it omits, with the date ranges disjoint. A pooled median therefore mixed 'secondary sources ask more' with 'early-season games cost less' and was read as the first. Each source's figure now stands over its own games, with n stated. Sources agreeing on ORDER but differing in LEVEL is the expected shape - they price the same demand with different inventory and fee treatment (all six pairwise Spearman rho 0.98-0.99). A sudden move in one source's ratio means THAT SOURCE changed, not the market."
   },
   "priceBasis": "all_in_whole_arena",
   "isOwnChannel": false,

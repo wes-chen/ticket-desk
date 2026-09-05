@@ -66,7 +66,11 @@ def summarize(rows_by_source: dict[str, list[dict]], games: list[dict]) -> dict:
     by_game = per_source.get(PRIMARY, {})
 
     out = []
-    ratios: list[float] = []
+    # Ratios kept PER SOURCE, never pooled. Pooling was the bug ops#43 found: the two
+    # rolling sources contribute only their forward window, which is measurably cheaper
+    # (ScoreBig covered $33 vs uncovered $48), so a single pooled median silently mixed
+    # "secondary sources ask more" with "early-season games cost less".
+    ratios_by_source: dict[str, list[float]] = {}
     for g in games:
         series = by_game.get(g["gameId"], [])
         if not series:
@@ -101,7 +105,7 @@ def summarize(rows_by_source: dict[str, list[dict]], games: list[dict]) -> dict:
                 others[name] = {"low": s2[-1]["low"], "high": s2[-1].get("high"),
                                 "observedDate": s2[-1]["observedDate"]}
                 if last["low"]:
-                    ratios.append(s2[-1]["low"] / last["low"])
+                    ratios_by_source.setdefault(name, []).append(s2[-1]["low"] / last["low"])
         if others:
             entry["otherSources"] = others
         out.append(entry)
@@ -109,23 +113,43 @@ def summarize(rows_by_source: dict[str, list[dict]], games: list[dict]) -> dict:
     all_rows = [r for rs in rows_by_source.values() for r in rs]
     days = sorted({r["observedDate"] for r in all_rows})
 
-    cross = None
-    if ratios:
-        rs = sorted(ratios)
+    def _median(v: list[float]) -> float:
+        rs = sorted(v)
         mid = len(rs) // 2
-        median = rs[mid] if len(rs) % 2 else (rs[mid - 1] + rs[mid]) / 2
+        return rs[mid] if len(rs) % 2 else (rs[mid - 1] + rs[mid]) / 2
+
+    cross = None
+    if ratios_by_source:
+        per = {}
+        for name in sorted(ratios_by_source):
+            v = ratios_by_source[name]
+            per[name] = {
+                "games": len(v),
+                "medianRatioToPrimary": round(_median(v), 4),
+                "minRatio": round(min(v), 4),
+                "maxRatio": round(max(v), 4),
+            }
+        # Games every source priced. The only set on which the sources can be compared
+        # like for like - reported so a reader can see how narrow it is, rather than
+        # discovering later that a headline number rested on it.
+        covered = [set(per_source[n].keys()) for n in per_source]
+        common = len(set.intersection(*covered)) if covered else 0
         cross = {
-            "comparedGames": len(ratios),
-            "medianRatioToPrimary": round(median, 4),
-            "minRatio": round(min(ratios), 4),
-            "maxRatio": round(max(ratios), 4),
+            "perSource": per,
+            "commonGames": common,
             "_comment": (
-                "Each secondary source's low divided by the primary's, per game. Measured "
-                "2026-09-05: Gametime sat 1.4%-16.7% above TickPick on ALL 44 games, median "
-                "+6.2%, while ranking the games near-identically (Spearman +0.9944). Agreeing "
-                "on ORDER but differing in LEVEL is the expected shape - they price the same "
-                "demand with different inventory and fee treatment. A sudden move in this "
-                "ratio means a SOURCE changed, not the market."
+                "Each secondary source's low divided by the primary's, PER SOURCE and never "
+                "pooled. Pooling was wrong and is why this shape changed (ops#43/ops#44): the "
+                "rolling-window sources publish only a forward slice, and that slice is "
+                "measurably cheaper - ScoreBig's covered games had a $33 median low against "
+                "$48 for the ones it omits, with the date ranges disjoint. A pooled median "
+                "therefore mixed 'secondary sources ask more' with 'early-season games cost "
+                "less' and was read as the first. "
+                "Each source's figure now stands over its own games, with n stated. "
+                "Sources agreeing on ORDER but differing in LEVEL is the expected shape - "
+                "they price the same demand with different inventory and fee treatment "
+                "(all six pairwise Spearman rho 0.98-0.99). A sudden move in one source's "
+                "ratio means THAT SOURCE changed, not the market."
             ),
         }
     return {
@@ -204,11 +228,15 @@ def self_test() -> int:
     check("secondary kept alongside, not blended",
           two["games"][0]["otherSources"]["gametime"]["low"], 106)
     check("sources listed", two["sources"], ["gametime", "tickpick"])
-    check("cross-source compares both games", two["crossSource"]["comparedGames"], 2)
+    gt = two["crossSource"]["perSource"]["gametime"]
+    check("cross-source compares both games", gt["games"], 2)
     # 106/100 = 1.06 and 55/50 = 1.10 -> median 1.08.
-    check("median ratio", two["crossSource"]["medianRatioToPrimary"], 1.08)
-    check("min ratio", two["crossSource"]["minRatio"], 1.06)
-    check("max ratio", two["crossSource"]["maxRatio"], 1.1)
+    check("median ratio", gt["medianRatioToPrimary"], 1.08)
+    check("min ratio", gt["minRatio"], 1.06)
+    check("max ratio", gt["maxRatio"], 1.1)
+    check("both games priced by every source", two["crossSource"]["commonGames"], 2)
+    check("no pooled figure is emitted at all",
+          "medianRatioToPrimary" in two["crossSource"], False)
 
     # A game the secondary has not priced must not invent a ratio for it.
     partial = summarize(
@@ -216,8 +244,39 @@ def self_test() -> int:
          "gametime": [row("2026-09-05", 1, 106)]},
         games,
     )
-    check("ratio only where both sources have data", partial["crossSource"]["comparedGames"], 1)
+    check("ratio only where both sources have data",
+          partial["crossSource"]["perSource"]["gametime"]["games"], 1)
     check("unmatched game has no otherSources", "otherSources" in partial["games"][1], False)
+
+    # THE BUG THIS SHAPE EXISTS TO PREVENT (ops#43/ops#44).
+    # A third source that covers only the CHEAP half of the schedule must not move any
+    # other source's figure. Under the old pooled median it did: its cheap ratios were
+    # thrown into one list with everyone else's, so adding a rolling source silently
+    # dragged the headline and the result was read as "secondaries ask less".
+    #
+    # Measured on the real data, the pooled median said +3.3% while per source it was
+    # Gametime +6.0%, TicketNetwork level, ScoreBig -5.4% - directionally wrong for two of
+    # the three. So this asserts a property, not an arithmetic result: gametime's figure
+    # must be IDENTICAL with and without the cheap third source present.
+    base = summarize(
+        {"tickpick": [row("2026-09-05", 1, 100), row("2026-09-05", 2, 50)],
+         "gametime": [row("2026-09-05", 1, 106), row("2026-09-05", 2, 55)]},
+        games,
+    )["crossSource"]["perSource"]["gametime"]
+    withcheap = summarize(
+        {"tickpick": [row("2026-09-05", 1, 100), row("2026-09-05", 2, 50)],
+         "gametime": [row("2026-09-05", 1, 106), row("2026-09-05", 2, 55)],
+         # Covers only game 2 - the cheap one - and asks well under the primary.
+         "scorebig": [row("2026-09-05", 2, 40)]},
+        games,
+    )["crossSource"]
+    check("a cheap partial source does not move another source's median",
+          withcheap["perSource"]["gametime"], base)
+    check("and it reports its own figure separately",
+          withcheap["perSource"]["scorebig"]["medianRatioToPrimary"], 0.8)
+    check("with its own n", withcheap["perSource"]["scorebig"]["games"], 1)
+    # commonGames shrinks to the intersection, which is the honest like-for-like set.
+    check("commonGames is the intersection", withcheap["commonGames"], 1)
 
     # A secondary source alone must not become the headline.
     only = summarize({"gametime": [row("2026-09-05", 1, 106)]}, games)
@@ -259,9 +318,15 @@ def main() -> int:
           f"games with data: {len(summary['games'])}/{len(games)}")
     if summary.get("crossSource"):
         c = summary["crossSource"]
-        print(f"cross-source: {c['comparedGames']} games, secondary/primary median "
-              f"{c['medianRatioToPrimary']:.3f} "
-              f"(range {c['minRatio']:.3f}-{c['maxRatio']:.3f})")
+        print(f"cross-source vs {PRIMARY} (per source, never pooled; "
+              f"{c['commonGames']} games priced by all):")
+        for name, v in c["perSource"].items():
+            arrow = "above" if v["medianRatioToPrimary"] > 1 else (
+                "below" if v["medianRatioToPrimary"] < 1 else "level with")
+            print(f"    {name:15} {v['games']:3} games  median "
+                  f"{v['medianRatioToPrimary']:.3f} "
+                  f"({abs(v['medianRatioToPrimary'] - 1) * 100:.1f}% {arrow}) "
+                  f"range {v['minRatio']:.3f}-{v['maxRatio']:.3f}")
     print(f"confidence: {summary['confidence']}")
     print(f"wrote {DEST.relative_to(ROOT)}")
     if not summary["games"]:

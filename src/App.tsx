@@ -532,20 +532,38 @@ function Dashboard({
             )}
           </p>
           {market().crossSource && (
+            <>
             <p>
               <strong>
                 Cross-checked against {market().sources.filter((x) => x !== market().source).join(", ")}
               </strong>{" "}
-              on {market().crossSource!.comparedGames} games. The secondary source sits at a
-              median{" "}
-              {((market().crossSource!.medianRatioToPrimary - 1) * 100).toFixed(1)}% above{" "}
-              {market().source} (range{" "}
-              {((market().crossSource!.minRatio - 1) * 100).toFixed(1)}&ndash;
-              {((market().crossSource!.maxRatio - 1) * 100).toFixed(1)}%). They are kept side by
-              side rather than averaged: two sources agreeing on the <em>order</em> of games while
-              differing in <em>level</em> is expected, and a sudden move in that gap means a
-              source changed rather than the market. Hover a row for the other source&rsquo;s low.
+              , each on its own games. {market().crossSource!.commonGames} games are priced by
+              every source.
             </p>
+            <ul>
+              {Object.entries(market().crossSource!.perSource).map(([name, r]) => {
+                const pct = (r.medianRatioToPrimary - 1) * 100;
+                return (
+                  <li key={name}>
+                    <strong>{name}</strong>: median {Math.abs(pct).toFixed(1)}%{" "}
+                    {pct > 0.05 ? "above" : pct < -0.05 ? "below" : "level with"}{" "}
+                    {market().source} on {r.games} games (range{" "}
+                    {((r.minRatio - 1) * 100).toFixed(1)}&ndash;
+                    {((r.maxRatio - 1) * 100).toFixed(1)}%)
+                  </li>
+                );
+              })}
+            </ul>
+            <p>
+              Reported per source and never pooled: the rolling-window sources list only a
+              forward slice of the season, and that slice is cheaper, so one blended figure
+              would mix &ldquo;this source asks more&rdquo; with &ldquo;these games are
+              earlier&rdquo;. They are also kept side by side rather than averaged &mdash; sources
+              agreeing on the <em>order</em> of games while differing in <em>level</em> is
+              expected, and a sudden move in one source&rsquo;s gap means that source changed
+              rather than the market. Hover a row for the other sources&rsquo; lows.
+            </p>
+            </>
           )}
           <p>
             Two things it is not. It is <strong>not a comp for your seats</strong> &mdash; the low is

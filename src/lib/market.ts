@@ -51,12 +51,29 @@ export interface MarketGame {
   otherSources?: Record<string, SourceQuote>;
 }
 
-export interface CrossSource {
-  comparedGames: number;
-  /** Secondary low / primary low, median across games. */
+export interface SourceRatio {
+  /** Games this source and the primary BOTH priced. Its own n, not a pooled one. */
+  games: number;
+  /** This source's low / the primary's low, median over those games. */
   medianRatioToPrimary: number;
   minRatio: number;
   maxRatio: number;
+}
+
+/**
+ * Per source, never pooled.
+ *
+ * A single pooled median was wrong and actively misleading (ops#43/ops#44). The
+ * rolling-window sources publish only a forward slice, and that slice is cheaper - so a
+ * pooled figure mixed "secondary sources ask more" with "early-season games cost less".
+ * Measured 2026-09-05, the pooled median said +3.3%; per source it was Gametime +6.0%,
+ * TicketNetwork level, and ScoreBig -5.4%. The pooled number was directionally wrong for
+ * two of the three.
+ */
+export interface CrossSource {
+  perSource: Record<string, SourceRatio>;
+  /** Games every source priced - the only like-for-like set, and usually small. */
+  commonGames: number;
 }
 
 export interface MarketSummary {
