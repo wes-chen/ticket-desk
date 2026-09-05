@@ -150,6 +150,28 @@ def join(events: dict[str, dict], schedule: dict) -> tuple[list[dict], list[str]
     rows = []
     matched = set()
 
+    # TOTAL FAILURE GUARD. If the page yielded NO events at all, the horizon is None and
+    # every game falls through to "beyond horizon" - so a complete scrape failure would be
+    # printed as benign coverage and exit 0. Found by review, reproduced: a markup change,
+    # a renamed venue, or a datacenter IP behaving differently from the residential one
+    # would all land here and read as "rolling window, expected".
+    #
+    # That is the exact failure this project keeps writing guards against - a confident,
+    # well-formatted wrong answer. collect_tickpick.py has always had an explicit
+    # total-failure check; the horizon mechanism introduced this blind spot only for the
+    # rolling sources, so it is fixed where the horizon lives.
+    #
+    # Deliberately unconditional on the schedule having future games: if there are games to
+    # match and we matched nothing, that is a failure whatever the calendar says. A false
+    # alarm here costs one red run and is trivially checkable by hand; the silent version
+    # costs a season of missing data nobody noticed.
+    if games and not events:
+        problems.append("TOTAL FAILURE: the page parsed but yielded no usable events at "
+                        "all, so nothing could be matched. This is a scrape failure, not "
+                        "a coverage horizon - re-run the probe before assuming the source "
+                        "simply has no listings.")
+        return [], problems, []
+
     horizon = max((g["startTimeUTC"] for g in games if g["startTimeUTC"] in events),
                   default=None)
 
@@ -322,6 +344,19 @@ def self_test() -> int:
     check("opponent mismatch is fatal", any("MISMATCH" in p for p in problems), True)
 
     # ---- parser robustness ----
+
+    # ---- total-failure guard (found by review) ----
+    # An empty events dict means the horizon is None, which routed every game to "beyond
+    # horizon" and exited 0 - a complete scrape failure reported as healthy coverage.
+    rows, problems, notes = join({}, sched)
+    check("a total scrape failure is fatal", len(problems), 1)
+    check("and it says so plainly", "TOTAL FAILURE" in problems[0], True)
+    check("no notes are emitted that would read as expected coverage", notes, [])
+    check("and no rows are produced", rows, [])
+    # An empty SCHEDULE is not a failure - there is simply nothing to match.
+    rows, problems, notes = join({}, {"games": []})
+    check("an empty schedule is not a scrape failure", problems, [])
+
     check("a malformed block does not discard the page",
           len(sports_events('<script type="application/ld+json">{bad</script>'
                             '<script type="application/ld+json">'
