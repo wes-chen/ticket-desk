@@ -129,10 +129,23 @@ def summarize(rows_by_source: dict[str, list[dict]], games: list[dict]) -> dict:
                 "minRatio": round(min(v), 4),
                 "maxRatio": round(max(v), 4),
             }
-        # Games every source priced. The only set on which the sources can be compared
-        # like for like - reported so a reader can see how narrow it is, rather than
-        # discovering later that a headline number rested on it.
-        covered = [set(per_source[n].keys()) for n in per_source]
+        # Games every CONTRIBUTING source priced. The only set on which the sources can be
+        # compared like for like - reported so a reader can see how narrow it is, rather
+        # than discovering later that a headline number rested on it.
+        #
+        # Restricted to sources that actually produced a ratio, plus the primary. The
+        # first version intersected over every source in STORES, so a single EMPTY store -
+        # a collector that has not run yet, a newly added fifth source, a run that wrote
+        # nothing - forced this to 0 while the populated sources overlapped perfectly.
+        #
+        # The failure direction is what makes it worth fixing rather than noting: it
+        # UNDERSTATES agreement, on the figure this commit added to make cross-source
+        # honesty visible, on the page Wesley reads before pricing. A metric whose whole
+        # job is "how much can you trust the comparison" must not itself report less
+        # confidence than the data supports. Found in review.
+        contributing = set(ratios_by_source) | {PRIMARY}
+        covered = [set(per_source[n].keys()) for n in contributing
+                   if per_source.get(n)]
         common = len(set.intersection(*covered)) if covered else 0
         cross = {
             "perSource": per,
@@ -277,6 +290,22 @@ def self_test() -> int:
     check("with its own n", withcheap["perSource"]["scorebig"]["games"], 1)
     # commonGames shrinks to the intersection, which is the honest like-for-like set.
     check("commonGames is the intersection", withcheap["commonGames"], 1)
+
+    # An EMPTY source must not collapse commonGames. Found in review: intersecting over
+    # every declared store meant one unpopulated collector reported "no overlap" while the
+    # populated sources agreed on everything. It understates confidence, which is the one
+    # direction this particular number must not fail in.
+    withempty = summarize(
+        {"tickpick": [row("2026-09-05", 1, 100), row("2026-09-05", 2, 50)],
+         "gametime": [row("2026-09-05", 1, 106), row("2026-09-05", 2, 55)],
+         "notyetcollected": []},
+        games,
+    )["crossSource"]
+    check("an empty source does not collapse commonGames", withempty["commonGames"], 2)
+    check("and it contributes no ratio of its own",
+          "notyetcollected" in withempty["perSource"], False)
+    check("the populated source is unaffected",
+          withempty["perSource"]["gametime"]["games"], 2)
 
     # A secondary source alone must not become the headline.
     only = summarize({"gametime": [row("2026-09-05", 1, 106)]}, games)
