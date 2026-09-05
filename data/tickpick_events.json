@@ -1,6 +1,6 @@
 {
   "_comment": "TickPick event ids per home game, resolved from TickPick's own sitemap by scripts/collect_tickpick.py. PUBLIC event identifiers only - no prices, no seats, no account data.",
-  "generatedAt": "2026-09-05T03:22:05Z",
+  "generatedAt": "2026-09-05T03:25:26Z",
   "source": "https://www.tickpick.com/sitemap/sports.xml",
   "events": [
     {
