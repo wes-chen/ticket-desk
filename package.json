@@ -28,7 +28,9 @@
     "collect:gametime": "python3 scripts/collect_gametime.py",
     "collect": "python3 scripts/collect_tickpick.py && python3 scripts/collect_gametime.py && python3 scripts/summarize_market.py",
     "issues:audit": "python3 scripts/check_issues.py",
-    "test:issues": "python3 scripts/check_issues.py --self-test"
+    "test:issues": "python3 scripts/check_issues.py --self-test",
+    "check:rowprices": "python3 scripts/check_row_prices.py",
+    "extract:bands": "python3 scripts/extract_price_bands.py"
   },
   "dependencies": {
     "react": "^19.0.0",
