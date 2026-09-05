@@ -204,18 +204,40 @@ def history(root: pathlib.Path = ROOT, patterns_file: pathlib.Path | None = None
         return any(sha.startswith(a) or a.startswith(sha) for a in accepted)
 
     problems = []
+    # One notice per commit, not per pattern. A commit that scrubbed two values would
+    # otherwise print the same opaque line twice, and the line cannot name the value
+    # without defeating the point of the check.
+    scrubbed_seen: set[str] = set()
     for p in pats:
-        # Commits that added or removed this literal in file content.
+        # `-S` is a pickaxe: it matches commits that CHANGED the number of occurrences,
+        # so it flags the commit that removed a value as well as the one that added it.
+        # Reporting the removing commit as "contains" is wrong, and a privacy report that
+        # cries wolf is one people learn to skim. So each candidate is verified against
+        # the commit's actual TREE before being called exposure.
         r = subprocess.run(
             ["git", "-C", str(root), "log", "--all", "--oneline", "-S", p],
             capture_output=True, text=True, check=False,
         )
         for line in r.stdout.splitlines():
-            sha = line.split()[0] if line.split() else ""
-            if is_accepted(sha):
-                print(f"  (accepted) commit {sha} contains a private value in file content")
+            parts = line.split()
+            sha = parts[0] if parts else ""
+            if not sha:
                 continue
-            problems.append(f"history: commit {line.strip()} contains {p!r} in file content")
+            present = subprocess.run(
+                ["git", "-C", str(root), "grep", "-F", "-q", "--", p, sha],
+                capture_output=True, text=True, check=False,
+            ).returncode == 0
+            if not present:
+                # Touched the value but does not carry it - this is the scrubbing commit.
+                if sha not in scrubbed_seen:
+                    scrubbed_seen.add(sha)
+                    print(f"  (scrubbed) commit {sha} removed a private value; "
+                          f"its tree is clean")
+                continue
+            if is_accepted(sha):
+                print(f"  (accepted) commit {sha} carries a private value in its tree")
+                continue
+            problems.append(f"history: commit {line.strip()} CARRIES {p!r} in its tree")
 
     # Commit messages leak just as readily as files. Use an explicit record separator:
     # splitting on a doubled NUL misattributed findings to the wrong commit, because
@@ -341,7 +363,12 @@ def self_test() -> int:
             git("commit", "-q", "-m", "scrub it")
             probs, _ = history(root, pats, root / ".none")
             check("secret in history found even after removal",
-                  any("SEKRET-VALUE" in x and "file content" in x for x in probs), True)
+                  any("SEKRET-VALUE" in x and "CARRIES" in x for x in probs), True)
+            # Exactly one commit should be reported: the one whose tree carries it. The
+            # scrubbing commit touched the value but does not contain it, and reporting
+            # it as exposure was a real false alarm.
+            check("only the carrying commit is reported, not the scrubbing one",
+                  len([x for x in probs if "SEKRET-VALUE" in x and "CARRIES" in x]), 1)
 
             # A private literal in a COMMIT MESSAGE only. This is the case the doubled-NUL
             # bug mis-attributed.
