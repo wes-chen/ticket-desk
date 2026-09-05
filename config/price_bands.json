@@ -1,0 +1,335 @@
+{
+  "_comment": "PUBLIC section -> price band map, from the official Sharks 2026-27 full-season seating chart (public marketing material). Band prices are the team's own published per-game averages. Nothing here identifies a seat: it is the whole building's price structure, and no band is marked as ours. See ops#19.",
+  "_why": "This is the team's own definition of which seats are EQUIVALENT - the baseline comp set for ops#11, replacing a geometric guess. It also lets the app place a seat in the building's price structure with no scraping at all.",
+  "_transcriptionStatus": {
+    "bandPrices": "transcribed",
+    "sectionAssignment": "NOT TRANSCRIBED - every band's `sections` is empty",
+    "ringOrder": "NOT TRANSCRIBED - `rings` is empty",
+    "_blocker": "Section-to-band assignment must be read off the chart's colour coding, and the chart is not in this repo. Guessing it is exactly the failure mode ops#19 warns about, and the same one that made the hand-transcribed tier table need its own validator. Left empty on purpose; scripts/check_price_bands.py reports the gap loudly rather than passing on absent data.",
+    "_confidence": "The band prices below are TRANSCRIBED, not measured. They are checked for internal consistency by the validator, not against an external source."
+  },
+  "season": "20262027",
+  "gamesInFullSeason": 44,
+  "currency": "USD",
+  "_priceNote": "avgPerGame is the published full-season average per game. `renew` is the renewal rate, `new` the new-buyer rate. Some bands publish only one of the two; absent means not published, not zero.",
+  "bands": [
+    {
+      "id": "lower-1-center",
+      "label": "Lower 1 Center",
+      "family": "lower",
+      "rank": 1,
+      "avgPerGame": {
+        "renew": 141,
+        "new": 148
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "lower",
+      "rowScope": "all"
+    },
+    {
+      "id": "lower-1",
+      "label": "Lower 1",
+      "family": "lower",
+      "rank": 2,
+      "avgPerGame": {
+        "renew": 132,
+        "new": 139
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "lower",
+      "rowScope": "all"
+    },
+    {
+      "id": "lower-2",
+      "label": "Lower 2",
+      "family": "lower",
+      "rank": 3,
+      "avgPerGame": {
+        "renew": 129,
+        "new": 135
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "lower",
+      "rowScope": "all"
+    },
+    {
+      "id": "lower-3",
+      "label": "Lower 3",
+      "family": "lower",
+      "rank": 4,
+      "avgPerGame": {
+        "renew": 95,
+        "new": 100
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "lower",
+      "rowScope": "all"
+    },
+    {
+      "id": "lower-4",
+      "label": "Lower 4",
+      "family": "lower",
+      "rank": 5,
+      "avgPerGame": {
+        "renew": 88,
+        "new": 92
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "lower",
+      "rowScope": "all"
+    },
+    {
+      "id": "lower-5",
+      "label": "Lower 5",
+      "family": "lower",
+      "rank": 6,
+      "avgPerGame": {
+        "renew": 83,
+        "new": 87
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "lower",
+      "rowScope": "all"
+    },
+    {
+      "id": "prom-row1-center",
+      "label": "Promenade Row 1 Center",
+      "family": "promenade-row1",
+      "rank": 1,
+      "avgPerGame": {
+        "renew": 130,
+        "new": 137
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "promenade",
+      "rowScope": "row1"
+    },
+    {
+      "id": "prom-row1-corner",
+      "label": "Promenade Row 1 Corner-End",
+      "family": "promenade-row1",
+      "rank": 2,
+      "avgPerGame": {
+        "renew": 98,
+        "new": 103
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "promenade",
+      "rowScope": "row1"
+    },
+    {
+      "id": "prom-1",
+      "label": "Promenade 1",
+      "family": "promenade",
+      "rank": 1,
+      "avgPerGame": {
+        "renew": 79,
+        "new": 83
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "promenade",
+      "rowScope": "all"
+    },
+    {
+      "id": "prom-2",
+      "label": "Promenade 2",
+      "family": "promenade",
+      "rank": 2,
+      "avgPerGame": {
+        "renew": 61,
+        "new": 64
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "promenade",
+      "rowScope": "all"
+    },
+    {
+      "id": "prom-3",
+      "label": "Promenade 3",
+      "family": "promenade",
+      "rank": 3,
+      "avgPerGame": {
+        "renew": 46,
+        "new": 48
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "promenade",
+      "rowScope": "all"
+    },
+    {
+      "id": "upper-attack-1",
+      "label": "Upper Attack 1",
+      "family": "upper-attack",
+      "rank": 1,
+      "avgPerGame": {
+        "renew": 58,
+        "new": 61
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "upper",
+      "rowScope": "all"
+    },
+    {
+      "id": "upper-attack-2",
+      "label": "Upper Attack 2",
+      "family": "upper-attack",
+      "rank": 2,
+      "avgPerGame": {
+        "renew": 37,
+        "new": 39
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "upper",
+      "rowScope": "all"
+    },
+    {
+      "id": "upper-goal-1",
+      "label": "Upper Goal 1",
+      "family": "upper-goal",
+      "rank": 1,
+      "avgPerGame": {
+        "renew": 54,
+        "new": 57
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "upper",
+      "rowScope": "all"
+    },
+    {
+      "id": "upper-goal-2",
+      "label": "Upper Goal 2",
+      "family": "upper-goal",
+      "rank": 2,
+      "avgPerGame": {
+        "renew": 34,
+        "new": 36
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "upper",
+      "rowScope": "all"
+    },
+    {
+      "id": "club-1",
+      "label": "Club 1",
+      "family": "club",
+      "rank": 1,
+      "avgPerGame": {
+        "renew": 274
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "",
+      "rowScope": "all"
+    },
+    {
+      "id": "club-2",
+      "label": "Club 2",
+      "family": "club",
+      "rank": 2,
+      "avgPerGame": {
+        "renew": 219
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "",
+      "rowScope": "all"
+    },
+    {
+      "id": "club-3",
+      "label": "Club 3",
+      "family": "club",
+      "rank": 3,
+      "avgPerGame": {
+        "renew": 186
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "",
+      "rowScope": "all"
+    },
+    {
+      "id": "club-4",
+      "label": "Club 4",
+      "family": "club",
+      "rank": 4,
+      "avgPerGame": {
+        "renew": 158
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "",
+      "rowScope": "all"
+    },
+    {
+      "id": "club-5",
+      "label": "Club 5",
+      "family": "club",
+      "rank": 5,
+      "avgPerGame": {
+        "renew": 138
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "",
+      "rowScope": "all"
+    },
+    {
+      "id": "glass",
+      "label": "Glass",
+      "family": "premium",
+      "rank": 1,
+      "avgPerGame": {
+        "renew": 495
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "",
+      "rowScope": "all"
+    },
+    {
+      "id": "teal",
+      "label": "Teal",
+      "family": "premium",
+      "rank": 2,
+      "avgPerGame": {
+        "renew": 340
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "",
+      "rowScope": "all"
+    },
+    {
+      "id": "orange",
+      "label": "Orange",
+      "family": "premium",
+      "rank": 3,
+      "avgPerGame": {
+        "renew": 279
+      },
+      "expectedArcs": 2,
+      "sections": [],
+      "ring": "",
+      "rowScope": "all"
+    }
+  ],
+  "_rowScopeNote": "Most bands are section-level: a section belongs to exactly one band. Promenade Row 1 is NOT - it is row 1 *inside* promenade sections, priced separately from the rows behind it. So the map is really (section, rowScope) -> band, and the coverage check groups by rowScope. Missing this makes 'every section assigned exactly once' unsatisfiable and would push someone toward deleting the check instead of fixing the model.",
+  "_ringsNote": "Section labels in clockwise order around each seating level, as printed on the chart. This is what makes a misfiled section detectable: bands occupy contiguous arcs, and a symmetric arena puts a band's two arcs at equal length. Without it the validator can only check coverage, not placement - so transcribe the ring at the same time as the assignment, not later.",
+  "rings": {},
+  "_familyNote": "`family` groups bands that form one published price ladder, and `rank` 1 is the most expensive. The lower / promenade / upper / club ladders are named as such on the chart. The 'premium' family (Glass, Teal, Orange) is NOT - those are product names, and grouping them into a ranked ladder is an INFERENCE from their prices. It buys a real ordering check; if the chart shows they are unrelated products, split them into separate families rather than weakening the check."
+}

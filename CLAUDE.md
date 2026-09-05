@@ -101,6 +101,7 @@ npm run dev            # local app
 npm run build          # type-check, build, enforce privacy checks
 npm run schedule       # refresh + VALIDATE data/schedule.json against the NHL API
 npm run check:privacy  # privacy checks alone
+npm run check:bands    # validate config/price_bands.json (section -> price band map)
 npm run collect:discovery  # TM Discovery API price ranges -> data/market/discovery.jsonl
 npm run test:discovery     # collector self-test; no API key, no network
 node scripts/probe_browser.mjs --label local   # source reachability (needs local Chromium)
@@ -111,6 +112,12 @@ node scripts/probe_browser.mjs --label local   # source reachability (needs loca
 seller account. One row per event per UTC day, upserted - a same-day re-run corrects
 that day rather than appending. A run where *every* request fails writes nothing, so a
 bad key cannot bury the series in error rows.
+
+`scripts/check_price_bands.py` reports **NOT CHECKED**, not "clean", while the section
+assignment is missing - the band prices are transcribed but no section has been placed
+yet. Its placement checks (arc contiguity and mirror symmetry around each level's ring)
+are written and self-tested against a deliberately misfiled section, so they work the
+moment the chart is transcribed. See ops#19.
 
 `scripts/fetch_schedule.py` validates rather than trusts: the tier table was transcribed
 by hand from a graphic, so every entry is cross-checked against the live NHL schedule on
