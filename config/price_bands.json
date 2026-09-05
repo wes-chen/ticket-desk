@@ -3,7 +3,7 @@
   "_why": "This is the team's own definition of which seats are EQUIVALENT - the baseline comp set for ops#11, replacing a geometric guess. It also lets the app place a seat in the building's price structure with no scraping at all.",
   "_transcriptionStatus": {
     "bandPrices": "transcribed",
-    "sectionAssignment": "NOT TRANSCRIBED - every band's `sections` is empty",
+    "sectionAssignment": "NOT TRANSCRIBED - and the shape is now known to be wrong. An automated colour extraction from the chart reached only ~65% self-consistency against the mirror check (7/11 lower and 7/13 upper pairs), failing through rays straying across wedge boundaries. Deliberately NOT committed; a plausible-but-wrong section map is worse than none. See _modelCorrection.",
     "ringOrder": "NOT TRANSCRIBED - `rings` is empty",
     "_blocker": "Section-to-band assignment must be read off the chart's colour coding, and the chart is not in this repo. Guessing it is exactly the failure mode ops#19 warns about, and the same one that made the hand-transcribed tier table need its own validator. Left empty on purpose; scripts/check_price_bands.py reports the gap loudly rather than passing on absent data.",
     "_confidence": "The band prices below are TRANSCRIBED, not measured. They are checked for internal consistency by the validator, not against an external source."
@@ -22,10 +22,15 @@
         "renew": 141,
         "new": 148
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "lower",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        245,
+        190,
+        134
+      ]
     },
     {
       "id": "lower-1",
@@ -36,10 +41,15 @@
         "renew": 132,
         "new": 139
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "lower",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        131,
+        67,
+        154
+      ]
     },
     {
       "id": "lower-2",
@@ -50,10 +60,15 @@
         "renew": 129,
         "new": 135
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "lower",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        156,
+        33,
+        36
+      ]
     },
     {
       "id": "lower-3",
@@ -64,10 +79,15 @@
         "renew": 95,
         "new": 100
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "lower",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        77,
+        140,
+        129
+      ]
     },
     {
       "id": "lower-4",
@@ -78,10 +98,15 @@
         "renew": 88,
         "new": 92
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "lower",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        38,
+        68,
+        118
+      ]
     },
     {
       "id": "lower-5",
@@ -92,10 +117,15 @@
         "renew": 83,
         "new": 87
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "lower",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        190,
+        172,
+        210
+      ]
     },
     {
       "id": "prom-row1-center",
@@ -106,10 +136,15 @@
         "renew": 130,
         "new": 137
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "promenade",
-      "rowScope": "row1"
+      "rowScope": "row1",
+      "legendRgb": [
+        154,
+        211,
+        176
+      ]
     },
     {
       "id": "prom-row1-corner",
@@ -120,10 +155,15 @@
         "renew": 98,
         "new": 103
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "promenade",
-      "rowScope": "row1"
+      "rowScope": "row1",
+      "legendRgb": [
+        140,
+        95,
+        59
+      ]
     },
     {
       "id": "prom-1",
@@ -134,10 +174,15 @@
         "renew": 79,
         "new": 83
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "promenade",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        51,
+        123,
+        161
+      ]
     },
     {
       "id": "prom-2",
@@ -148,10 +193,15 @@
         "renew": 61,
         "new": 64
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "promenade",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        156,
+        131,
+        44
+      ]
     },
     {
       "id": "prom-3",
@@ -162,10 +212,15 @@
         "renew": 46,
         "new": 48
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "promenade",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        184,
+        41,
+        121
+      ]
     },
     {
       "id": "upper-attack-1",
@@ -176,10 +231,15 @@
         "renew": 58,
         "new": 61
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "upper",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        104,
+        75,
+        157
+      ]
     },
     {
       "id": "upper-attack-2",
@@ -190,10 +250,15 @@
         "renew": 37,
         "new": 39
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "upper",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        113,
+        202,
+        198
+      ]
     },
     {
       "id": "upper-goal-1",
@@ -204,10 +269,15 @@
         "renew": 54,
         "new": 57
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "upper",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        73,
+        151,
+        67
+      ]
     },
     {
       "id": "upper-goal-2",
@@ -218,10 +288,15 @@
         "renew": 34,
         "new": 36
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "upper",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        231,
+        100,
+        83
+      ]
     },
     {
       "id": "club-1",
@@ -231,10 +306,15 @@
       "avgPerGame": {
         "renew": 274
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        69,
+        119,
+        75
+      ]
     },
     {
       "id": "club-2",
@@ -244,10 +324,15 @@
       "avgPerGame": {
         "renew": 219
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        223,
+        75,
+        79
+      ]
     },
     {
       "id": "club-3",
@@ -257,10 +342,15 @@
       "avgPerGame": {
         "renew": 186
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        142,
+        198,
+        65
+      ]
     },
     {
       "id": "club-4",
@@ -270,10 +360,15 @@
       "avgPerGame": {
         "renew": 158
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        243,
+        206,
+        69
+      ]
     },
     {
       "id": "club-5",
@@ -283,10 +378,15 @@
       "avgPerGame": {
         "renew": 138
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        183,
+        92,
+        162
+      ]
     },
     {
       "id": "glass",
@@ -296,10 +396,15 @@
       "avgPerGame": {
         "renew": 495
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        134,
+        185,
+        228
+      ]
     },
     {
       "id": "teal",
@@ -309,10 +414,15 @@
       "avgPerGame": {
         "renew": 340
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        5,
+        120,
+        140
+      ]
     },
     {
       "id": "orange",
@@ -322,14 +432,19 @@
       "avgPerGame": {
         "renew": 279
       },
-      "expectedArcs": 2,
+      "expectedArcs": null,
       "sections": [],
       "ring": "",
-      "rowScope": "all"
+      "rowScope": "all",
+      "legendRgb": [
+        232,
+        137,
+        31
+      ]
     }
   ],
   "_rowScopeNote": "Most bands are section-level: a section belongs to exactly one band. Promenade Row 1 is NOT - it is row 1 *inside* promenade sections, priced separately from the rows behind it. So the map is really (section, rowScope) -> band, and the coverage check groups by rowScope. Missing this makes 'every section assigned exactly once' unsatisfiable and would push someone toward deleting the check instead of fixing the model.",
-  "_ringsNote": "Section labels in CLOCKWISE order around each seating level, starting from centre ice on the Sharks-bench side. Transcribed from Ticketmaster's public static seatmap for SAP Center (mapsapi.tmol.io/.../staticImage), NOT from the Sharks pricing chart - so this is arena geometry and carries no price information. CONFIDENCE: read off a PNG by eye, so corroborated rather than trusted: scripts/check_price_bands.py asserts the lower ring's six missing numbers (105/108/111/119/122/125) sit in mirror-symmetric positions about the 101-115 axis, which a misread would almost certainly break. This is what makes the arc-contiguity and mirror-symmetry placement checks runnable once section->band assignment exists.",
+  "_ringsNote": "Section labels around each seating level, starting from centre ice on the Sharks-bench side. Order is COUNTER-clockwise on screen (101 -> 128 -> 127 ...): an earlier note called it clockwise, which was wrong - with screen y increasing downward, clockwise from the bottom runs toward 102, not 128. Direction does not affect the contiguity or symmetry checks, which are direction-agnostic, but the label should not lie. Transcribed from Ticketmaster's public static seatmap and independently confirmed against the SAP Center venue map Wesley supplied - both show the same 22 lower sections with the same six gaps. Corroborated further by the mirror-symmetry check in scripts/check_price_bands.py.",
   "rings": {
     "lower": [
       "101",
@@ -398,5 +513,17 @@
     ]
   },
   "_familyNote": "`family` groups bands that form one published price ladder, and `rank` 1 is the most expensive. The lower / promenade / upper / club ladders are named as such on the chart. The 'premium' family (Glass, Teal, Orange) is NOT - those are product names, and grouping them into a ranked ladder is an INFERENCE from their prices. It buys a real ordering check; if the chart shows they are unrelated products, split them into separate families rather than weakening the check.",
-  "_ringsOpenQuestion": "The band names in this file (Promenade 1-3, Promenade Row 1, Upper Attack 1-2, Upper Goal 1-2, Club 1-5, Glass, Teal, Orange) do NOT map onto the 100/200/PL section numbering visible on Ticketmaster's map. Ticketmaster shows two rings plus nine PL sections; the Sharks' chart implies at least four priced levels. So the level names cannot be matched to rings by inference - that mapping has to come from the Sharks' own colour-coded chart. Do not guess it. See ops#19."
+  "_ringsOpenQuestion": "The band names in this file (Promenade 1-3, Promenade Row 1, Upper Attack 1-2, Upper Goal 1-2, Club 1-5, Glass, Teal, Orange) do NOT map onto the 100/200/PL section numbering visible on Ticketmaster's map. Ticketmaster shows two rings plus nine PL sections; the Sharks' chart implies at least four priced levels. So the level names cannot be matched to rings by inference - that mapping has to come from the Sharks' own colour-coded chart. Do not guess it. See ops#19.",
+  "_modelCorrection": {
+    "date": "2026-09-05",
+    "finding": "bands are ROW RANGES WITHIN sections, not whole sections",
+    "evidence": "Radial pixel scans of the official 2026-27 Sharks365 chart. Section 115, from the ice outward: CLUB 2 (~70px of rows) then LOWER 1 CENTER (~38px). Then the 200 level: PROMENADE ROW 1 CENTER as a single ~4px strip, then PROMENADE 1, then PROMENADE 2. Section 101 likewise: CLUB 3, CLUB 2, LOWER 1 CENTER, then PROMENADE 1/2.",
+    "consequence": "The `sections` array on each band is the WRONG SHAPE. The real key is (section, rowFrom, rowTo). A section-only map cannot answer 'which seats are equivalent to mine', which is what ops#11 needs it for, because two seats in the same section can be in different bands.",
+    "whatTheChartCannotGive": "ROW NUMBERS. The chart draws row bands but prints no row numbers, so the boundaries are visible as pixels and not as data. Row ranges need a different source - most likely a per-seat price lookup in Account Manager, or the member invoice, which prices the seats actually held."
+  },
+  "_endAsymmetry": {
+    "finding": "the two ends of the rink are priced DIFFERENTLY, so the arena is not left-right symmetric",
+    "evidence": "The chart labels one end 'SHARKS ATTACK TWICE'. That end carries UPPER ATTACK 1/2; the other carries UPPER GOAL 1/2, at different prices ($58/$37 vs $54/$34 renew). Confirmed empirically: scoring extracted band stacks against a left-right mirror gave 0/10 agreement, while scoring against the LONG axis (top-bottom, 101<->115) gave 7/11.",
+    "consequence": "The placement checks in scripts/check_price_bands.py assume the wrong symmetry. `expectedArcs: 2` plus equal-length arcs encodes left-right mirroring, which would have REJECTED correct data for every Attack/Goal band - those occupy one end only and so form a single arc. A false alarm from the very check written to prevent false confidence. Not repaired here: the model shape is changing to (section, row) anyway, so the arc checks need rework rather than patching."
+  }
 }
