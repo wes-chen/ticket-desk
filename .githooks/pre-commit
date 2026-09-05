@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Reject a commit whose STAGED CONTENT contains a known private value.
+#
+# This exists because it already happened, twice, in different ways:
+#
+#   1. Form placeholders written with real seat and invoice values reached the public
+#      bundle even though config/ had been scrubbed.
+#   2. A self-test fixture in scripts/check_privacy.py used the real season invoice
+#      total as its example value (ops#29). The build-time literal pass caught it -
+#      but only after the commit was pushed, because `npm test` does not run the
+#      privacy passes and `npm run build` was not run before pushing.
+#
+# The commit-msg hook covers messages. Nothing covered file content on the way in.
+# That gap is what ops#29 fell through.
+#
+# Checks only what is STAGED, so it is fast and does not complain about scratch files
+# in the working tree.
+#
+# Install:  git config core.hooksPath .githooks
+
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+PATTERNS="$ROOT/.private-patterns"
+
+# A fresh clone has no patterns file, so this cannot check anything. Say so rather than
+# passing silently - a green check that verified nothing is worse than no check.
+if [[ ! -f "$PATTERNS" ]]; then
+  echo "pre-commit: no .private-patterns found; staged content NOT checked" >&2
+  exit 0
+fi
+
+# Added lines only. A pattern being REMOVED by this commit is a fix, not a leak, and
+# flagging it would block the very commit that scrubs a value.
+staged_additions="$(git diff --cached --unified=0 --no-color --diff-filter=ACMR \
+  | grep -E '^\+' | grep -vE '^\+\+\+' || true)"
+
+if [[ -z "$staged_additions" ]]; then
+  exit 0
+fi
+
+found=0
+while IFS= read -r pat; do
+  [[ -z "$pat" || "$pat" == \#* ]] && continue
+  if grep -qF -- "$pat" <<< "$staged_additions"; then
+    echo "pre-commit: BLOCKED - staged changes add private value: $pat" >&2
+    # Name the files, so this is actionable rather than a riddle.
+    git diff --cached --name-only --diff-filter=ACMR | while IFS= read -r f; do
+      if git diff --cached --unified=0 --no-color -- "$f" | grep -E '^\+' | grep -vE '^\+\+\+' \
+         | grep -qF -- "$pat"; then
+        echo "    in: $f" >&2
+      fi
+    done
+    found=1
+  fi
+done < "$PATTERNS"
+
+if [[ $found -eq 1 ]]; then
+  echo "" >&2
+  echo "Use a fabricated value. Plausible means real - pick something absurd." >&2
+  echo "Real values belong in the private ops repo, never here." >&2
+  exit 1
+fi

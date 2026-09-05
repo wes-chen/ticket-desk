@@ -241,8 +241,21 @@ git config core.hooksPath .githooks   # enables the commit-msg private-value che
 ```
 
 `.private-patterns` is local-only and gitignored, so a fresh clone cannot run the literal
-or history privacy passes, and the commit-msg hook will say so rather than passing
-silently. Recreate it (one private literal per line) before relying on those checks.
+or history privacy passes, and the hooks will say so rather than passing silently.
+Recreate it (one private literal per line) before relying on those checks.
+
+Two hooks, covering different surfaces:
+
+- **`commit-msg`** rejects a private value in the commit *message*, which is the one
+  artifact that cannot be quietly amended once pushed.
+- **`pre-commit`** rejects a private value in staged *content*. Added in response to
+  ops#29, where a self-test fixture used the real season invoice total and reached the
+  public repo - the build-time literal pass caught it, but only after the push. It scans
+  added lines only, so the commit that *scrubs* a value is not itself blocked.
+
+**`npm test` does not run the privacy passes; `npm run build` does.** That gap is exactly
+what ops#29 fell through - the fast command is not the safe one. The pre-commit hook now
+covers it structurally, but run `npm run build` before pushing regardless.
 
 `.privacy-accepted` records reviewed-and-accepted history findings by SHA only. Accepted
 findings are still printed - an accepted risk stays visible rather than disappearing.
