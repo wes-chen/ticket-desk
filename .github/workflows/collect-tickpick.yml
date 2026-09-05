@@ -1,4 +1,4 @@
-name: Collect TickPick prices
+name: Collect market prices
 
 # The project's first working price collector (ops#6, ops#16).
 #
@@ -40,15 +40,27 @@ jobs:
 
       # Parse and upsert logic, against a real captured payload, before any request.
       - name: Self-test
-        run: python3 scripts/collect_tickpick.py --self-test
+        run: |
+          python3 scripts/market_store.py --self-test
+          python3 scripts/collect_tickpick.py --self-test
+          python3 scripts/collect_gametime.py --self-test
+          python3 scripts/summarize_market.py --self-test
 
       # Cheap and it catches a renamed or repriced event before the collector writes a
       # row against a stale id. Fails the run rather than collecting the wrong game.
       - name: Re-resolve event ids
         run: python3 scripts/collect_tickpick.py --resolve
 
-      - name: Collect
+      - name: Collect TickPick
         run: python3 scripts/collect_tickpick.py
+
+      # Second source. Measured reachable over plain HTTP from both a residential and an
+      # Actions IP. continue-on-error because the PRIMARY series must not be lost to a
+      # secondary source's bad day - the summariser and the gap check both cope with one
+      # source missing, and a red run still surfaces it.
+      - name: Collect Gametime
+        run: python3 scripts/collect_gametime.py
+        continue-on-error: true
 
       # The app imports data/market/summary.json at build time, so it has to be
       # regenerated in the same run that adds a day to the store - otherwise the

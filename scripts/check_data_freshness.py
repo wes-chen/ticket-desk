@@ -33,8 +33,17 @@ import sys
 from datetime import date, datetime, timedelta, timezone
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-STORE = ROOT / "data" / "market" / "tickpick.jsonl"
 SCHEDULE = ROOT / "data" / "schedule.json"
+
+# Every source is checked, not just the primary. A secondary source going quiet is the
+# easiest failure to miss: the summary's cross-source ratio simply disappears, which
+# looks like "only one source configured" rather than "a source broke". Missing entirely
+# is tolerated (it may not be set up); going STALE after having data is not.
+STORES = [
+    ("tickpick", ROOT / "data" / "market" / "tickpick.jsonl", True),
+    ("gametime", ROOT / "data" / "market" / "gametime.jsonl", False),
+]
+STORE = STORES[0][1]
 
 # One missed day is a hiccup (a delayed cron, a transient 5xx). Two consecutive means
 # something is broken.
@@ -134,22 +143,32 @@ def analyse(rows: list[dict], games: list[dict], today: date) -> dict:
 
 
 def run(strict: bool, today: date) -> int:
-    rows = load(STORE)
     games = json.loads(SCHEDULE.read_text())["games"]
-    a = analyse(rows, games, today)
+    fatal: list[str] = []
+    warn: list[str] = []
+    any_data = False
 
-    if not a["days"]:
+    for name, path, required in STORES:
+        rows = load(path)
+        if not rows:
+            if required:
+                print(f"{name}: NO DATA")
+                fatal.append(f"{name} is the primary source and has no data at all")
+            else:
+                print(f"{name}: not collected (optional source, skipped)")
+            continue
+        any_data = True
+        a = analyse(rows, games, today)
+        print(f"{name}: {len(rows)} rows across {len(a['days'])} day(s), "
+              f"{a['days'][0]} .. {a['days'][-1]}, last {a['staleDays']} day(s) ago")
+        for d in a["days"][-3:]:
+            print(f"    {d}: {a['okByDay'].get(d, 0)}/{a['totByDay'].get(d, 0)} priced")
+        for lvl, m in a["findings"]:
+            (fatal if lvl == "fatal" else warn).append(f"[{name}] {m}")
+
+    if not any_data:
         print("no market data yet - nothing to check")
         return 1 if strict else 0
-
-    print(f"market series: {len(rows)} rows across {len(a['days'])} day(s), "
-          f"{a['days'][0]} .. {a['days'][-1]}")
-    print(f"last observation: {a['staleDays']} day(s) ago")
-    for d in a["days"][-5:]:
-        print(f"  {d}: {a['okByDay'].get(d, 0)}/{a['totByDay'].get(d, 0)} priced")
-
-    fatal = [m for lvl, m in a["findings"] if lvl == "fatal"]
-    warn = [m for lvl, m in a["findings"] if lvl == "warn"]
 
     for m in warn:
         print(f"  WARN {m}")

@@ -24,7 +24,9 @@
     "test:calendar": "python3 scripts/make_calendar.py --self-test",
     "check:freshness": "python3 scripts/check_data_freshness.py",
     "test:freshness": "python3 scripts/check_data_freshness.py --self-test",
-    "test": "python3 scripts/run_tests.py"
+    "test": "python3 scripts/run_tests.py",
+    "collect:gametime": "python3 scripts/collect_gametime.py",
+    "collect": "python3 scripts/collect_tickpick.py && python3 scripts/collect_gametime.py && python3 scripts/summarize_market.py"
   },
   "dependencies": {
     "react": "^19.0.0",

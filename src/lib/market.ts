@@ -24,22 +24,48 @@
 
 import summary from "../../data/market/summary.json";
 
+export interface SourceQuote {
+  low: number;
+  /** Null when the source publishes no high. Gametime never does. */
+  high: number | null;
+  observedDate: string;
+}
+
 export interface MarketGame {
   gameId: number;
   date: string;
-  /** Cheapest listing in the arena, all-in. */
+  /** Cheapest listing in the arena, all-in, from the primary source. */
   low: number;
-  /** Priciest listing in the arena, all-in. */
-  high: number;
+  /** Priciest listing in the arena. Null when the source publishes no high. */
+  high: number | null;
   observedDate: string;
   observations: number;
   lowFirst?: number;
   lowFirstDate?: string;
   lowDelta?: number;
+  /**
+   * Other sources' latest quotes, kept ALONGSIDE the primary rather than blended.
+   * Two sources disagreeing is the signal that one has gone wrong; averaging them
+   * destroys exactly that signal.
+   */
+  otherSources?: Record<string, SourceQuote>;
+}
+
+export interface CrossSource {
+  comparedGames: number;
+  /** Secondary low / primary low, median across games. */
+  medianRatioToPrimary: number;
+  minRatio: number;
+  maxRatio: number;
 }
 
 export interface MarketSummary {
+  /** Primary source name - the one driving `low`/`high`. */
   source: string;
+  /** All sources with data. */
+  sources: string[];
+  /** Agreement between sources, or null with fewer than two. */
+  crossSource: CrossSource | null;
   priceBasis: string;
   isOwnChannel: boolean;
   confidence: "measured" | "measured_single_point";
@@ -67,10 +93,14 @@ export function marketFor(gameId: number): MarketGame | null {
  * Deliberately coarse - three buckets, not a percentile. A percentile would imply the
  * range is a distribution we have sampled, and we have exactly two order statistics.
  */
-export type Standing = "below_cheapest" | "inside_range" | "above_priciest";
+export type Standing = "below_cheapest" | "inside_range" | "above_priciest" | "unknown_top";
 
 export function standing(breakEven: number, m: MarketGame): Standing {
   if (breakEven < m.low) return "below_cheapest";
+  // A source may publish no high - Gametime never does. Without an upper bound there is
+  // no "above every asking price" claim to make, so say so rather than treating a
+  // missing high as infinite (which would silently read as inside_range).
+  if (m.high == null) return "unknown_top";
   if (breakEven > m.high) return "above_priciest";
   return "inside_range";
 }
@@ -83,6 +113,8 @@ export function standingNote(s: Standing): string {
       return "Break-even is above every asking price in the building. The exchange credit likely beats resale here.";
     case "inside_range":
       return "Break-even falls inside the arena's asking range. Says nothing about your section specifically.";
+    case "unknown_top":
+      return "Break-even is above the cheapest seat, but this source publishes no upper bound, so where it sits in the range is unknown.";
   }
 }
 

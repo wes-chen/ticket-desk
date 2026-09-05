@@ -284,11 +284,16 @@ function Dashboard({
                         <span
                           title={
                             `${r.mk.observations} observation(s), latest ${r.mk.observedDate}. ` +
+                            Object.entries(r.mk.otherSources ?? {})
+                              .map(([n, q]) => `${n} low $${q.low}. `)
+                              .join("") +
                             (r.be != null ? standingNote(standing(r.be, r.mk)) : "")
                           }
                         >
                           ${r.mk.low}
-                          <span className="opacity-50">&ndash;{r.mk.high}</span>
+                          {r.mk.high != null && (
+                            <span className="opacity-50">&ndash;{r.mk.high}</span>
+                          )}
                           {r.mk.lowDelta != null && r.mk.lowDelta !== 0 && (
                             <span
                               className={
@@ -477,6 +482,22 @@ function Dashboard({
               </>
             )}
           </p>
+          {market().crossSource && (
+            <p>
+              <strong>
+                Cross-checked against {market().sources.filter((x) => x !== market().source).join(", ")}
+              </strong>{" "}
+              on {market().crossSource!.comparedGames} games. The secondary source sits at a
+              median{" "}
+              {((market().crossSource!.medianRatioToPrimary - 1) * 100).toFixed(1)}% above{" "}
+              {market().source} (range{" "}
+              {((market().crossSource!.minRatio - 1) * 100).toFixed(1)}&ndash;
+              {((market().crossSource!.maxRatio - 1) * 100).toFixed(1)}%). They are kept side by
+              side rather than averaged: two sources agreeing on the <em>order</em> of games while
+              differing in <em>level</em> is expected, and a sudden move in that gap means a
+              source changed rather than the market. Hover a row for the other source&rsquo;s low.
+            </p>
+          )}
           <p>
             Two things it is not. It is <strong>not a comp for your seats</strong> &mdash; the low is
             almost always an upper-deck single, and section-level listings sit behind a path
