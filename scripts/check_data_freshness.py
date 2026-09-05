@@ -29,6 +29,7 @@ import argparse
 import collections
 import json
 import pathlib
+import re
 import sys
 from datetime import date, datetime, timedelta, timezone
 
@@ -40,15 +41,23 @@ SCHEDULE = ROOT / "data" / "schedule.json"
 # looks like "only one source configured" rather than "a source broke". Missing entirely
 # is tolerated (it may not be set up); going STALE after having data is not.
 STORES = [
-    # (name, path, required, rolling). `rolling` means the source publishes a WINDOW
-    # rather than the whole season, so games beyond its horizon are unlisted rather than
-    # missing. Only set it where that is measured - it trades away a real guarantee.
-    ("tickpick", ROOT / "data" / "market" / "tickpick.jsonl", True, False),
-    ("gametime", ROOT / "data" / "market" / "gametime.jsonl", False, False),
-    ("ticketnetwork", ROOT / "data" / "market" / "ticketnetwork.jsonl", False, True),
-    ("scorebig", ROOT / "data" / "market" / "scorebig.jsonl", False, True),
+    # (name, path, required, rolling, script). `rolling` means the source publishes a
+    # WINDOW rather than the whole season, so games beyond its horizon are unlisted rather
+    # than missing. Only set it where that is measured - it trades away a real guarantee.
+    #
+    # `script` exists so "is this source actually scheduled?" can be DERIVED from the
+    # workflows rather than declared here. See scheduled_collectors().
+    ("tickpick", ROOT / "data" / "market" / "tickpick.jsonl", True, False,
+     "collect_tickpick.py"),
+    ("gametime", ROOT / "data" / "market" / "gametime.jsonl", False, False,
+     "collect_gametime.py"),
+    ("ticketnetwork", ROOT / "data" / "market" / "ticketnetwork.jsonl", False, True,
+     "collect_ticketnetwork.py"),
+    ("scorebig", ROOT / "data" / "market" / "scorebig.jsonl", False, True,
+     "collect_scorebig.py"),
 ]
 STORE = STORES[0][1]
+WORKFLOWS = ROOT / ".github" / "workflows"
 
 # One missed day is a hiccup (a delayed cron, a transient 5xx). Two consecutive means
 # something is broken.
@@ -63,6 +72,37 @@ def load(path: pathlib.Path) -> list[dict]:
     if not path.exists():
         return []
     return [json.loads(ln) for ln in path.read_text().splitlines() if ln.strip()]
+
+
+def scheduled_collectors(workflow_text: dict[str, str]) -> set[str]:
+    """Collector scripts that a SCHEDULED workflow actually runs.
+
+    Derived rather than declared. A boolean flag saying "this source is scheduled" is a
+    second copy of a fact the workflows already hold, and the hand-maintained copy loses -
+    the same reasoning that is retiring the agent registry in ops#38.
+
+    Two things deliberately do NOT count as scheduled:
+      * a `--self-test` invocation, which proves nothing about collection
+      * a workflow with no `schedule:` trigger, e.g. a manual-dispatch probe
+
+    Passed the file contents rather than reading disk, so the rule is testable offline.
+    """
+    out: set[str] = set()
+    for text in workflow_text.values():
+        if "schedule:" not in text:
+            continue
+        for line in text.splitlines():
+            if "--self-test" in line:
+                continue
+            for m in re.findall(r"scripts/(collect_[a-z_]+\.py)", line):
+                out.add(m)
+    return out
+
+
+def workflow_text() -> dict[str, str]:
+    if not WORKFLOWS.exists():
+        return {}
+    return {p.name: p.read_text() for p in sorted(WORKFLOWS.glob("*.yml"))}
 
 
 def analyse(rows: list[dict], games: list[dict], today: date,
@@ -184,14 +224,27 @@ def run(strict: bool, today: date) -> int:
     warn: list[str] = []
     any_data = False
 
-    for name, path, required, rolling in STORES:
+    sched = scheduled_collectors(workflow_text())
+
+    for name, path, required, rolling, script in STORES:
         rows = load(path)
         if not rows:
             if required:
                 print(f"{name}: NO DATA")
                 fatal.append(f"{name} is the primary source and has no data at all")
+            elif script in sched:
+                # THE GAP THIS CLOSES (found in review, ops#39). A source that is actually
+                # SCHEDULED and has still never produced a row is broken, not unconfigured
+                # - and "optional source, skipped" made those two states identical. A
+                # rolling source blocked from its very first run - which is exactly what a
+                # datacenter IP block looks like - would have stayed green forever.
+                print(f"{name}: SCHEDULED BUT EMPTY")
+                fatal.append(f"{name} is scheduled in a workflow ({script}) but has never "
+                             f"produced a row. That is a broken collector, not an "
+                             f"unconfigured one - check the runner's verdict before "
+                             f"assuming the source has no listings.")
             else:
-                print(f"{name}: not collected (optional source, skipped)")
+                print(f"{name}: not collected (not scheduled in any workflow yet)")
             continue
         any_data = True
         a = analyse(rows, games, today, rolling)
@@ -276,6 +329,37 @@ def self_test() -> int:
     a = analyse(r, gs, today)
     check("one missed day for a game is not flagged", any("per-game hole" in m
                                                           for _, m in a["findings"]), False)
+
+    # ---- scheduled-ness is DERIVED from the workflows (ops#39) ----
+    # A source that is genuinely scheduled and has never produced a row is BROKEN, not
+    # unconfigured. Those two states were identical before this, so a rolling source
+    # blocked from its first run - what a datacenter IP block looks like - stayed green.
+    sched_wf = ("on:\n  schedule:\n    - cron: \"7 15 * * *\"\n"
+                "    - run: python3 scripts/collect_tickpick.py\n")
+    check("a scheduled workflow's collector is detected",
+          scheduled_collectors({"a.yml": sched_wf}), {"collect_tickpick.py"})
+    # A manual-dispatch-only workflow is not a schedule. probe.yml runs collectors' URLs
+    # but collects nothing on a cron, and counting it would mark sources scheduled that
+    # are not.
+    manual = "on:\n  workflow_dispatch:\n    - run: python3 scripts/collect_scorebig.py\n"
+    check("workflow_dispatch alone is not scheduled",
+          scheduled_collectors({"b.yml": manual}), set())
+    # A self-test invocation proves nothing about collection.
+    st = ("on:\n  schedule:\n    - cron: \"0 1 * * *\"\n"
+          "    - run: python3 scripts/collect_scorebig.py --self-test\n")
+    check("a --self-test line does not count as scheduled",
+          scheduled_collectors({"c.yml": st}), set())
+    # Both together: only the real invocation counts.
+    both = st + "    - run: python3 scripts/collect_gametime.py\n"
+    check("a real invocation beside a self-test still counts",
+          scheduled_collectors({"d.yml": both}), {"collect_gametime.py"})
+    check("no workflows at all is empty, not an error", scheduled_collectors({}), set())
+
+    # Every store must name a script, or scheduled-ness cannot be derived for it and the
+    # gap silently reopens for that source.
+    for entry in STORES:
+        if len(entry) != 5 or not entry[4].startswith("collect_"):
+            fails.append(f"STORES entry {entry[0]!r} does not name a collector script")
 
     # ---- the coverage horizon (ops#33, ops#36) ----
     # A rolling-window source that has priced games 0 and 1 but not the later game 2 is
