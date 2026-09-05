@@ -118,6 +118,35 @@ CONTRACTS: dict[str, list[tuple[str, str]]] = {
     ],
 }
 
+# BODY CONTRACTS. The protocol promises three things about how an issue is WRITTEN, and
+# until now nothing checked any of them - they held only because one session happened to
+# write them that way. The first type:decision filed by a tired agent at 3am without a
+# prompt block is a decision Wesley cannot answer from his phone, which is the single
+# property the whole arrangement was designed around.
+#
+# Presence only, never quality. Whether a prompt block is any GOOD is exactly the
+# judgement a regex cannot make, and pretending otherwise would be the vocabulary-sniffing
+# this file already refuses elsewhere. The reviewer agent judges; this counts.
+#
+# Checked on OPEN issues only. Closed ones predate the scheme and reflagging history
+# forever is the noise that got the old empty-issue rule deleted.
+BODY_CONTRACTS: dict[str, list[tuple[str, str]]] = {
+    "type:decision": [
+        (r"copy-paste prompt",
+         "a copy-paste prompt block - Wesley answers from a phone, and an issue that "
+         "needs the repo open to understand cannot be answered there"),
+        (r"^[ \t>]*(?:#+\s*|\*\*)Recommendation",
+         "a **Recommendation** - 'you decide' hands the work back to the PM, which is "
+         "the one thing this arrangement exists to remove"),
+    ],
+    "type:input": [
+        (r"^[ \t>]*(?:#+\s*|\*\*)Validator",
+         "a **Validator** naming what grades the paste - an input contract with no "
+         "validator is a wish, and 'looks right' is how a constant gets poisoned"),
+    ],
+}
+
+
 # An agent claims an issue before working it, so two agents never spend twice on one
 # ticket. A `claimed` label with no claim comment means nobody can say WHICH agent holds
 # it - which in practice is an agent that died mid-run and left the ticket locked.
@@ -176,6 +205,20 @@ def classify(issue: dict, bodies: list[str]) -> list[tuple[str, str]]:
                 if not re.search(pat, blob, re.I):
                     out.append(("flag", f"#{n} closed as {tl} without {what}: {title}"))
 
+    # What the issue ASKS. Open issues only.
+    #
+    # Body AND comments, deliberately. The contract is that the ISSUE carries a prompt
+    # block, not that one particular field does - and several issues legitimately gained
+    # theirs in a comment when they were retyped under this scheme. A body-only check
+    # flagged three of those as non-compliant while they were fully compliant to any
+    # reader, which is a checker measuring the wrong thing.
+    if state == "open":
+        asked = (issue.get("body") or "") + "\n" + blob
+        for tl in sorted(types):
+            for pat, what in BODY_CONTRACTS.get(tl, []):
+                if not re.search(pat, asked, re.I | re.M):
+                    out.append(("flag", f"#{n} is {tl} but lacks {what}: {title}"))
+
     # A lock nobody can attribute. See CLAIM.
     if "claimed" in labels and state == "open" and not CLAIM.search(blob):
         out.append(("flag", f"#{n} is labelled claimed but no agent said so - "
@@ -197,7 +240,7 @@ def fetch(repo: str, limit: int) -> list[dict]:
 
     raw = gh("api", f"repos/{repo}/issues?state=all&per_page={limit}",
              "--jq", '[.[] | select(has("pull_request")|not) | '
-                     '{number, title, state, labels: [.labels[].name], comments}]')
+                     '{number, title, state, body, labels: [.labels[].name], comments}]')
     issues = json.loads(raw)
     out = []
     for it in issues:
@@ -245,8 +288,12 @@ def self_test() -> int:
         if got != want:
             fails.append(f"{label}: got {got!r}, want {want!r}")
 
-    def iss(n, state, labels=("type:build",), title="t"):
-        return {"number": n, "state": state, "labels": list(labels), "title": title}
+    def iss(n, state, labels=("type:build",), title="t", body=""):
+        return {"number": n, "state": state, "labels": list(labels), "title": title,
+                "body": body}
+
+    GOOD_DECISION = ("## Recommendation\nDo A, medium confidence.\n\n"
+                     "<details><summary>copy-paste prompt</summary>...</details>")
 
     def levels(issue, bodies):
         return sorted(l for l, _ in classify(issue, bodies))
@@ -297,9 +344,43 @@ def self_test() -> int:
     # An open issue with no comments is healthy - it just has a complete body. Asserted
     # so the noisy rule that once existed here does not come back.
     check("needs-wesley with no comments is not nagged",
-          levels(iss(6, "open", ["needs-wesley", "type:decision"]), []), [])
+          levels(iss(6, "open", ["needs-wesley", "type:decision"],
+                     body=GOOD_DECISION), []), [])
     check("open with no comments is not nagged either",
           levels(iss(7, "open"), []), [])
+
+    # ---- body contracts: what the issue ASKS (ops#34) ----
+    # A decision Wesley cannot answer from his phone is not a decision issue.
+    check("a decision with no prompt block and no recommendation flags twice",
+          levels(iss(30, "open", ["type:decision"], body="just a question"), []),
+          ["flag", "flag"])
+    check("a decision with a prompt but no recommendation flags once",
+          levels(iss(31, "open", ["type:decision"],
+                     body="<summary>copy-paste prompt</summary>"), []), ["flag"])
+    check("a complete decision is clean",
+          levels(iss(32, "open", ["type:decision"], body=GOOD_DECISION), []), [])
+    check("the recommendation heading form works",
+          levels(iss(33, "open", ["type:decision"],
+                     body="## Recommendation: do A\ncopy-paste prompt"), []), [])
+    check("an input naming no validator is flagged",
+          levels(iss(34, "open", ["type:input"], body="paste the chart"), []), ["flag"])
+    check("an input naming one is clean",
+          levels(iss(35, "open", ["type:input"],
+                     body="**Validator:** npm run check:bands"), []), [])
+    # CLOSED issues are exempt - they predate the scheme, and reflagging history forever
+    # is the noise that deleted the old empty-issue rule.
+    check("a closed decision with an empty body is not flagged",
+          levels(iss(36, "closed", ["type:decision"], body=""),
+                 ["**Decision (recorded)** - x", "**Closing - done.**"]), [])
+    # Presence only. A prompt block mentioned in passing still counts, deliberately -
+    # judging whether it is any GOOD is what the reviewer is for, and a regex pretending
+    # to would be the vocabulary-sniffing this file refuses everywhere else.
+    check("a prompt block supplied in a COMMENT satisfies the contract",
+          levels(iss(38, "open", ["type:decision"], body="bare"),
+                 ["## Recommendation\ndo A", "copy-paste prompt here"]), [])
+
+    check("build and research carry no body contract",
+          levels(iss(37, "open", ["type:research"], body=""), []), [])
 
     # ---- routing: type is what tells an unattended session who acts ----
     check("open with no type label is flagged",
