@@ -59,7 +59,7 @@ def discoverable() -> tuple[list[pathlib.Path], list[pathlib.Path]]:
     """
     tested, untested = [], []
     for f in sorted(SCRIPTS.iterdir()):
-        if f.name == SELF or f.name.startswith("_") or f.suffix not in (".py", ".mjs"):
+        if f.name == SELF or f.name.startswith("_") or f.suffix not in (".py", ".mjs", ".mts"):
             continue
         try:
             src = f.read_text()
@@ -70,7 +70,14 @@ def discoverable() -> tuple[list[pathlib.Path], list[pathlib.Path]]:
 
 
 def run_one(f: pathlib.Path) -> tuple[bool, str]:
-    cmd = ["node", str(f)] if f.suffix == ".mjs" else [sys.executable, str(f)]
+    if f.suffix == ".mts":
+        # Node 24 strips TypeScript types natively, so the web libs are testable with
+        # no test-runner dependency. Warnings are noise here and are filtered below.
+        cmd = ["node", "--experimental-strip-types", "--no-warnings", str(f)]
+    elif f.suffix == ".mjs":
+        cmd = ["node", str(f)]
+    else:
+        cmd = [sys.executable, str(f)]
     try:
         r = subprocess.run(cmd + ["--self-test"], capture_output=True, text=True,
                            cwd=str(ROOT), timeout=60)
