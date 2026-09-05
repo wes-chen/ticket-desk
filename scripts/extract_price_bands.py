@@ -70,11 +70,28 @@ def match(c, palette, tol=14):
     return best if bd <= tol else None
 
 
-def label_discs(im, box, scale=1.0):
+def label_discs(im, box, scale=1.0, thr=40):
     """Centroids of the chart's black section-number discs.
 
-    Found by connected components on near-black rather than by template matching:
-    the discs are the only large solid dark blobs in the seating area.
+    Connected components on near-black. The discs are the only large solid dark blobs in
+    the seating area, so shape filters separate them from text and logos.
+
+    `thr` IS LOAD-BEARING, and it is why main() searches for it rather than fixing it.
+    The chart draws section dividers as thin dark lines. Where a disc touches one, a
+    loose threshold lets connectivity merge the disc into the ENTIRE line network - one
+    blob of 44,463 pixels at a fill ratio of 0.02, which every shape filter then
+    correctly rejects. The disc vanishes with nothing in the rejection list to explain
+    it. That cost exactly one section on the 300dpi chart: 27 upper discs instead of 28.
+    At 300dpi the divider lines are antialiased to mid-grey while the discs stay solid
+    black, so tightening the threshold breaks the merge. Measured on that chart:
+
+        thr < 30  -> 50 discs      thr < 50  -> 49
+        thr < 40  -> 50 discs      thr < 60  -> 49  (the old default)
+
+    An EROSION-based detector was tried first and abandoned: the discs carry white
+    numerals, so only a thin annulus is solid dark, and its thickness varies with the
+    digit count. Every radius either over-segmented one disc into arcs or lost the
+    thin-annulus discs entirely - 105 discs at r=7px, 25 at r=10px, never 50.
 
     Size thresholds are RESOLUTION-RELATIVE. They were originally absolute, tuned on a
     1020px-wide chart, and silently rejected every disc on the 2550px version - a
@@ -85,7 +102,7 @@ def label_discs(im, box, scale=1.0):
     minpx = int(180 * scale * scale)
     maxpx = int(1400 * scale * scale)
     min_side = int(14 * scale)
-    dark = lambda c: c[0] < 60 and c[1] < 60 and c[2] < 60
+    dark = lambda c: c[0] < thr and c[1] < thr and c[2] < thr
     seen = bytearray(im.w * im.h)
     out = []
     for y in range(y0, y1):
@@ -164,7 +181,8 @@ def anchor(ring, order, anchor_section, at_deg=90.0):
     return [(seq[(j - k) % n], ring[j]) for j in range(len(ring))]
 
 
-def sector_bands(im, pairs, cx, cy, a, b, r_lo, r_hi, palette, margin=0.30, min_share=0.07):
+def sector_bands(im, pairs, cx, cy, a, b, r_lo, r_hi, palette, margin=0.30,
+                 min_share=0.07, tol=14):
     """Histogram band colours inside each section's angular sector.
 
     Sectors, not rays. The first version walked a single radial line and its samples
@@ -187,7 +205,7 @@ def sector_bands(im, pairs, cx, cy, a, b, r_lo, r_hi, palette, margin=0.30, min_
                 x, y = int(cx + math.cos(th) * r * a), int(cy + math.sin(th) * r * b)
                 if not (0 <= x < im.w and 0 <= y < im.h):
                     continue
-                m = match(im.px(x, y), palette)
+                m = match(im.px(x, y), palette, tol)
                 if m:
                     cnt[m] += 1
                     radii.setdefault(m, []).append(r)
@@ -314,6 +332,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--image", type=pathlib.Path)
     ap.add_argument("--out", type=pathlib.Path)
+    ap.add_argument("--tol", type=int, default=14,
+                    help="max-channel colour tolerance; raise for a JPEG-derived image")
     ap.add_argument("--min-agreement", type=float, default=0.95,
                     help="refuse to write a map below this mirror agreement")
     ap.add_argument("--centre", nargs=2, type=int, metavar=("X", "Y"))
@@ -344,9 +364,24 @@ def main() -> int:
         print(f"derived bowl centre: ({cx}, {cy})")
     # Baseline is the 1020px-wide chart the thresholds were tuned on.
     scale = im.w / 1020.0
-    pts = [p for p in label_discs(im, (int(im.w * 0.13), int(im.h * 0.18),
-                                       int(im.w * 0.88), int(im.h * 0.63)), scale)
-           if math.hypot(p[0] - cx, p[1] - cy) > 60 * scale]
+    box = (int(im.w * 0.13), int(im.h * 0.18), int(im.w * 0.88), int(im.h * 0.63))
+    r = rings()
+    want = len(r["lower"]) + len(r["upper"])
+
+    # Search the darkness threshold for the one that finds exactly the known number of
+    # sections, rather than hardcoding a value tuned on one image. The count is known
+    # independently from the ring geometry, so this is a check with a right answer - not
+    # a fit. Reported either way, and a miss is loud.
+    pts, used = [], None
+    for thr in (40, 30, 50, 35, 45, 60):
+        cand = [p for p in label_discs(im, box, scale, thr)
+                if math.hypot(p[0] - cx, p[1] - cy) > 60 * scale]
+        if used is None or abs(len(cand) - want) < abs(len(pts) - want):
+            pts, used = cand, thr
+        if len(cand) == want:
+            pts, used = cand, thr
+            break
+    print(f"darkness threshold <{used} -> {len(pts)} discs (expected {want})")
     print(f"section label discs: {len(pts)}")
     if len(pts) < 20:
         print("too few discs found - is this the pricing chart, and is --centre right?",
@@ -354,7 +389,6 @@ def main() -> int:
         return 1
 
     inner, outer, a, b = split_rings(pts, cx, cy)
-    r = rings()
     print(f"rings: inner {len(inner)} (expect {len(r['lower'])}), "
           f"outer {len(outer)} (expect {len(r['upper'])})")
     if len(inner) != len(r["lower"]) or len(outer) != len(r["upper"]):
@@ -377,7 +411,8 @@ def main() -> int:
     def best(ring, order, axis, r_lo, r_hi):
         out = []
         for label, seq in (("as-listed", order), ("reversed", list(reversed(order)))):
-            ex = sector_bands(im, anchor(ring, seq, axis[0]), cx, cy, a, b, r_lo, r_hi, pal)
+            ex = sector_bands(im, anchor(ring, seq, axis[0]), cx, cy, a, b,
+                              r_lo, r_hi, pal, tol=args.tol)
             frac, ok, n, bad = agreement(ex, mirror_pairs(seq, *axis))
             out.append((ok, label, ex, ok, n, bad))
         out.sort(reverse=True, key=lambda t: t[0])
