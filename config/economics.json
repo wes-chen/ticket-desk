@@ -6,7 +6,7 @@
       "ticketmaster": {
         "label": "Ticketmaster / NHL Ticket Exchange",
         "sellerFeeRate": 0.1,
-        "source": "MEASURED at TWO independent price points, both exactly 0.9000: a $77.00 listing displayed 'You will make $69.30 per ticket' (69.30/77.00), and two separate $70.00 listings each displayed 'You will make $63.00 per ticket' (63.00/70.00).",
+        "source": "MEASURED at THREE independent price points, all exactly 0.9000: $77.00 -> $69.30, $70.00 -> $63.00 (two listings), and $85.00 -> $76.50 (two listings, with the fee itemised as -$8.50 per ticket = exactly 10%).",
         "confidence": "measured",
         "openQuestion": "RESOLVED 2026-09-05. Third-party sources cite 10-15%, but the rate is flat 10% across the two price points measured. The earlier corroboration (dividing instant offers by 0.9 yielding round dollars) was circular because it assumed 0.9; the $70 -> $63.00 observation is direct and independent of it. Still unmeasured: whether the rate holds at much higher prices, or differs by tier. Both $77 and $70 are low-priced listings on preseason inventory.",
         "whyItMatters": "Break-even = credit / (1 - feeRate). At 10% an A+ break-even is credit/0.90; at 15% it is credit/0.85 - roughly 6% higher on every game. A systematic error here biases every pricing decision in the same direction.",
@@ -32,10 +32,24 @@
             "impliedRate": 0.1,
             "game": "2026-09-24 ANA",
             "tier": "PRESEASON"
+          },
+          {
+            "list": 85.0,
+            "net": 76.5,
+            "impliedRate": 0.1,
+            "game": "2026-09-22 VGK",
+            "tier": "PRESEASON"
+          },
+          {
+            "list": 85.0,
+            "net": 76.5,
+            "impliedRate": 0.1,
+            "game": "2026-09-24 ANA",
+            "tier": "PRESEASON"
           }
         ],
         "payoutDelayDays": 7,
-        "payoutNote": "Deposited ~7 days after the event, and requires taxpayer/TIN info on file before any payout is released.",
+        "payoutNote": "Deposited to a bank account typically within 5-7 BUSINESS days of the sale per the Edit Listing dialog, while the My Listings banner says 'typically within 7 days after the event'. Those are different clocks - business days from sale vs calendar days from the event - and which governs is unverified. Requires taxpayer/TIN info on file before any payout is released.",
         "sellsHere": true,
         "minListPriceRatioOfFace": {
           "value": 0.8,
@@ -44,7 +58,14 @@
           "_whyItMatters": "A hard FLOOR on how far a listing can be marked down, which the model did not have at all. It binds precisely in the endgame the app currently describes as 'mark down aggressively': after the T-48h deadline you cannot list below 0.8 x face, so the worst a sale can net is 0.8 x face x 0.9 = 0.72 x face. If the market will not clear at that, the outcome is $0 rather than a smaller sale.",
           "openQuestion": "The published rule governs Sharks365 member resale through Account Manager / TicketExchange. Whether Ticketmaster's general marketplace enforces the same floor on these listings is NOT verified - the measured $70 listings sat far above it, so the constraint has never been tested in practice."
         },
-        "noPriceCeiling": true
+        "noPriceCeiling": true,
+        "listingCutoff": {
+          "behaviour": "an unsold listing is removed automatically at a configurable cutoff",
+          "defaultObserved": "puck drop (the dialog's prose) vs 2 hours after (the dropdown's stated default)",
+          "confidence": "measured_single_point",
+          "source": "Edit Listing dialog, 2026-09-05: prose read 'automatically removed on Tue Sep 22, 2026 07:00 PM' - puck drop - while the dropdown showed 'Tue Sep 22, 2026 09:00 PM (Default)'. The two disagree by two hours.",
+          "_whyItMatters": "The model assumes an unsold listing simply expires worthless at puck drop. If listings are pulled EARLIER than puck drop, the window to sell is shorter than modelled, which matters in the endgame after the exchange floor is gone. Cheap to settle: read the dropdown's options."
+        }
       },
       "stubhub": {
         "label": "StubHub",
@@ -80,8 +101,10 @@
     "creditHaircut": {
       "value": 1.0,
       "confidence": "assumed",
-      "_comment": "Set below 1.0 to discount account credit against cash. 1.0 = treat credit as worth full face. ASSUMED, not measured - and see the open question below, which may make a single constant the wrong shape entirely.",
-      "_openQuestion": "Wesley reports (2026-09-05) that credit must be spent on other Sharks tickets IN THE SAME SEASON and expires. If that holds, the haircut is not a constant: credit is only worth something if a remaining home game exists to spend it on, so its value DECAYS through the season. Exchanging the LAST home game (2027-04-10 vs ANA, tier A+) would yield credit with zero remaining games - worth $0, meaning that game has no exchange floor at all and the 'listing high is free because the credit catches you' argument does not apply to it. The app currently says otherwise for that game. Deliberately NOT modelled as a decay curve yet, because the shape depends on terms we have not read: whether credit covers playoffs, and whether it can roll into next season's renewal invoice (if it can, 1.0 is roughly right and this concern evaporates). Full terms requested in ops#30; sensitivity in ops#25."
+      "_comment": "Discounts account credit against cash. 1.0 = credit is worth full face. STILL 1.0, AND NOW KNOWN TO BE WRONG - kept only because the right value is a preference nobody has supplied, and inventing one would be fabricated precision.",
+      "_resolved": "The question this key was blocked on is ANSWERED (Wesley, 2026-09-05, plus the published terms in ops#30): credit does NOT roll into next season's renewal invoice and cannot buy playoffs. See creditSpendableOn.rollsOverToNextSeason=false and creditExpiry, both `measured`, in this same object. The escape hatch that would have made 1.0 defensible is closed, so 1.0 now OVERSTATES the credit for every game except those with many outlets remaining.",
+      "_whyStill1": "The structural half is already modelled and does not depend on this number: remainingCreditOutlets() and exchangeIsRealFloor() in src/lib/economics.ts remove the floor entirely for the final home game, which is where 1.0 was ACTIVELY wrong. What remains is how sharply credit loses value as outlets shrink - and that is Wesley's preference, not a fact about the world. He already holds a seat at every home game, so credit buys only extras, and only he knows what an extra pair is worth. `assumed, 0.8, per Wesley` would be strictly better than this; a number picked by an agent to look precise would not. Open in ops#25.",
+      "_effect": "At 1.0 every break-even is the maximum it can be, so the model is CONSERVATIVE about recommending a sale - it demands a higher price to beat the credit than a discounted credit would. Erring that way is deliberate while the value is unknown."
     },
     "creditExpiry": {
       "when": "puck_drop_of_last_regular_season_home_game",
@@ -138,7 +161,8 @@
       "IMPORTANT: this is a BID, not an ask. It is a floor on market value, not fair value. A patient listing should clear above it - measuring that spread is a core job of the collector.",
       "Ticketmaster states it does not set the offer amount.",
       "OBSERVATION: in all four samples the implied bid net was BELOW the tier exchange credit, including for marquee A+ opponents. If that holds, the instant offer is never the right exit while the exchange window is open.",
-      "Only visible on the authenticated seller page, so this is manual-paste data, not scraped."
+      "Only visible on the authenticated seller page, so this is manual-paste data, not scraped.",
+      "MEASURED 2026-09-05: raising the ask from $70 to $85 on both preseason games left the instant offers UNCHANGED ($24.30 and $27.90 per ticket). Consistent with the offer being a buyer's bid that does not respond to the seller's ask - which is what makes it a floor on value rather than a function of our pricing."
     ],
     "samples": [
       {

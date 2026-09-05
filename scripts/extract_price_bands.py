@@ -70,13 +70,21 @@ def match(c, palette, tol=14):
     return best if bd <= tol else None
 
 
-def label_discs(im, box, minpx=180, maxpx=1400):
+def label_discs(im, box, scale=1.0):
     """Centroids of the chart's black section-number discs.
 
     Found by connected components on near-black rather than by template matching:
     the discs are the only large solid dark blobs in the seating area.
+
+    Size thresholds are RESOLUTION-RELATIVE. They were originally absolute, tuned on a
+    1020px-wide chart, and silently rejected every disc on the 2550px version - a
+    higher-resolution input made the tool find nothing, which is the opposite of the
+    expected failure and would have read as "the PDF is not the same chart".
     """
     x0, y0, x1, y1 = box
+    minpx = int(180 * scale * scale)
+    maxpx = int(1400 * scale * scale)
+    min_side = int(14 * scale)
     dark = lambda c: c[0] < 60 and c[1] < 60 and c[2] < 60
     seen = bytearray(im.w * im.h)
     out = []
@@ -103,7 +111,8 @@ def label_discs(im, box, minpx=180, maxpx=1400):
             ys = [p[1] for p in pts]
             w, h = max(xs) - min(xs) + 1, max(ys) - min(ys) + 1
             # Roughly circular and mostly filled - excludes text and logos.
-            if w < 14 or h < 14 or abs(w - h) > 8 or len(pts) / (w * h) < 0.45:
+            if (w < min_side or h < min_side or abs(w - h) > 8 * scale
+                    or len(pts) / (w * h) < 0.45):
                 continue
             out.append((sum(xs) / len(xs), sum(ys) / len(ys)))
     return out
@@ -319,10 +328,25 @@ def main() -> int:
 
     import minipng
     im = minipng.Img(str(args.image))
-    cx, cy = args.centre if args.centre else (im.w // 2, im.h // 2)
+    if args.centre:
+        cx, cy = args.centre
+    else:
+        # Centre of the seating bowl, taken as the centroid of all label discs. The
+        # image centre is close but not identical - the chart has a title band above
+        # the map - and a few pixels of offset skews every sector angle.
+        rough = label_discs(im, (int(im.w * 0.13), int(im.h * 0.18),
+                                 int(im.w * 0.88), int(im.h * 0.63)), im.w / 1020.0)
+        if not rough:
+            print("no label discs found at all - wrong image?", file=sys.stderr)
+            return 1
+        cx = int(sum(p[0] for p in rough) / len(rough))
+        cy = int(sum(p[1] for p in rough) / len(rough))
+        print(f"derived bowl centre: ({cx}, {cy})")
+    # Baseline is the 1020px-wide chart the thresholds were tuned on.
+    scale = im.w / 1020.0
     pts = [p for p in label_discs(im, (int(im.w * 0.13), int(im.h * 0.18),
-                                       int(im.w * 0.88), int(im.h * 0.63)))
-           if math.hypot(p[0] - cx, p[1] - cy) > 60]
+                                       int(im.w * 0.88), int(im.h * 0.63)), scale)
+           if math.hypot(p[0] - cx, p[1] - cy) > 60 * scale]
     print(f"section label discs: {len(pts)}")
     if len(pts) < 20:
         print("too few discs found - is this the pricing chart, and is --centre right?",
