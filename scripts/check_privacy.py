@@ -282,7 +282,11 @@ def self_test() -> int:
 
         # Forbidden key on ONE line of a JSONL - and the line number must be right.
         (root / "data" / "market" / "s.jsonl").write_text(
-            '{"low": 5}\n{"low": 6}\n{"invoiceTotal": 8121}\n')
+            # Test values are deliberately absurd. An earlier version of this line used a
+            # REAL invoice figure as the fixture value and shipped it to a public repo -
+            # caught by this very script's literal pass, but only after the commit was
+            # pushed. Never reach for a plausible number here; plausible means real.
+            '{"low": 5}\n{"low": 6}\n{"invoiceTotal": 11111111}\n')
         probs = structural(root)
         check("forbidden key in jsonl caught", len(probs), 1)
         check("jsonl finding locates line 3", ":3:" in probs[0], True)

@@ -21,6 +21,8 @@ import {
 } from "./lib/profile";
 import { useLocalStorage } from "./lib/store";
 import { STALE_THRESHOLD, market, marketFor, staleDays, standing, standingNote } from "./lib/market";
+import { FIT_THRESHOLD, OUTCOME_LABEL, outcomeFor, sellRate, tally } from "./lib/outcomes";
+import type { OutcomeKind } from "./lib/profile";
 
 const GAMES = scheduleData.games as Game[];
 const FEE = economics.resale.platforms.ticketmaster.sellerFeeRate;
@@ -104,13 +106,36 @@ function Dashboard({
       const net = list == null ? null : netPayout(list, FEE);
       const delta = net == null || credit == null ? null : net - credit;
       const mk = marketFor(g.gameId);
-      return { g, credit, be, list, net, delta, mk, guide: guidance(g, credit, now) };
+      const outcome = outcomeFor(profile, g.gameId);
+      return { g, credit, be, list, net, delta, mk, outcome, guide: guidance(g, credit, now) };
     });
   }, [profile, now]);
 
   const deadlineSoon = rows
     .filter((r) => phaseOf(r.g, now) === "floor_active" && hoursUntil(exchangeDeadline(r.g), now) <= 72)
     .slice(0, 5);
+
+  const counts = useMemo(() => tally(profile, GAMES, now), [profile, now]);
+  const rate = useMemo(() => sellRate(counts), [counts]);
+
+  const setOutcome = (gameId: number, kind: string) => {
+    const next = { ...(profile.outcomes ?? {}) };
+    if (kind === "") {
+      delete next[String(gameId)];
+    } else {
+      const list = profile.listPrices[String(gameId)] ?? null;
+      next[String(gameId)] = {
+        kind: kind as OutcomeKind,
+        on: new Date().toISOString().slice(0, 10),
+        // Captured at the moment of recording, not read back later: the list price can
+        // change afterwards, and an outcome is only meaningful against the price that
+        // was actually standing when it happened.
+        atList: list,
+        netPerSeat: kind === "sold" && list != null ? Number((list * (1 - FEE)).toFixed(2)) : null,
+      };
+    }
+    setProfile({ ...profile, outcomes: next });
+  };
 
   const setList = (gameId: number, v: string) => {
     const next = { ...profile.listPrices };
@@ -203,6 +228,12 @@ function Dashboard({
                 <th className="px-4 py-3 text-right font-medium">Net</th>
                 <th className="px-4 py-3 text-right font-medium">vs exchange</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th
+                  className="px-4 py-3 font-medium"
+                  title="How this game's tickets actually left your hands. The only input a sell-timing model could ever be fit against, and not recoverable once a game has been played."
+                >
+                  Outcome
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -275,11 +306,107 @@ function Dashboard({
                       {r.delta == null ? "--" : `${r.delta > 0 ? "+" : ""}${r.delta.toFixed(2)}`}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-slate-500">{r.guide.headline}</td>
+                    <td className="px-4 py-2.5">
+                      <select
+                        value={r.outcome?.kind ?? ""}
+                        onChange={(e) => setOutcome(r.g.gameId, e.target.value)}
+                        className={`rounded border bg-transparent px-1.5 py-1 text-xs ${
+                          r.outcome
+                            ? "border-slate-300 dark:border-slate-700"
+                            : past
+                              ? "border-red-400 text-red-600 dark:border-red-700 dark:text-red-400"
+                              : "border-slate-200 text-slate-400 dark:border-slate-800"
+                        }`}
+                        title={
+                          r.outcome
+                            ? `Recorded ${r.outcome.on}` +
+                              (r.outcome.atList != null ? ` at $${r.outcome.atList}` : "")
+                            : past
+                              ? "This game has been played and nothing was recorded - a permanently lost observation"
+                              : "Record what happened once it resolves"
+                        }
+                      >
+                        <option value="">{past ? "not recorded" : "--"}</option>
+                        {(Object.keys(OUTCOME_LABEL) as OutcomeKind[]).map((k) => (
+                          <option key={k} value={k}>
+                            {OUTCOME_LABEL[k]}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+        </section>
+
+        <section className="mt-8 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+            Recorded outcomes
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            {counts.total} of {GAMES.length} games recorded. These are the only input a
+            sell-timing model could ever be fit against, and they cannot be recovered after a
+            game is played &mdash; there are 44 a season.
+          </p>
+
+          {counts.missed.length > 0 && (
+            <p className="mt-3 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-800 dark:border-red-800/50 dark:bg-red-950/30 dark:text-red-300">
+              <strong>
+                {counts.missed.length} played game{counts.missed.length === 1 ? "" : "s"} with
+                nothing recorded
+              </strong>{" "}
+              &mdash; {counts.missed.slice(0, 4).map((g) => `${g.date} ${g.opponent.abbrev}`).join(", ")}
+              {counts.missed.length > 4 && ` +${counts.missed.length - 4} more`}. Each is an
+              observation that is gone.
+            </p>
+          )}
+
+          <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            {(Object.keys(OUTCOME_LABEL) as OutcomeKind[]).map((k) => (
+              <div key={k} className="rounded border border-slate-200 p-2 dark:border-slate-800">
+                <dt className="text-xs text-slate-500">{OUTCOME_LABEL[k]}</dt>
+                <dd className="mt-0.5 text-lg font-semibold tabular-nums">{counts.byKind[k]}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <p className="mt-3 text-xs text-slate-500">
+            {rate.rate == null ? (
+              <>
+                No game has reached a market conclusion yet, so there is no sell rate to report.
+              </>
+            ) : (
+              <>
+                <strong>
+                  {rate.sold} of {rate.concluded} sold ({Math.round(rate.rate * 100)}%)
+                </strong>{" "}
+                among games that reached a market conclusion.
+                {rate.censored > 0 && (
+                  <>
+                    {" "}
+                    {rate.censored} exchanged game{rate.censored === 1 ? " is" : "s are"} excluded
+                    from that denominator rather than counted as failures &mdash; returning for
+                    credit is a chosen exit taken before the deadline, so it is censored data, not
+                    a ticket that failed to sell.
+                  </>
+                )}
+              </>
+            )}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {rate.trustworthy ? (
+              <>Enough outcomes to attempt a timing fit (ops#8).</>
+            ) : (
+              <>
+                <strong>Not a usable rate yet.</strong> {counts.needed} more outcome
+                {counts.needed === 1 ? "" : "s"} before a probability-of-sale fit is worth
+                attempting at all, and {FIT_THRESHOLD} is a floor rather than a target. Any curve
+                drawn before then would look authoritative while being invented.
+              </>
+            )}
+          </p>
         </section>
 
         <section className="mt-8 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">

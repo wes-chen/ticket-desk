@@ -16,6 +16,27 @@ export type Tier = "A+" | "A" | "B" | "C" | "D" | "PRESEASON";
 
 export const TIERS: Tier[] = ["A+", "A", "B", "C", "D", "PRESEASON"];
 
+/**
+ * How a game's tickets actually left our hands. ops#22.
+ *
+ * `exchanged` is deliberately distinct from `unsold`. Returning for credit is a CHOSEN
+ * exit that paid the tier credit; going unsold paid $0. Conflating them would bias any
+ * future P(sell) fit toward pessimism by treating a deliberate, successful fallback as
+ * a failure to sell.
+ */
+export type OutcomeKind = "sold" | "exchanged" | "unsold" | "instant";
+
+export interface Outcome {
+  kind: OutcomeKind;
+  /** ISO date the outcome happened. */
+  on: string;
+  /** List price at the moment of the outcome, per ticket. Null when not applicable. */
+  atList: number | null;
+  /** Actual net received per ticket, if known. */
+  netPerSeat: number | null;
+  note?: string;
+}
+
 export interface Profile {
   v: 1;
   seats: {
@@ -29,6 +50,18 @@ export interface Profile {
   credits: Partial<Record<Tier, number>>;
   /** Per-game intended list price, keyed by NHL gameId. */
   listPrices: Record<string, number>;
+  /**
+   * Recorded outcomes, keyed by NHL gameId. The ONLY path to ops#8 ever existing:
+   * asking prices alone cannot fit a probability of sale, and an outcome is not
+   * recoverable once a game has been played.
+   */
+  outcomes?: Record<string, Outcome>;
+  /**
+   * Observed (list, net) pairs from the seller page, for ops#9. Kept as a list rather
+   * than a single rate so a stepped or tiered fee shows up as disagreement between
+   * observations instead of being averaged away.
+   */
+  feeObservations?: { list: number; net: number; on: string; note?: string }[];
 }
 
 export const EMPTY_PROFILE: Profile = {
@@ -37,6 +70,8 @@ export const EMPTY_PROFILE: Profile = {
   invoiceTotal: null,
   credits: {},
   listPrices: {},
+  outcomes: {},
+  feeObservations: [],
 };
 
 export function isConfigured(p: Profile): boolean {
