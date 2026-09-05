@@ -273,6 +273,25 @@ successes cannot be audited.
   numeric ld+json fields with no dollar sign anywhere. Fifth instance in this project of
   the instrument being the thing that was wrong.
 
+- **The two new sources disagree about time, and both are right in their own way. Do not
+  unify their joins.** Measured 2026-09-05:
+
+  | source | `startDate` | correct join |
+  | --- | --- | --- |
+  | TicketNetwork | `-07:00` in September - a real, DST-aware offset | normalise to UTC, join on `startTimeUTC` |
+  | ScoreBig | `-08:00` in **every** month, including September | **discard the offset**, join on local wall clock |
+
+  ScoreBig stamps a fixed `-08:00` year-round. Honouring it matched **10/44** games;
+  joining on wall clock matched **19/19**. The failure is silent - it keeps the PST games
+  and drops every PDT one, which reads as ordinary partial coverage rather than as a bug.
+  `collect_scorebig.py` therefore slices the timestamp string instead of parsing it,
+  because parsing invites honouring the tzinfo that is the problem. A later refactor that
+  "unifies" these two joins will break one of them (ops#36).
+
+  **ScoreBig also serves prices as strings** (`"15.20"`), where every other source serves
+  numbers. Coerced at that collector's boundary - untouched, it would have reached
+  `summarize_market.py`'s delta arithmetic, where `"9.00" > "15.20"` is true.
+
 - **The Discovery API is NOT subject to the ops#4 block.** `resolve_tm_events.py`
   resolved all 44 events from a GitHub Actions runner. The block applies to TM's web
   properties, not `app.ticketmaster.com`.
