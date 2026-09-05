@@ -237,6 +237,27 @@ def mirror_pairs(order, a, b):
     return out
 
 
+def coverage(extracted, palette):
+    """Legend bands that appear nowhere in the extraction.
+
+    THE GATE NEEDS THIS BECAUSE SYMMETRY ALONE IS GAMEABLE, and I nearly gamed it.
+    Raising `min_share` from 0.07 to 0.12 lifted mirror agreement from 92% to 96% -
+    past the threshold - by making GLASS, TEAL and ORANGE vanish from the lower bowl
+    entirely. Both halves of every mirror pair then agreed, because both omitted the
+    same thin bands. 66 band-entries fell to 49 and 15 distinct bands to 11.
+
+    That would have certified a map missing the three most expensive products in the
+    building ($495, $340 and $279 per game) while reporting 96% confidence. A symmetric
+    omission is invisible to a symmetry check by construction.
+
+    The invariant that closes it: the chart prints a legend entry only for a band that
+    has seats, so EVERY legend band must appear somewhere in a complete extraction.
+    Absent bands are missing data, whatever the symmetry says.
+    """
+    seen = {e["band"] for v in extracted.values() for e in v}
+    return sorted(set(palette) - seen)
+
+
 def agreement(extracted, pairs):
     """Fraction of mirror pairs whose band stacks match, plus the disagreements."""
     ok, bad = 0, []
@@ -312,6 +333,21 @@ def self_test() -> int:
     check("agreement counts matching pairs", (ok, tot), (1, 2))
     check("agreement fraction", round(frac, 2), 0.5)
     check("disagreement is reported", bad[0][0], "103")
+
+    # coverage(): the guard against buying agreement by discarding data.
+    pal3 = {"A": (1, 1, 1), "B": (2, 2, 2), "C": (3, 3, 3)}
+    check("nothing missing when all bands appear",
+          coverage({"1": [{"band": "A"}, {"band": "B"}], "2": [{"band": "C"}]}, pal3), [])
+    check("a dropped band is reported",
+          coverage({"1": [{"band": "A"}], "2": [{"band": "C"}]}, pal3), ["B"])
+    check("an empty extraction misses everything",
+          coverage({}, pal3), ["A", "B", "C"])
+    # The specific failure this exists for: a symmetric omission scores perfectly on
+    # symmetry while dropping a band.
+    sym = {"102": [{"band": "A"}], "128": [{"band": "A"}]}
+    _, ok, tot, _ = agreement(sym, [("102", "128")])
+    check("symmetric omission passes the symmetry check", (ok, tot), (1, 1))
+    check("but coverage catches it", coverage(sym, pal3), ["B", "C"])
 
     # The config the tool reads must actually carry what it needs.
     pal_real = legend()
@@ -403,7 +439,10 @@ def main() -> int:
             return -1, 1, {}
         parts, ok, tot = {}, 0, 0
         for ring, order, axis, lo, hi, label in (
-                (inner, r["lower"], ("101", "115"), 0.46, 0.88, "lower"),
+                # Swept independently of the upper ring: 0.46-0.92 scores 9/11 where
+                # the shared 0.46-0.88 scored 8/11. The two rings have different radial
+                # extents and no reason to share a window.
+                (inner, r["lower"], ("101", "115"), 0.46, 0.92, "lower"),
                 (outer, r["upper"], ("201", "215"), 0.95, 1.18, "upper")):
             best = None
             for dname, seq in (("as-listed", order), ("reversed", list(reversed(order)))):
@@ -450,6 +489,21 @@ def main() -> int:
     frac = ok / tot if tot else 0.0
     print(f"mirror agreement overall: {ok}/{tot} -> {frac:.0%} "
           f"(need {args.min_agreement:.0%})")
+
+    missing = coverage(ex, pal)
+    if missing:
+        print(f"coverage: {len(pal) - len(missing)}/{len(pal)} legend bands placed; "
+              f"MISSING {missing}")
+    else:
+        print(f"coverage: all {len(pal)} legend bands placed")
+
+    if missing:
+        print(f"\nREFUSING to write a map that places no seats in {missing}. The chart "
+              f"prints a legend entry only for a band that exists, so an absent band is "
+              f"missing data - and a symmetric omission is invisible to the symmetry "
+              f"check, which is exactly how a higher min_share can buy agreement by "
+              f"discarding the thinnest bands.", file=sys.stderr)
+        return 1
 
     if frac < args.min_agreement:
         print(f"\nREFUSING to write a map at {frac:.0%} agreement. The arena is "
