@@ -66,11 +66,14 @@
       "CONFIRMED: credit is a pure tier constant. Samples across different opponents, weekdays, and start times matched exactly within each tier.",
       "Credit explicitly EXCLUDES any service fees previously paid on the tickets.",
       "Credit lands as account credit, not cash - it only has value if it gets spent.",
-      "Hard deadline 48h before puck drop. After that the exchange floor is gone entirely."
+      "Hard deadline 48h before puck drop. After that the exchange floor is gone entirely.",
+      "OPEN: credit reportedly expires at season end and buys only other Sharks tickets, which would make its value decline through the season and reach zero for the final home game. See creditHaircut._openQuestion and ops#30."
     ],
     "creditHaircut": {
       "value": 1.0,
-      "_comment": "Set below 1.0 to discount account credit against cash. 1.0 = treat credit as worth full face."
+      "confidence": "assumed",
+      "_comment": "Set below 1.0 to discount account credit against cash. 1.0 = treat credit as worth full face. ASSUMED, not measured - and see the open question below, which may make a single constant the wrong shape entirely.",
+      "_openQuestion": "Wesley reports (2026-09-05) that credit must be spent on other Sharks tickets IN THE SAME SEASON and expires. If that holds, the haircut is not a constant: credit is only worth something if a remaining home game exists to spend it on, so its value DECAYS through the season. Exchanging the LAST home game (2027-04-10 vs ANA, tier A+) would yield credit with zero remaining games - worth $0, meaning that game has no exchange floor at all and the 'listing high is free because the credit catches you' argument does not apply to it. The app currently says otherwise for that game. Deliberately NOT modelled as a decay curve yet, because the shape depends on terms we have not read: whether credit covers playoffs, and whether it can roll into next season's renewal invoice (if it can, 1.0 is roughly right and this concern evaporates). Full terms requested in ops#30; sensitivity in ops#25."
     }
   },
   "instantOffer": {
