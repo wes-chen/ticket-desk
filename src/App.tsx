@@ -3,7 +3,10 @@ import scheduleData from "../data/schedule.json";
 import economics from "../config/economics.json";
 import Setup from "./components/Setup";
 import {
+  MIN_LIST_RATIO_OF_FACE,
   breakEvenList,
+  exchangeIsRealFloor,
+  minListPrice,
   exchangeDeadline,
   fmt,
   guidance,
@@ -119,7 +122,10 @@ function Dashboard({
       const delta = net == null || credit == null ? null : net - credit;
       const mk = marketFor(g.gameId);
       const outcome = outcomeFor(profile, g.gameId);
-      return { g, credit, be, list, net, delta, mk, outcome, guide: guidance(g, credit, now) };
+      const floor = minListPrice(credit);
+      const hasFloor = exchangeIsRealFloor(g, GAMES);
+      return { g, credit, be, list, net, delta, mk, outcome, floor, hasFloor,
+               guide: guidance(g, credit, GAMES, now) };
     });
   }, [profile, now, feeRate]);
 
@@ -276,7 +282,28 @@ function Dashboard({
                     <td className="px-4 py-2.5 text-right tabular-nums text-slate-600 dark:text-slate-400">
                       {fmt(r.credit)}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-medium tabular-nums">{fmt(r.be)}</td>
+                    <td
+                      className="px-4 py-2.5 text-right font-medium tabular-nums"
+                      title={
+                        r.floor == null
+                          ? "Enter this tier's credit to compute break-even"
+                          : `Minimum allowed list price ${fmt(r.floor)} ` +
+                            `(${Math.round(MIN_LIST_RATIO_OF_FACE * 100)}% of face; published rule). ` +
+                            `You cannot mark down below it, so below that the outcome is $0 rather ` +
+                            `than a cheaper sale.` +
+                            (r.hasFloor
+                              ? ""
+                              : " NOTE: credit from this game expires at its own puck drop with no " +
+                                "remaining games to spend it on, so there is no exchange floor here.")
+                      }
+                    >
+                      {fmt(r.be)}
+                      {!r.hasFloor && (
+                        <span className="ml-1 text-red-600 dark:text-red-400" aria-hidden>
+                          !
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-slate-600 dark:text-slate-400">
                       {r.mk == null ? (
                         <span className="text-slate-400">--</span>
@@ -316,7 +343,17 @@ function Dashboard({
                         value={r.list ?? ""}
                         placeholder="--"
                         onChange={(e) => setList(r.g.gameId, e.target.value)}
-                        className="w-20 rounded border border-slate-300 bg-transparent px-2 py-1 text-right text-sm tabular-nums dark:border-slate-700"
+                        className={`w-20 rounded border bg-transparent px-2 py-1 text-right text-sm tabular-nums ${
+                          r.list != null && r.floor != null && r.list < r.floor
+                            ? "border-red-500 text-red-600 dark:text-red-400"
+                            : "border-slate-300 dark:border-slate-700"
+                        }`}
+                        title={
+                          r.list != null && r.floor != null && r.list < r.floor
+                            ? `Below the ${fmt(r.floor)} minimum allowed list price - this listing ` +
+                              `would be rejected`
+                            : undefined
+                        }
                       />
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{fmt(r.net)}</td>
@@ -504,6 +541,17 @@ function Dashboard({
             TickPick&rsquo;s robots.txt disallows. And it is{" "}
             <strong>not the channel you sell on</strong> &mdash; Ticketmaster blocks collection, so
             this is a neighbouring market, not your achievable price.
+          </p>
+          <p>
+            <strong className="text-slate-600 dark:text-slate-400">Two published rules the
+            model now respects.</strong>{" "}
+            A listing cannot be posted below{" "}
+            {Math.round(MIN_LIST_RATIO_OF_FACE * 100)}% of face, so there is a hard bottom to any
+            markdown &mdash; below it the outcome is $0, not a cheaper sale. And account credit
+            expires at puck drop of the last home game, cannot roll into next season, and cannot
+            buy playoff tickets &mdash; so the exchange is <em>not</em> a floor for the final home
+            game, which is marked with a red{" "}
+            <span className="text-red-600 dark:text-red-400">!</span> above.
           </p>
           <p>
             The sell-timing curve is still deliberately unbuilt. {market().observationDays} day

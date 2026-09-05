@@ -36,7 +36,15 @@
         ],
         "payoutDelayDays": 7,
         "payoutNote": "Deposited ~7 days after the event, and requires taxpayer/TIN info on file before any payout is released.",
-        "sellsHere": true
+        "sellsHere": true,
+        "minListPriceRatioOfFace": {
+          "value": 0.8,
+          "confidence": "measured_published",
+          "source": "Published Sharks365 variable-pricing FAQ: 'Sharks365 Members can post their tickets for resale up to 20% below the ticket price of the game selected for resale.' Worked example given: a $150.00 member rate implies a $120.00 minimum list.",
+          "_whyItMatters": "A hard FLOOR on how far a listing can be marked down, which the model did not have at all. It binds precisely in the endgame the app currently describes as 'mark down aggressively': after the T-48h deadline you cannot list below 0.8 x face, so the worst a sale can net is 0.8 x face x 0.9 = 0.72 x face. If the market will not clear at that, the outcome is $0 rather than a smaller sale.",
+          "openQuestion": "The published rule governs Sharks365 member resale through Account Manager / TicketExchange. Whether Ticketmaster's general marketplace enforces the same floor on these listings is NOT verified - the measured $70 listings sat far above it, so the constraint has never been tested in practice."
+        },
+        "noPriceCeiling": true
       },
       "stubhub": {
         "label": "StubHub",
@@ -67,13 +75,52 @@
       "Credit explicitly EXCLUDES any service fees previously paid on the tickets.",
       "Credit lands as account credit, not cash - it only has value if it gets spent.",
       "Hard deadline 48h before puck drop. After that the exchange floor is gone entirely.",
-      "OPEN: credit reportedly expires at season end and buys only other Sharks tickets, which would make its value decline through the season and reach zero for the final home game. See creditHaircut._openQuestion and ops#30."
+      "CONFIRMED from published terms 2026-09-05: credit expires at puck drop of the last regular-season home game, does NOT roll over, and cannot buy playoff tickets. So the exchange floor shrinks through the season and does not exist at all for the final game."
     ],
     "creditHaircut": {
       "value": 1.0,
       "confidence": "assumed",
       "_comment": "Set below 1.0 to discount account credit against cash. 1.0 = treat credit as worth full face. ASSUMED, not measured - and see the open question below, which may make a single constant the wrong shape entirely.",
       "_openQuestion": "Wesley reports (2026-09-05) that credit must be spent on other Sharks tickets IN THE SAME SEASON and expires. If that holds, the haircut is not a constant: credit is only worth something if a remaining home game exists to spend it on, so its value DECAYS through the season. Exchanging the LAST home game (2027-04-10 vs ANA, tier A+) would yield credit with zero remaining games - worth $0, meaning that game has no exchange floor at all and the 'listing high is free because the credit catches you' argument does not apply to it. The app currently says otherwise for that game. Deliberately NOT modelled as a decay curve yet, because the shape depends on terms we have not read: whether credit covers playoffs, and whether it can roll into next season's renewal invoice (if it can, 1.0 is roughly right and this concern evaporates). Full terms requested in ops#30; sensitivity in ops#25."
+    },
+    "creditExpiry": {
+      "when": "puck_drop_of_last_regular_season_home_game",
+      "confidence": "measured",
+      "source": "Published Sharks365 Ticket Exchange FAQ: 'Any unused account credit will expire at puck drop on the last game of the current season.'"
+    },
+    "creditSpendableOn": {
+      "allowed": [
+        "seat upgrades",
+        "additional individual game tickets",
+        "group tickets",
+        "single game suite rental"
+      ],
+      "scope": "regular season home games of the SAME season only",
+      "excluded": [
+        "Stanley Cup Playoff tickets",
+        "concessions",
+        "merchandise",
+        "future season ticket products",
+        "Sharks365 membership payments",
+        "purchases on sjsharks.com, ticketmaster.com, or TicketExchange by Ticketmaster"
+      ],
+      "rollsOverToNextSeason": false,
+      "confidence": "measured",
+      "source": "Published Sharks365 Ticket Exchange FAQ.",
+      "_whyItMatters": "This closes the escape hatch that would have made creditHaircut=1.0 defensible. Credit CANNOT be applied to next season's renewal invoice and CANNOT buy playoff tickets, so it must be spent on a remaining regular-season home game or it dies. Its value therefore DECAYS through the season and is effectively zero for the final home game - see creditDecay."
+    },
+    "creditDecay": {
+      "shape": "count_of_regular_season_home_games_strictly_after_this_game",
+      "confidence": "measured_terms_assumed_valuation",
+      "_comment": "Derived from the published expiry and spend scope, not from a fitted curve. Credit from returning game G can only buy tickets to a regular-season home game that has not happened yet. For the LAST home game (2027-04-10 vs ANA, tier A+) that set is empty apart from the game itself, so the credit's only use is buying different seats to the game you just returned - economically not an exit. That game therefore has NO exchange floor: its outcomes are 'it sells', the instant offer, or $0. The count of remaining games is MEASURED; how sharply value falls as that count shrinks is a preference (Wesley already holds a seat at every home game, so credit buys only extras) and is deliberately not modelled as a curve.",
+      "additionalFrictionNotModelled": "The FAQ warns inventory is first-come first-served and some games may be unavailable, so spendability degrades as games sell out too - not only as games run out. Not modelled; it would be invented."
+    },
+    "oneForOneExchange": {
+      "sameTierAndPriceCode": true,
+      "netCost": 0,
+      "confidence": "measured",
+      "source": "Published FAQ: 'Ticket exchanges within the same tier and within the same price code will be a 1-for-1 exchange, meaning the net total of the transaction will be $0.'",
+      "_comment": "A distinct exit from return-for-credit: move seats game-to-game within a tier at no cost. Not currently in the model's four exits."
     }
   },
   "instantOffer": {

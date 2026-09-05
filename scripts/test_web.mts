@@ -18,8 +18,8 @@
  */
 
 import {
-  breakEvenList, exchangeDeadline, exits, guidance, hoursUntil, listToNet, netPayout,
-  phaseOf, type Game,
+  breakEvenList, exchangeDeadline, exchangeIsRealFloor, exits, guidance, hoursUntil,
+  listToNet, minListPrice, netPayout, phaseOf, remainingCreditOutlets, type Game,
 } from "../src/lib/economics.ts";
 import { FIT_THRESHOLD, sellRate, tally } from "../src/lib/outcomes.ts";
 import {
@@ -99,18 +99,92 @@ const hair = Object.fromEntries(
 near("credit haircut discounts the exchange exit", hair.exchange.perSeat!, 38.25);
 
 // guidance(): the phase drives urgency, and a missing credit must not fabricate one.
-const early = guidance(g, 51, new Date("2026-09-01T00:00:00Z"));
+const laterSeason: Game[] = [g, { ...game("2026-12-01T02:00:00Z"), gameId: 99 }];
+const early = guidance(g, 51, laterSeason, new Date("2026-09-01T00:00:00Z"));
 check("no urgency far out", early.urgency, "none");
 near("guidance carries break-even", early.breakEven!, 56.6667, 0.001);
 
-const soon = guidance(g, 51, new Date("2026-09-28T02:00:00Z"));
+const soon = guidance(g, 51, laterSeason, new Date("2026-09-28T02:00:00Z"));
 check("urgency inside 72h", soon.urgency, "soon");
 
-const expired = guidance(g, 51, new Date("2026-09-30T00:00:00Z"));
+const expired = guidance(g, 51, laterSeason, new Date("2026-09-30T00:00:00Z"));
 check("urgency after the deadline", expired.urgency, "now");
 
-const noCredit = guidance(g, null, new Date("2026-09-01T00:00:00Z"));
+const noCredit = guidance(g, null, laterSeason, new Date("2026-09-01T00:00:00Z"));
 check("no credit -> no break-even invented", noCredit.breakEven, null);
+
+// --- published exchange terms: the floor is not universal ------------------------
+//
+// From the Sharks365 Ticket Exchange FAQ: account credit expires at puck drop of the
+// last game of the season, does not roll over, and cannot buy playoff tickets. So
+// credit from returning a game must be spent on a regular-season home game that has
+// not happened yet - and for the FINAL home game, none has.
+
+const season: Game[] = [
+  { ...game("2026-09-22T02:00:00Z"), gameId: 90, gameType: "preseason", tier: "PRESEASON" },
+  { ...game("2026-10-01T02:00:00Z"), gameId: 91, tier: "A" },
+  { ...game("2027-04-08T02:00:00Z"), gameId: 92, tier: "B" },
+  { ...game("2027-04-10T02:00:00Z"), gameId: 93, tier: "A+" },
+];
+const [pre, first, secondLast, last] = season;
+
+check("preseason game has every regular game as an outlet",
+  remainingCreditOutlets(pre, season), 3);
+check("first regular game has the later regular games", remainingCreditOutlets(first, season), 2);
+check("second-to-last has exactly one", remainingCreditOutlets(secondLast, season), 1);
+check("LAST home game has none", remainingCreditOutlets(last, season), 0);
+
+// Preseason games are sources of credit but never places to spend it.
+check("preseason is not counted as an outlet",
+  remainingCreditOutlets({ ...game("2026-09-20T02:00:00Z"), gameId: 89 }, season), 3);
+
+check("floor is real for the first game", exchangeIsRealFloor(first, season), true);
+check("floor is NOT real for the last game", exchangeIsRealFloor(last, season), false);
+
+// guidance() must not tell you the credit catches you when it does not.
+const lastG = guidance(last, 120, season, new Date("2027-01-01T00:00:00Z"));
+check("last game headline says no floor", lastG.headline, "No exchange floor - resale or nothing");
+check("last game urgency is now", lastG.urgency, "now");
+const firstG = guidance(first, 90, season, new Date("2026-09-01T00:00:00Z"));
+check("a normal game still says list high", firstG.headline, "Floor active - list high");
+
+// An empty season must assume the floor EXISTS - claiming otherwise without evidence
+// would be worse than the bug this replaced.
+check("no season provided -> floor assumed present",
+  guidance(first, 90, [], new Date("2026-09-01T00:00:00Z")).headline, "Floor active - list high");
+
+// exits(): the exchange must not be offered when credit cannot be spent.
+const lastExits = Object.fromEntries(
+  exits(last, 120, 200, { season }).map((e) => [e.key, e]),
+);
+check("exchange exit unavailable on the last game", lastExits.exchange.available, false);
+check("and it says why", lastExits.exchange.note.includes("no games left"), true);
+check("unsold is the real downside there",
+  lastExits.unsold.note, "this is the real downside now");
+
+const firstExits = Object.fromEntries(
+  exits(first, 90, 200, { season }).map((e) => [e.key, e]),
+);
+check("exchange exit available on a normal game", firstExits.exchange.available, true);
+check("unsold is avoidable on a normal game",
+  firstExits.unsold.note, "avoidable - exchange is still open");
+
+// The minimum list price - a floor the model previously did not have at all.
+near("min list is 80% of face", minListPrice(150)!, 120);   // the FAQ's worked example
+near("min list on a $51 preseason face", minListPrice(51)!, 40.8);
+check("no credit -> no min list", minListPrice(null), null);
+// Worst achievable net from a sale, which is what makes the endgame bite.
+near("worst net at the floor is 0.72 x face", netPayout(minListPrice(100)!), 72);
+// And it sits BELOW break-even, so the floor never blocks the list-high strategy -
+// it only binds when marking down after the deadline.
+check("the floor is below break-even", minListPrice(100)! < breakEvenList(100), true);
+
+// After the deadline the guidance must name the floor rather than say "aggressively".
+const afterDeadline = guidance(first, 90, season, new Date("2026-09-30T12:00:00Z"));
+check("expired-floor guidance names the list floor",
+  afterDeadline.detail.includes("floor is"), true);
+check("expired-floor headline unchanged", afterDeadline.headline,
+  "Floor expired - resale or nothing");
 
 // --- outcomes: the censoring rule -----------------------------------------------
 

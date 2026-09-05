@@ -15,5 +15,9 @@
     "allowImportingTsExtensions": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "vite.config.ts"]
+  // scripts/test_web.mts is included deliberately. It was NOT typechecked before, and
+  // that hid a real breakage: changing guidance()'s signature left the tests calling
+  // the old one, passing a Date where a Game[] was expected. tsc said nothing; the
+  // failure surfaced as two tests quietly asserting against the wrong clock.
+  "include": ["src", "vite.config.ts", "scripts/test_web.mts"]
 }
