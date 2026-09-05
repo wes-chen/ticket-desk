@@ -14,3 +14,16 @@
 # information and reveals little. Rewriting published history was judged not worth
 # it for this. The commit-msg hook now prevents recurrence.
 6d93f37
+
+# c5fa7a3 - a self-test fixture in scripts/check_privacy.py used the real season
+# invoice total as its example value, and was pushed to the public repo.
+# Accepted 2026-09-05 by Wesley on the same reasoning as 6d93f37: one labelled
+# four-digit figure, no seat or account data alongside it, and derivable from the
+# Sharks' own public per-section marketing prices. Rewriting 17 commits of published
+# history was judged not worth it - and force-pushing would not have removed the
+# object anyway, since GitHub keeps it fetchable by SHA until it garbage-collects.
+#
+# Prevented from recurring by .githooks/pre-commit, which now rejects private values
+# in staged CONTENT (the commit-msg hook only ever covered messages). The fixture
+# value is now 11111111, with a comment: plausible means real.
+c5fa7a3

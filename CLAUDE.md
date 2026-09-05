@@ -17,23 +17,45 @@ is marked stale on purpose.
 
 ## 1. This repo is PUBLIC. Never commit personal data.
 
-Non-negotiable, and it has already been violated once - not through config, but through
-**form placeholders** written with real seat and invoice values. Personal data leaks
-through UI copy, examples, comments, commit messages, and docs just as readily as
-through config files.
+Non-negotiable, and it has been violated **twice**: first through **form placeholders**
+written with real seat and invoice values, then through a **self-test fixture** that used
+the real invoice total as its example value (ops#29). Both times the config files were
+scrubbed correctly. Personal data leaks through UI copy, examples, comments, test
+fixtures, commit messages, and docs just as readily as through config.
 
-Never write into this repo:
+**What is forbidden is the LINKAGE, not the field.** This wording matters, because the
+earlier version banned "listing prices" outright while `config/economics.json` had been
+committing them all along as fee-calibration data - a contradiction the README stated the
+other way round (ops#21). A rule that the codebase visibly violates is a rule people stop
+reading.
 
-- Seat section / row / seat numbers
+Never write into this repo anything that ties **our seats or our account** to a value:
+
+- Seat section / row / seat numbers - never, in any form
 - Season invoice totals, or any amount paid
 - Exchange credit amounts per tier
-- Listing prices, payouts, or account identifiers
+- Listing prices, payouts, or offers **attributable to our listings** - which games we
+  have listed, at what price, with what net
+- Account, listing, or order identifiers
 
 These live in **browser `localStorage`** (entered by the user through the app's setup
 screen) and in the **private ops repo**. Nowhere else.
 
-Market observations that are not seat-identifying - fee ratios, the instant-offer
-formula, public listing prices - are fine here.
+**Fine here**, because they carry no seat and no account:
+
+- Fee *ratios* and the isolated (list, net) pairs they are derived from. A `$70 -> $63.00`
+  pair is a measurement of Ticketmaster's fee, not a statement about our seats. It is the
+  audit trail for the most load-bearing constant in the model, and moving it out would
+  cost more than it protects.
+- The instant-offer formula.
+- Other people's public listing prices - the whole collected market series.
+- Published team pricing, such as the section/band marketing table.
+
+The test: could a reader connect this number to **our** seats or **our** account? If yes
+it is private, whatever field it lives in. If no, it is a market observation.
+
+Corollary for fixtures and examples: **plausible means real.** Use absurd values
+(`11111111`), never a realistic-looking one. That is precisely how ops#29 happened.
 
 ### Enforcement
 

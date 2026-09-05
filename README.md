@@ -90,25 +90,41 @@ control is Enterprise-only. So the deployed bundle is deliberately **empty of pe
 | NHL schedule, 44 home games | Seat section / row / numbers |
 | Tier assignment per game (from the public marketing graphic) | Season invoice total |
 | Seller fee rate, 48h deadline, the model itself | Exchange credit amounts per tier |
-| | Per-game list prices |
+| Collected market prices - other sellers, whole arena | **Our** list prices, nets, and offers |
+| Isolated (list, net) pairs, as fee measurements | Which games we have listed, and at what |
+| Published team pricing, e.g. the section/band table | Account, listing, and order identifiers |
+
+The line is the **linkage, not the field**. A `$70 -> $63.00` pair is a measurement of
+Ticketmaster's fee and carries no seat; *our* asking price on a named game does. The test: could
+a reader connect this number to our seats or our account?
 
 Personal data lives in `localStorage` and moves between devices through a URL **fragment**.
 Fragments are never transmitted in an HTTP request - they don't reach GitHub and don't appear in
 access logs. The encoding is obfuscation, not encryption: anyone holding the link can read it.
 
 `scripts/check_privacy.py` enforces this and runs as part of `npm run build`. It exists because the
-leak already happened once: the config files were scrubbed correctly, but form *placeholders* were
-written using real seat and invoice values and shipped them anyway. Scrubbing config is not
-sufficient - personal data leaks through UI copy, examples, and documentation just as easily.
+leak has happened **twice**: first form *placeholders* written with real seat and invoice values,
+then a *self-test fixture* that used the real invoice total as its example value. Both times the
+config files were scrubbed correctly. Scrubbing config is not sufficient - personal data leaks
+through UI copy, examples, test fixtures, and documentation just as easily. Corollary:
+**plausible means real** - example values should be absurd, never realistic.
 
-Two halves:
+Three passes:
 
 - **Structural** - rejects forbidden keys (`creditPerSeat`, `invoiceTotal`, `costBasis`, ...) in
-  committed JSON. Runs everywhere, including CI.
+  committed JSON and JSONL, recursively under `config/`, `data/`, and `tests/`. Runs everywhere,
+  including CI.
 - **Literal** - greps the built output *and every git-tracked file* for real private values listed in
   a gitignored `.private-patterns`. Local only, by design: committing that file would defeat it.
+- **History** - git log content *and* commit messages, since scrubbing the tree does nothing about
+  commits that already shipped. Automatically fatal when the remote is public.
 
-Both halves are verified against deliberately introduced leaks.
+All three are verified against deliberately introduced leaks. Two hooks back them up:
+`commit-msg` for messages, `pre-commit` for staged content.
+
+**A clean build on a fresh clone is weaker evidence than it looks.** Without
+`.private-patterns` the literal and history passes silently skip, so CI stays green on
+findings only a local build can see.
 
 ## Layout
 
@@ -137,11 +153,23 @@ season.
 reconciliation, private profile with cross-device transfer, installable PWA with offline support,
 enforced privacy checks.
 
-**Not built yet:** the market collector, and the sell-timing curve.
+**Also built:** the market collector. Two independent sources (TickPick and Gametime) run daily
+in GitHub Actions over plain HTTP, 44/44 home games, and cross-check each other -
+Spearman +0.994 on game ordering, with the level gap between them monitored so a source going
+wrong is detectable. Their prices also independently validate the hand-transcribed tier table
+(Spearman -0.92 against tier rank, medians monotone). Aggregates commit here; raw payloads go to
+90-day Actions artifacts and never into git.
+
+It is **event-level, not seat-level**: both sources put their listing grids behind
+robots-disallowed paths, so per-section comps need a different route. And it is a **comp market,
+not our channel** - Ticketmaster blocks collection from a CI runner and a residential browser
+alike, so its prices are not collectable.
+
+**Not built yet:** the sell-timing curve.
 
 The timing model is deliberately absent rather than faked. This is a first selling season, so there
 is no sell-through history to fit against - any probability-of-sale number today would be invented.
-The collector has to run first and accumulate price-vs-days-to-puck-drop data; the model comes after.
+Outcome recording now exists to accumulate that history; the model comes after enough of it.
 
 ## Development
 
