@@ -61,6 +61,12 @@ jobs:
       - name: Cross-check tiers against the market
         run: python3 scripts/check_tier_market.py
 
+      # STRICT here on purpose: in the collector's own run, a gap means the collector is
+      # broken, and a silent collector is worse than a noisy one. `npm run build` runs
+      # the same check advisory, so stale data cannot block the deploy that ships a fix.
+      - name: Check for gaps
+        run: python3 scripts/check_data_freshness.py --strict
+
       # Not hidden-file-prefixed: upload-artifact@v4 silently excludes dotted paths and
       # uploaded nothing at all in ops#4, emitting only a warning.
       - name: Upload raw payloads

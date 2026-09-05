@@ -85,3 +85,18 @@ export function standingNote(s: Standing): string {
       return "Break-even falls inside the arena's asking range. Says nothing about your section specifically.";
   }
 }
+
+/**
+ * How many days old the market series is, computed in the browser rather than baked at
+ * build time - a bundle built on Monday and viewed on Friday would otherwise claim to be
+ * fresh. `null` when there is no data at all.
+ */
+export function staleDays(now: Date = new Date()): number | null {
+  if (!MARKET.lastObservedDate) return null;
+  const last = new Date(`${MARKET.lastObservedDate}T00:00:00Z`);
+  const today = new Date(`${now.toISOString().slice(0, 10)}T00:00:00Z`);
+  return Math.round((today.getTime() - last.getTime()) / 86_400_000);
+}
+
+/** Matches STALE_DAYS in scripts/check_data_freshness.py. */
+export const STALE_THRESHOLD = 2;

@@ -20,7 +20,7 @@ import {
   type Tier,
 } from "./lib/profile";
 import { useLocalStorage } from "./lib/store";
-import { market, marketFor, standing, standingNote } from "./lib/market";
+import { STALE_THRESHOLD, market, marketFor, staleDays, standing, standingNote } from "./lib/market";
 
 const GAMES = scheduleData.games as Game[];
 const FEE = economics.resale.platforms.ticketmaster.sellerFeeRate;
@@ -150,6 +150,19 @@ function Dashboard({
             address bar.
           </div>
         )}
+
+        {(() => {
+          // A stale series is worse than no series: the numbers still look authoritative.
+          // ops#24.
+          const stale = staleDays(now);
+          return stale != null && stale >= STALE_THRESHOLD ? (
+            <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200">
+              <strong>Market data is {stale} days old</strong> &mdash; last collected{" "}
+              {market().lastObservedDate}. The collector may have stopped. Arena asks below are
+              stale, not current.
+            </div>
+          ) : null;
+        })()}
 
         {deadlineSoon.length > 0 && (
           <section className="mb-8 rounded-lg border border-red-300 bg-red-50 p-5 dark:border-red-800/50 dark:bg-red-950/30">

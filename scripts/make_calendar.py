@@ -79,7 +79,15 @@ def fold(line: str) -> str:
 
 def build(games: list[dict], market: dict) -> str:
     lows = {g["gameId"]: g for g in market.get("games", [])}
-    now = datetime.now(timezone.utc)
+
+    # DTSTAMP is derived from the market data's own timestamp, NOT from the wall clock.
+    # Two reasons. Functionally, calendar clients use DTSTAMP to decide whether an event
+    # changed; a stamp that moves on every 12-hour refresh invites spurious re-notify.
+    # Practically, `now` made this file differ on every build, so it showed as a
+    # modification in every commit and the daily collector would have churned it.
+    stamp_src = market.get("generatedAt")
+    now = (datetime.fromisoformat(stamp_src.replace("Z", "+00:00")) if stamp_src
+           else datetime.now(timezone.utc))
 
     lines = [
         "BEGIN:VCALENDAR",
