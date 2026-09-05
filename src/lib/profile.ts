@@ -62,6 +62,14 @@ export interface Profile {
    * observations instead of being averaged away.
    */
   feeObservations?: { list: number; net: number; on: string; note?: string }[];
+  /**
+   * Instant "Sell Your Tickets Now" offers, keyed by NHL gameId, oldest first. ops#12.
+   *
+   * Login-only, so this is manual-paste data - and it is the ONLY price signal we have
+   * from the channel these tickets are actually sold on, since Ticketmaster blocks
+   * collection from both a runner and a residential browser. A bid, not an ask.
+   */
+  instantOffers?: Record<string, { on: string; offerPerTicket: number }[]>;
 }
 
 export const EMPTY_PROFILE: Profile = {
@@ -72,6 +80,7 @@ export const EMPTY_PROFILE: Profile = {
   listPrices: {},
   outcomes: {},
   feeObservations: [],
+  instantOffers: {},
 };
 
 export function isConfigured(p: Profile): boolean {

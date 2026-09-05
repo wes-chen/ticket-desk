@@ -164,9 +164,23 @@ const full: Profile = {
   listPrices: { "999": 70 },
   outcomes: { "999": { kind: "sold", on: "2026-09-05", atList: 70, netPerSeat: 63 } },
   feeObservations: [{ list: 70, net: 63, on: "2026-09-05" }],
+  instantOffers: { "999": [{ on: "2026-09-05", offerPerTicket: 24.3 }] },
 };
 check("profile round-trips through the fragment encoding",
   decodeProfile(encodeProfile(full)), full);
+check("instant offers survive the round-trip",
+  decodeProfile(encodeProfile(full))!.instantOffers!["999"][0].offerPerTicket, 24.3);
+
+// Forward migration: a profile encoded before a field existed must decode with that
+// field defaulted, not undefined. This is what makes an old share link keep working -
+// and it is why decodeProfile spreads EMPTY_PROFILE first.
+const legacy = { v: 1, seats: { section: "111", row: "9", seats: ["1"] },
+  invoiceTotal: null, credits: { A: 1 }, listPrices: {} };
+const migrated = decodeProfile(btoa(JSON.stringify(legacy)))!;
+check("an old profile gains outcomes as an empty object", migrated.outcomes, {});
+check("an old profile gains instantOffers as an empty object", migrated.instantOffers, {});
+check("an old profile gains feeObservations as an empty list", migrated.feeObservations, []);
+check("an old profile keeps its own values", migrated.credits, { A: 1 });
 check("outcomes survive the round-trip",
   decodeProfile(encodeProfile(full))!.outcomes!["999"].kind, "sold");
 check("garbage decodes to null", decodeProfile("!!!not-base64!!!"), null);
@@ -179,6 +193,89 @@ check("seatCount floors at 1", seatCount(EMPTY_PROFILE), 1);
 check("seatCount counts seats", seatCount(full), 2);
 near("invoice per seat divides by seat count", invoicePerSeat(full)!, 617);
 check("no invoice -> null per seat", invoicePerSeat(EMPTY_PROFILE), null);
+
+// --- fees: calibration from observed (list, net) pairs --------------------------
+
+import { calibrate, impliedRate, listToNetUnder, netUnder } from "../src/lib/fees.ts";
+
+const obs = (list: number, net: number) => ({ list, net, on: "2026-09-05" });
+
+near("implied rate of a single pair", impliedRate(obs(70, 63)), 0.1);
+
+// The two real measurements. A flat 10% must come out flat, with no fixed component.
+let cal = calibrate([obs(77, 69.3), obs(70, 63)]);
+near("rate from the two measured pairs", cal.rate!, 0.1, 0.0005);
+near("no fixed component implied", cal.fixed!, 0, 0.01);
+check("consistent observations produce no findings", cal.findings, []);
+check("two agreeing observations are usable", cal.usable, true);
+
+// One observation derives a rate but must NOT be called usable: it cannot distinguish a
+// percentage from a percentage-plus-fixed-fee.
+cal = calibrate([obs(70, 63)]);
+near("single observation still gives a rate", cal.rate!, 0.1);
+check("single observation is not usable", cal.usable, false);
+check("single observation pins fixed at zero", cal.fixed, 0);
+
+// Same price level twice: a fixed component is unidentifiable and must be said so.
+cal = calibrate([obs(70, 63), obs(70, 63)]);
+check("same-price observations flag unidentifiability",
+  cal.findings.some((f) => f.includes("cannot be separated")), true);
+check("same-price observations are not usable", cal.usable, false);
+
+// A FIXED per-ticket fee on top of a percentage: net = list*0.9 - 2.
+cal = calibrate([obs(50, 50 * 0.9 - 2), obs(200, 200 * 0.9 - 2)]);
+near("fixed component recovered", cal.fixed!, 2, 0.01);
+near("rate recovered alongside a fixed fee", cal.rate!, 0.1, 0.0005);
+check("fixed component is reported",
+  cal.findings.some((f) => f.includes("fixed per-ticket component")), true);
+check("a fixed component makes the fit unusable for plain break-even", cal.usable, false);
+
+// A STEPPED rate: 10% at a low price, 15% at a high one. Must not be averaged away.
+cal = calibrate([obs(50, 45), obs(500, 425)]);
+check("stepped rate produces a finding", cal.findings.length > 0, true);
+check("stepped rate is not usable", cal.usable, false);
+
+// Nonsense observations are dropped and reported, not fitted.
+cal = calibrate([obs(70, 63), obs(0, 5), obs(-10, 5)]);
+check("bad observations dropped", cal.n, 1);
+check("dropping is reported", cal.findings.some((f) => f.includes("ignored")), true);
+check("no observations at all", calibrate([]).rate, null);
+
+// netUnder / listToNetUnder must invert each other, fixed component included.
+cal = calibrate([obs(50, 50 * 0.9 - 2), obs(200, 200 * 0.9 - 2)]);
+near("netUnder applies the fixed component", netUnder(cal, 100)!, 88, 0.01);
+near("listToNetUnder inverts netUnder", netUnder(cal, listToNetUnder(cal, 61)!)!, 61, 0.01);
+
+// --- offers: instant-offer history ----------------------------------------------
+
+import { impliedBid, isRoundDollar, series, verdictAgainstCredit } from "../src/lib/offers.ts";
+
+// All four real samples invert to exact round dollars.
+for (const [offer, bid] of [[24.3, 27], [27.9, 31], [87.3, 97], [96.3, 107]] as const) {
+  near(`$${offer} implies a $${bid} bid`, impliedBid(offer, 0.1), bid, 0.005);
+  check(`$${bid} is a round dollar`, isRoundDollar(impliedBid(offer, 0.1)), true);
+}
+check("a non-round bid is detected", isRoundDollar(impliedBid(24.5, 0.1)), false);
+
+// Every sample so far nets below its tier credit, which is the load-bearing observation.
+check("preseason offer is below the $51 credit", verdictAgainstCredit(24.3, 51), "below_credit");
+check("A+ offer is below the $120 credit", verdictAgainstCredit(87.3, 120), "below_credit");
+check("an offer above the credit is reported as such", verdictAgainstCredit(60, 51), "above_credit");
+check("no credit means no verdict", verdictAgainstCredit(24.3, null), "no_credit");
+
+let sr = series(1, [
+  { on: "2026-09-05", offerPerTicket: 24.3 },
+  { on: "2026-09-03", offerPerTicket: 20.0 },
+]);
+check("offers sorted oldest first", sr.offers.map((o) => o.on), ["2026-09-03", "2026-09-05"]);
+near("latest offer is the newest", sr.latest!.offerPerTicket, 24.3);
+near("delta measured from the first observation", sr.delta!, 4.3, 0.005);
+
+sr = series(1, [{ on: "2026-09-05", offerPerTicket: 24.3 }]);
+check("single offer has no delta", sr.delta, null);
+sr = series(1, undefined);
+check("no offers -> no latest", sr.latest, null);
+check("no offers -> no delta", sr.delta, null);
 
 // --- report ---------------------------------------------------------------------
 

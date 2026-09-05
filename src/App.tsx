@@ -23,6 +23,8 @@ import { useLocalStorage } from "./lib/store";
 import { STALE_THRESHOLD, market, marketFor, staleDays, standing, standingNote } from "./lib/market";
 import { FIT_THRESHOLD, OUTCOME_LABEL, outcomeFor, sellRate, tally } from "./lib/outcomes";
 import type { OutcomeKind } from "./lib/profile";
+import { calibrate } from "./lib/fees";
+import SellerObservations from "./components/SellerObservations";
 
 const GAMES = scheduleData.games as Game[];
 const FEE = economics.resale.platforms.ticketmaster.sellerFeeRate;
@@ -98,18 +100,27 @@ function Dashboard({
 }) {
   const now = new Date();
 
+  // ops#9: derive the fee rate from observations when they actually support it, rather
+  // than trusting a constant that could go stale with no signal. A single observation,
+  // or observations that disagree, or ones implying a fixed per-ticket component, are
+  // NOT used - calibrate() reports those as findings and `usable` stays false. Falling
+  // back to the configured rate is the conservative choice: it is measured at two price
+  // points, which is more than one uncorroborated entry.
+  const cal = useMemo(() => calibrate(profile.feeObservations ?? []), [profile.feeObservations]);
+  const feeRate = cal.usable && cal.rate != null ? cal.rate : FEE;
+
   const rows = useMemo(() => {
     return GAMES.map((g) => {
       const credit = g.tier ? profile.credits[g.tier as Tier] ?? null : null;
-      const be = credit == null ? null : breakEvenList(credit, FEE);
+      const be = credit == null ? null : breakEvenList(credit, feeRate);
       const list = profile.listPrices[String(g.gameId)] ?? null;
-      const net = list == null ? null : netPayout(list, FEE);
+      const net = list == null ? null : netPayout(list, feeRate);
       const delta = net == null || credit == null ? null : net - credit;
       const mk = marketFor(g.gameId);
       const outcome = outcomeFor(profile, g.gameId);
       return { g, credit, be, list, net, delta, mk, outcome, guide: guidance(g, credit, now) };
     });
-  }, [profile, now]);
+  }, [profile, now, feeRate]);
 
   const deadlineSoon = rows
     .filter((r) => phaseOf(r.g, now) === "floor_active" && hoursUntil(exchangeDeadline(r.g), now) <= 72)
@@ -131,7 +142,7 @@ function Dashboard({
         // change afterwards, and an outcome is only meaningful against the price that
         // was actually standing when it happened.
         atList: list,
-        netPerSeat: kind === "sold" && list != null ? Number((list * (1 - FEE)).toFixed(2)) : null,
+        netPerSeat: kind === "sold" && list != null ? Number((list * (1 - feeRate)).toFixed(2)) : null,
       };
     }
     setProfile({ ...profile, outcomes: next });
@@ -156,7 +167,8 @@ function Dashboard({
               <span className="mx-2 opacity-50">|</span>
               {GAMES.length} home games
               <span className="mx-2 opacity-50">|</span>
-              {Math.round(FEE * 100)}% seller fee
+              {(feeRate * 100).toFixed(feeRate * 100 % 1 === 0 ? 0 : 2)}% seller fee
+              {feeRate !== FEE && <span className="ml-1 opacity-75">(calibrated)</span>}
             </p>
             <p className="mt-1 text-xs text-teal-200/70">
               {/* ops#18: make staleness visible rather than invisible. A precaching
@@ -348,6 +360,13 @@ function Dashboard({
             </tbody>
           </table>
         </section>
+
+        <SellerObservations
+          profile={profile}
+          setProfile={setProfile}
+          games={GAMES}
+          configuredFeeRate={FEE}
+        />
 
         <section className="mt-8 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
