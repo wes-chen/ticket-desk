@@ -66,7 +66,10 @@ def targets(sample_event: str | None) -> list[dict]:
         },
         {
             "platform": "gametime",
-            "url": "https://gametime.co/nhl-hockey/san-jose-sharks-tickets",
+            # Correct performer URL, discovered from gametime.co/sitemap/sport-performers.xml; the two URLs used before this were both wrong, which is why ops#4 never got a verdict.
+            # A guessed URL returning 404 is indistinguishable from a block, which is
+            # exactly the confusion this probe already had once.
+            "url": "https://gametime.co/san-jose-sharks-tickets/performers/nhlsjs",
             "note": "skews last-minute; useful signal for the timing curve",
         },
         {

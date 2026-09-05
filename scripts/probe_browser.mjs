@@ -50,7 +50,8 @@ const TARGETS = [
   },
   {
     platform: "gametime",
-    url: "https://gametime.co/nhl-tickets",
+    // Correct performer URL, discovered from gametime.co/sitemap/sport-performers.xml; the two URLs used before this were both wrong, which is why ops#4 never got a verdict.
+    url: "https://gametime.co/san-jose-sharks-tickets/performers/nhlsjs",
     note: "last-minute skew",
   },
   {
