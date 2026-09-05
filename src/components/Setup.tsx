@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import economics from "../../config/economics.json";
 import { breakEvenList, fmt } from "../lib/economics";
 import { TIERS, invoicePerSeat, seatCount, shareUrl, type Profile, type Tier } from "../lib/profile";
 
@@ -156,7 +157,7 @@ export default function Setup({
                   />
                 </div>
                 <p className="mt-1 text-xs text-slate-500 tabular-nums">
-                  {c == null ? "--" : `b/e ${fmt(breakEvenList(c))}`}
+                  {c == null ? "--" : `b/e ${fmt(breakEvenList(c, undefined, economics.exchange.creditHaircut.value))}`}
                 </p>
               </label>
             );

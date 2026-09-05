@@ -54,10 +54,37 @@ near("break-even at 15% would be higher", breakEvenList(51, 0.15), 60, 0.001);
 // credit. If this drifts, every recommendation drifts with it.
 near("net at break-even equals the credit", netPayout(breakEvenList(51)), 51, 0.001);
 
+// ---- the credit haircut, and the invariant that broke when it stopped being 1.0 ----
+// Account credit is not cash: it expires at season end, cannot buy playoffs and does not
+// roll over. Wesley values it at 0.9. Break-even must compare resale against the credit's
+// CASH-EQUIVALENT value, or the app shows two numbers that contradict each other.
+near("break-even drops when credit is discounted", breakEvenList(51, 0.10, 0.9), 51, 0.001);
+near("a full-face haircut is the old behaviour", breakEvenList(51, 0.10, 1), 56.6667, 0.001);
+near("the defining relation still holds at 0.9",
+     netPayout(breakEvenList(51, 0.10, 0.9)), 51 * 0.9, 0.001);
+
+near("min list price ignores the haircut", minListPrice(51)!, 40.8, 0.001);
+
 const game = (startUTC: string): Game => ({
   gameId: 1, date: startUTC.slice(0, 10), startTimeUTC: startUTC,
   gameType: "regular", opponent: { abbrev: "XXX", name: "Test Team" }, tier: "A",
 });
+
+// THE CROSS-CHECK. The exits panel has always applied the haircut to the exchange payout;
+// breakEvenList did not. At 1.0 that was invisible. At 0.9 the panel would have offered
+// "$45.90 credit" beside a "$56.67 break-even" while a $52 listing beat the credit - two
+// numbers on one screen disagreeing. Assert they agree, at a haircut that is not 1.
+{
+  const h = 0.9, credit = 51;
+  const ex = exits(game("2026-12-01T03:00:00Z"), credit, null,
+                   { creditHaircut: h }).find((e) => e.key === "exchange")!;
+  near("exits values credit at the haircut", ex.perSeat!, credit * h, 0.001);
+  near("and break-even nets exactly that", netPayout(breakEvenList(credit, 0.10, h)),
+       ex.perSeat!, 0.001);
+}
+
+// minListPrice must NOT move with the haircut. It is the platform's published rule -
+// 80% of FACE - and Ticketmaster does not care what credit is worth to Wesley.
 
 const puck = "2026-10-01T02:00:00Z";
 const g = game(puck);

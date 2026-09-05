@@ -32,6 +32,16 @@ import SeasonPnlPanel from "./components/SeasonPnl";
 
 const GAMES = scheduleData.games as Game[];
 const FEE = economics.resale.platforms.ticketmaster.sellerFeeRate;
+// What a dollar of account credit is worth in cash terms. ASSUMED, and permanently so -
+// it is a preference, not a fact, and no amount of collection settles it. 0.9 is Wesley's
+// own figure (2026-09-05); it replaced a placeholder 1.0 that nobody had chosen and that
+// the published terms had already falsified - credit expires at season end, cannot buy
+// playoffs, and does not roll into next season's invoice.
+//
+// Applied consistently to the break-even, the exchange payout and the resale-vs-credit
+// delta. Applying it to only some of those is what made the old code inconsistent the
+// moment this stopped being 1.0.
+const CREDIT_HAIRCUT = economics.exchange.creditHaircut.value;
 
 const TIER_COLOR: Record<string, string> = {
   "A+": "bg-orange-500/15 text-orange-700 dark:text-orange-300 ring-orange-500/30",
@@ -116,16 +126,18 @@ function Dashboard({
   const rows = useMemo(() => {
     return GAMES.map((g) => {
       const credit = g.tier ? profile.credits[g.tier as Tier] ?? null : null;
-      const be = credit == null ? null : breakEvenList(credit, feeRate);
+      const be = credit == null ? null : breakEvenList(credit, feeRate, CREDIT_HAIRCUT);
       const list = profile.listPrices[String(g.gameId)] ?? null;
       const net = list == null ? null : netPayout(list, feeRate);
-      const delta = net == null || credit == null ? null : net - credit;
+      // Compared against the credit's CASH-EQUIVALENT value, so this delta answers
+      // "how much better off am I selling than exchanging" in the same units.
+      const delta = net == null || credit == null ? null : net - credit * CREDIT_HAIRCUT;
       const mk = marketFor(g.gameId);
       const outcome = outcomeFor(profile, g.gameId);
       const floor = minListPrice(credit);
       const hasFloor = exchangeIsRealFloor(g, GAMES);
       return { g, credit, be, list, net, delta, mk, outcome, floor, hasFloor,
-               guide: guidance(g, credit, GAMES, now) };
+               guide: guidance(g, credit, GAMES, now, CREDIT_HAIRCUT) };
     });
   }, [profile, now, feeRate]);
 

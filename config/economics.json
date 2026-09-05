@@ -99,12 +99,15 @@
       "CONFIRMED from published terms 2026-09-05: credit expires at puck drop of the last regular-season home game, does NOT roll over, and cannot buy playoff tickets. So the exchange floor shrinks through the season and does not exist at all for the final game."
     ],
     "creditHaircut": {
-      "value": 1.0,
+      "value": 0.9,
       "confidence": "assumed",
-      "_comment": "Discounts account credit against cash. 1.0 = credit is worth full face. STILL 1.0, AND NOW KNOWN TO BE WRONG - kept only because the right value is a preference nobody has supplied, and inventing one would be fabricated precision.",
+      "_comment": "Discounts account credit against cash. 1.0 would treat credit as good as money; 0.9 is Wesley's own valuation of it.",
       "_resolved": "The question this key was blocked on is ANSWERED (Wesley, 2026-09-05, plus the published terms in ops#30): credit does NOT roll into next season's renewal invoice and cannot buy playoffs. See creditSpendableOn.rollsOverToNextSeason=false and creditExpiry, both `measured`, in this same object. The escape hatch that would have made 1.0 defensible is closed, so 1.0 now OVERSTATES the credit for every game except those with many outlets remaining.",
-      "_whyStill1": "The structural half is already modelled and does not depend on this number: remainingCreditOutlets() and exchangeIsRealFloor() in src/lib/economics.ts remove the floor entirely for the final home game, which is where 1.0 was ACTIVELY wrong. What remains is how sharply credit loses value as outlets shrink - and that is Wesley's preference, not a fact about the world. He already holds a seat at every home game, so credit buys only extras, and only he knows what an extra pair is worth. `assumed, 0.8, per Wesley` would be strictly better than this; a number picked by an agent to look precise would not. Open in ops#25.",
-      "_effect": "At 1.0 every break-even is the maximum it can be, so the model is CONSERVATIVE about recommending a sale - it demands a higher price to beat the credit than a discounted credit would. Erring that way is deliberate while the value is unknown."
+      "_effect": "Break-even list price = credit * haircut / (1 - feeRate). At 0.9 every break-even drops ~10%, so the profitable listing band WIDENS and a sale becomes more attractive relative to the credit than it looked at 1.0. Concretely, preseason: break-even moves from credit/0.9 to credit*0.9/0.9.",
+      "source": "Wesley, 2026-09-05, asked directly and answered 0.9.",
+      "_why09": "ASSUMED, and it always will be - this is a preference, not a fact about the world, so no amount of collection settles it. What makes 0.9 better evidence than the 1.0 it replaces is simply that Wesley supplied it and 1.0 was a placeholder nobody chose. Recorded with his number rather than an agent's, because an agent picking 0.8 to look precise is the fabricated precision rule 4 forbids.",
+      "_whyNotLower": "Credit is constrained - same season only, no playoffs, no rollover, and Wesley already holds a seat at every home game, so it buys only extras. That argues for a steeper discount than 0.9. He chose 0.9 anyway, which is his call to make and is consistent with actually spending it on upgrades or additional seats he wants. If outcomes later show credit going unspent at season end, that is evidence to revisit.",
+      "_notTheWholeStory": "This is a flat discount and the decay is NOT folded into it. The structural part is modelled separately and does not depend on this number: remainingCreditOutlets() and exchangeIsRealFloor() in src/lib/economics.ts remove the floor entirely for the final home game. A game with few outlets left is worth less than 0.9 and the model does not yet say so - deliberately, because the shape of that decline has no evidence behind it. See ops#25."
     },
     "creditExpiry": {
       "when": "puck_drop_of_last_regular_season_home_game",

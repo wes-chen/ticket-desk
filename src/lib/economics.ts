@@ -59,9 +59,24 @@ export function listToNet(target: number, feeRate: number = FEE_RATE): number {
  * The single most useful number per game: the list price at which resale exactly ties
  * the exchange credit. List above this and resale wins; below it you're better off
  * returning the ticket.
+ *
+ * The credit is compared at its CASH-EQUIVALENT value, not its face value. Account credit
+ * is not money: it expires at the end of the regular season, cannot buy playoffs, and
+ * cannot roll into next season's invoice (all measured - see economics.json). Wesley
+ * values it at 0.9. Solving L * (1 - fee) = credit * haircut gives the form below.
+ *
+ * This used to ignore the haircut entirely, which was invisible only because the haircut
+ * was 1.0. At 0.9 it would have contradicted the exits panel, which HAS applied the
+ * haircut all along: the panel would offer "$45.90 credit" beside a "$56.67 break-even",
+ * while a $52 listing beats the credit. Two numbers on one screen disagreeing is the
+ * failure mode this project keeps writing validators to prevent.
  */
-export function breakEvenList(creditPerSeat: number, feeRate: number = FEE_RATE): number {
-  return creditPerSeat / (1 - feeRate);
+export function breakEvenList(
+  creditPerSeat: number,
+  feeRate: number = FEE_RATE,
+  creditHaircut: number = 1,
+): number {
+  return (creditPerSeat * creditHaircut) / (1 - feeRate);
 }
 
 export function puckDrop(game: Game): Date {
@@ -75,6 +90,11 @@ export function puckDrop(game: Game): Date {
  * tier's credit has not been entered.
  */
 export function minListPrice(creditPerSeat: number | null): number | null {
+  // Deliberately NOT haircut-adjusted. This is the platform's published rule - a listing
+  // may not go below 80% of the ticket's FACE price - and the platform does not care what
+  // account credit is worth to Wesley. Face is proxied by the tier credit because credit
+  // is measured to equal face. Applying the haircut here would invent a floor the seller
+  // page does not enforce.
   return creditPerSeat == null ? null : creditPerSeat * MIN_LIST_RATIO_OF_FACE;
 }
 
@@ -230,9 +250,12 @@ export function guidance(
   credit: number | null,
   season: Game[] = [],
   now: Date = new Date(),
+  creditHaircut: number = 1,
 ): Guidance {
   const phase = phaseOf(game, now);
-  const be = credit == null ? null : breakEvenList(credit);
+  // Same haircut as the exits panel and the row's break-even. Threaded rather than read
+  // from config here so this module stays pure and testable at other values.
+  const be = credit == null ? null : breakEvenList(credit, FEE_RATE, creditHaircut);
   const hrs = hoursUntil(exchangeDeadline(game), now);
   const minList = minListPrice(credit);
   // Without a season, assume the floor exists - the safe default.
@@ -283,7 +306,10 @@ export function guidance(
     detail:
       be == null
         ? "Tier credit not measured yet, so there's no break-even to price against. Run the Return For Credit flow to the review page for this tier."
-        : `Break-even list price is ${fmt(be)}. Anything above that beats the exchange, and because you can still fall back to the ${fmt(credit!)} credit until the deadline, listing high costs you nothing.`,
+        : `Break-even list price is ${fmt(be)}. Anything above that beats the exchange, and because you can still fall back to the ${fmt(credit!)} credit until the deadline, listing high costs you nothing.` +
+          (creditHaircut === 1
+            ? ""
+            : ` Break-even reflects credit valued at ${Math.round(creditHaircut * 100)}% of face, which is your own figure - at full face it would be ${fmt(breakEvenList(credit!, FEE_RATE, 1))}.`),
     urgency: soon ? "soon" : "none",
     breakEven: be,
   };
