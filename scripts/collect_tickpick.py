@@ -184,15 +184,31 @@ def resolve() -> int:
               "prices all season.", file=sys.stderr)
         return 1
 
-    EVENT_MAP.write_text(json.dumps({
+    payload = {
         "_comment": ("TickPick event ids per home game, resolved from TickPick's own "
                      "sitemap by scripts/collect_tickpick.py. PUBLIC event identifiers "
                      "only - no prices, no seats, no account data."),
-        "generatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        # Stamped only when the map actually CHANGES. A wall-clock timestamp here churned
+        # the file on every resolve, so the daily CI commit and any local resolve
+        # conflicted over a line that carried no information. Same mistake as the
+        # calendar's DTSTAMP.
+        "generatedAt": None,
         "source": SITEMAP,
         "events": out,
-    }, indent=2) + "\n")
-    print(f"wrote {ms.rel(EVENT_MAP, ROOT)}")
+    }
+    previous = {}
+    if EVENT_MAP.exists():
+        try:
+            previous = json.loads(EVENT_MAP.read_text())
+        except json.JSONDecodeError:
+            previous = {}
+    if previous.get("events") == out and previous.get("source") == SITEMAP:
+        payload["generatedAt"] = previous.get("generatedAt")
+        print(f"unchanged: {ms.rel(EVENT_MAP, ROOT)} already current")
+    else:
+        payload["generatedAt"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        print(f"wrote {ms.rel(EVENT_MAP, ROOT)}")
+    EVENT_MAP.write_text(json.dumps(payload, indent=2) + "\n")
     return 0
 
 

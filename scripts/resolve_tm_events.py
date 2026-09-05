@@ -268,17 +268,33 @@ def run(key: str, dest: pathlib.Path) -> int:
         return 1
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(json.dumps({
+    payload = {
         "_comment": ("Ticketmaster Discovery event ids for each home game, resolved by "
                      "scripts/resolve_tm_events.py. PUBLIC event metadata only - no prices, "
                      "no seats, no account data. Discovery publishes no priceRanges for this "
                      "venue; see ops#5."),
-        "generatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        # Stamped only when something actually changes. A wall-clock timestamp churned
+        # this file on every daily run, so the CI commit conflicted with any local run
+        # over a line carrying no information.
+        "generatedAt": None,
         "venueId": VENUE_ID,
         "priceRangeProbe": {k: probe[k] for k in ("checked", "withPriceRanges")},
         "events": resolved,
-    }, indent=2) + "\n")
-    print(f"\nwrote {dest.relative_to(ROOT) if dest.is_relative_to(ROOT) else dest}")
+    }
+    previous = {}
+    if dest.exists():
+        try:
+            previous = json.loads(dest.read_text())
+        except json.JSONDecodeError:
+            previous = {}
+    same = (previous.get("events") == resolved
+            and previous.get("venueId") == VENUE_ID
+            and previous.get("priceRangeProbe") == payload["priceRangeProbe"])
+    payload["generatedAt"] = (previous.get("generatedAt") if same
+                              else datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    dest.write_text(json.dumps(payload, indent=2) + "\n")
+    shown = dest.relative_to(ROOT) if dest.is_relative_to(ROOT) else dest
+    print(f"\n{'unchanged' if same else 'wrote'} {shown}")
     return 0
 
 
