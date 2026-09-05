@@ -269,6 +269,30 @@ function Dashboard({
           </table>
         </section>
 
+        <section className="mt-8 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+            Deadline reminders
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Subscribe once and every exchange deadline lands in your calendar with alarms at 7 days,
+            24 hours, and 1 hour. A dashboard you forget to open cannot warn you, and after the
+            deadline an unsold ticket is worth <strong>$0</strong> &mdash; the credit is gone, not
+            reduced.
+          </p>
+          <p className="mt-3">
+            <a
+              href="deadlines.ics"
+              className="inline-flex rounded border border-teal-600 px-3 py-1.5 text-sm font-medium text-teal-700 hover:bg-teal-50 dark:border-teal-500 dark:text-teal-300 dark:hover:bg-teal-950/40"
+            >
+              Add 44 deadlines to calendar
+            </a>
+          </p>
+          <p className="mt-2 text-xs text-slate-400">
+            The feed carries the game, the deadline and the whole-arena asking range &mdash; but not
+            your credit or break-even. It is served from a public URL, so those stay in this app.
+          </p>
+        </section>
+
         <section className="mt-6 space-y-2 text-xs text-slate-500">
           <p>
             <strong className="text-slate-600 dark:text-slate-400">Arena ask</strong> is the cheapest
