@@ -19,16 +19,55 @@ carries UPPER ATTACK 1/2, the other UPPER GOAL 1/2. Scoring against a left-right
 gives 0/10; against the long axis, 18/24. An earlier version of check_price_bands.py
 assumed left-right and would have rejected correct data.
 
-CURRENT STATUS: on the 1020x1320 chart Wesley supplied, agreement is 18/24 (75%). The
-residue is thin bands - GLASS, TEAL, PROMENADE ROW 1 - that one side of a mirror pair
-detects and the other misses, because at that resolution a single-row band is ~4px.
-That is a RESOLUTION limit, not a method limit, which is why ops#31 asks for a
-higher-resolution chart rather than a different technique.
+CURRENT STATUS: 22/24 (92%) on the 300dpi chart at --centre 1274 1355, with the upper
+ring exact at 13/13. Coverage refuses: 21/23 legend bands placed, missing CLUB 1 and
+PROMENADE ROW 1 CENTER.
+
+WHY IT IS NOT A RESOLUTION LIMIT. This block used to say the residue was a raster limit
+needing a vector chart, and that was WRONG - a fifth instance of the instrument being
+the thing at fault. Measured 2026-09-06 on the 2550x3300 chart, sampling every pixel and
+setting min_share to 0 to see what the gate was actually discarding:
+
+    band                      appears in   max share   where
+    CLUB 1                    14 sections      5.60%   110:5.6 106:5.3 107:3.8 109:3.8
+    PROMENADE ROW 1 CENTER     6 sections      7.20%   115:7.2 101:5.0
+    GLASS                     12 sections      7.50%   126:7.5 112:5.9 118:5.7
+    TEAL                       8 sections     12.00%   126:12.0 124:7.8
+
+The gate is min_share=0.07. So:
+
+  - CLUB 1 is PRESENT on the chart and inside the sampled radial window - 86% of its
+    pixels are - and appears coherently in four adjacent lower sections. It is excluded
+    purely because it never reaches 7% of any one section's samples.
+  - Every remaining mirror mismatch is the same artefact seen twice. PROMENADE ROW 1
+    CENTER is 7.2% in 115 and 5.0% in 101, so it lands on one side of the gate and not
+    the other: that IS the 101/115 mismatch. GLASS 7.5% v 5.9% is the 126/118 mismatch.
+    TEAL 12.0% v 7.8% is 124/120. The mirror pairs do not disagree about the chart; they
+    disagree about a threshold.
+
+WHY SHARE IS THE WRONG STATISTIC. A band's share depends on how thick the OTHER bands in
+its section are, so a genuinely one-row band can never score well no matter the
+resolution - which is why 2.5x the pixels did not help, and why a vector chart would not
+either. What separates a real thin band from an antialiasing artefact is not its size but
+its RADIAL COHERENCE: a real band occupies a contiguous run of radii at a consistent
+distance across the sector, while edge noise is scattered. Replacing the share gate with
+a coherence test is the fix, and it needs nothing from Wesley. Not done here because it
+changes what the tool admits, and this tool's output is a model constant.
+
+Widening the lower radial window was tested and is NOT the answer: inner bounds of 0.46,
+0.38, 0.30 and 0.24 all leave coverage at 21/23. Worth knowing because over half of
+GLASS's and TEAL's pixels do sit inside r<0.46, so the window looked like a plausible
+culprit and is not.
 
 Usage:
     python3 scripts/extract_price_bands.py --image CHART.png [--out FILE]
     python3 scripts/extract_price_bands.py --image CHART.png --min-agreement 0.95
+    python3 scripts/extract_price_bands.py --image CHART.png --sample-step 1
+    python3 scripts/extract_price_bands.py --image CHART.png --lower-window 0.30 0.92
     python3 scripts/extract_price_bands.py --self-test
+
+The chart is a raster inside a PDF; scripts/jpeg_to_png.mjs converts it, because there is
+no JPEG decoder on this machine other than Chromium.
 """
 
 import argparse
@@ -182,13 +221,28 @@ def anchor(ring, order, anchor_section, at_deg=90.0):
 
 
 def sector_bands(im, pairs, cx, cy, a, b, r_lo, r_hi, palette, margin=0.30,
-                 min_share=0.07, tol=14):
+                 min_share=0.07, tol=14, step=None):
     """Histogram band colours inside each section's angular sector.
 
     Sectors, not rays. The first version walked a single radial line and its samples
     strayed across wedge boundaries into a neighbour's colour - which is how LOWER
     bands turned up in 200-level sections. A sector bounded by the half-angles to each
     neighbour, shrunk by `margin`, cannot leave its own wedge.
+
+    SAMPLE DENSITY IS DERIVED FROM PIXELS, NOT FIXED. `step` is the target spacing in
+    PIXELS; None keeps the historical fixed 91x(sector width) grid.
+
+    This mattered more than it looks. The fixed grid took 91 radial samples whatever the
+    image size, so feeding it the 2550x3300 chart instead of the 1020x1320 one threw the
+    extra resolution away entirely - a single-row band 4px wide at the old size is 10px
+    at the new one, and both got about four samples. ops#31 predicted a higher-resolution
+    chart would fix the thin-band misses; it cannot while the sampler is resolution-blind,
+    which is why the first hi-res run scored WORSE (75%) than the low-res one (92%).
+
+    Note this is not a tunable that can buy agreement: raising density can only add
+    samples inside the same sector, so it makes thin bands MORE detectable on both sides
+    of a mirror pair. The parameter that can buy agreement by discarding bands is
+    `min_share`, which is what coverage() guards.
     """
     n = len(pairs)
     angs = [p[1]["a"] for p in pairs]
@@ -198,10 +252,23 @@ def sector_bands(im, pairs, cx, cy, a, b, r_lo, r_hi, palette, margin=0.30,
         fwd = ((angs[(i + 1) % n] - d["a"]) % 360) / 2
         a0, a1 = d["a"] - back * (1 - margin), d["a"] + fwd * (1 - margin)
         cnt, radii = Counter(), {}
-        for ia in range(max(6, int((a1 - a0) * 2)) + 1):
-            th = math.radians(a0 + (a1 - a0) * ia / max(6, int((a1 - a0) * 2)))
-            for ir in range(91):
-                r = r_lo + (r_hi - r_lo) * ir / 90
+        # A non-positive step means "use the historical fixed grid", which makes
+        # --sample-step 0 a usable way to reproduce the old numbers rather than a
+        # division by zero.
+        if not step or step <= 0:
+            n_a, n_r = max(6, int((a1 - a0) * 2)), 90
+        else:
+            # Pixel extents of this sector. max(a, b) is the larger ellipse semi-axis,
+            # so both are upper bounds - erring toward oversampling rather than
+            # silently under-resolving a thin band.
+            span = max(a, b)
+            n_r = max(90, math.ceil((r_hi - r_lo) * span / step))
+            arc = math.radians(a1 - a0) * span * r_hi
+            n_a = max(6, math.ceil(arc / step))
+        for ia in range(n_a + 1):
+            th = math.radians(a0 + (a1 - a0) * ia / n_a)
+            for ir in range(n_r + 1):
+                r = r_lo + (r_hi - r_lo) * ir / n_r
                 x, y = int(cx + math.cos(th) * r * a), int(cy + math.sin(th) * r * b)
                 if not (0 <= x < im.w and 0 <= y < im.h):
                     continue
@@ -374,6 +441,22 @@ def main() -> int:
                     help="max-channel colour tolerance; raise for a JPEG-derived image")
     ap.add_argument("--min-agreement", type=float, default=0.95,
                     help="refuse to write a map below this mirror agreement")
+    ap.add_argument("--sample-step", type=float, default=0.0, metavar="PX",
+                    help="target sample spacing in PIXELS for the final extraction. "
+                         "0 (the default) keeps the historical fixed grid and so "
+                         "reproduces the measured 92%% baseline exactly. 1.0 uses every "
+                         "pixel, which finds MORE real bands but currently scores worse "
+                         "- see the share-gate finding in sector_bands.")
+    ap.add_argument("--search-step", type=float, default=4.0, metavar="PX",
+                    help="sample spacing during the bowl-centre search, which evaluates "
+                         "hundreds of candidates and cannot afford 1px (default 4.0)")
+    ap.add_argument("--lower-window", nargs=2, type=float, default=(0.46, 0.92),
+                    metavar=("LO", "HI"),
+                    help="radial window, in normalised elliptical radius, swept for the "
+                         "lower ring (default 0.46 0.92)")
+    ap.add_argument("--upper-window", nargs=2, type=float, default=(0.95, 1.18),
+                    metavar=("LO", "HI"),
+                    help="radial window for the upper ring (default 0.95 1.18)")
     ap.add_argument("--centre", nargs=2, type=int, metavar=("X", "Y"))
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
@@ -432,7 +515,7 @@ def main() -> int:
 
     pal = legend()
 
-    def evaluate(ccx, ccy, verbose=False):
+    def evaluate(ccx, ccy, verbose=False, sample_step=None):
         """Extract at a given bowl centre and score it. Returns (ok, total, extraction)."""
         inner, outer, a, b = split_rings(pts, ccx, ccy)
         if len(inner) != len(r["lower"]) or len(outer) != len(r["upper"]):
@@ -442,12 +525,12 @@ def main() -> int:
                 # Swept independently of the upper ring: 0.46-0.92 scores 9/11 where
                 # the shared 0.46-0.88 scored 8/11. The two rings have different radial
                 # extents and no reason to share a window.
-                (inner, r["lower"], ("101", "115"), 0.46, 0.92, "lower"),
-                (outer, r["upper"], ("201", "215"), 0.95, 1.18, "upper")):
+                (inner, r["lower"], ("101", "115"), *args.lower_window, "lower"),
+                (outer, r["upper"], ("201", "215"), *args.upper_window, "upper")):
             best = None
             for dname, seq in (("as-listed", order), ("reversed", list(reversed(order)))):
                 ex = sector_bands(im, anchor(ring, seq, axis[0]), ccx, ccy, a, b,
-                                  lo, hi, pal, tol=args.tol)
+                                  lo, hi, pal, tol=args.tol, step=sample_step)
                 _, o, n, bad = agreement(ex, mirror_pairs(seq, *axis))
                 if best is None or o > best[0]:
                     best = (o, n, ex, dname, bad)
@@ -477,7 +560,7 @@ def main() -> int:
         best = None
         for dy in range(-args.search_centre, args.search_centre + 1, step):
             for dx in range(-args.search_centre, args.search_centre + 1, step):
-                ok, tot, _ = evaluate(cx + dx, cy + dy)
+                ok, tot, _ = evaluate(cx + dx, cy + dy, sample_step=args.search_step)
                 if best is None or ok > best[0]:
                     best = (ok, tot, cx + dx, cy + dy)
         print(f"centre search: best {best[0]}/{best[1]} at ({best[2]}, {best[3]}) "
@@ -485,7 +568,7 @@ def main() -> int:
         cx, cy = best[2], best[3]
 
     lo_ok, lo_tot, _ = 0, 0, None
-    ok, tot, ex = evaluate(cx, cy, verbose=True)
+    ok, tot, ex = evaluate(cx, cy, verbose=True, sample_step=args.sample_step)
     frac = ok / tot if tot else 0.0
     print(f"mirror agreement overall: {ok}/{tot} -> {frac:.0%} "
           f"(need {args.min_agreement:.0%})")
