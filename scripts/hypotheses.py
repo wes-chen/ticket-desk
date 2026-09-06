@@ -104,6 +104,11 @@ REGISTER = [
                      "test that cannot run invites fitting it to whatever arrives.",
         "requires": {"observationDays": 14, "sources": 1},
         "unblocks": "ops#8, the sell-timing model",
+        "_powerNote": ("14 days makes this RUNNABLE, not answerable. Measured day-over-day "
+                       "volatility is 4.5-6.8% of games moving by $1-2, so a fortnight holds "
+                       "only a handful of movements. Expect the first run to say 'no "
+                       "detectable trend' and expect that to mean 'not enough movement yet' "
+                       "rather than 'prices do not decay'."),
     },
     {
         "id": "H5-deadline-effect",
@@ -172,6 +177,14 @@ def readiness(entry: dict, inv: dict, outcomes: int, games_played: int,
         # One collection per day. Outcomes and played games are NOT projected - those
         # depend on the schedule and on Wesley recording them, and guessing a date for
         # something a human must do is exactly the false precision this file avoids.
+        #
+        # THIS IS DATA AVAILABILITY, NOT STATISTICAL POWER, and the difference is large.
+        # Measured 2026-09-05 to 09-06: only 4.5-6.8% of games' arena lows moved at all in
+        # 24 hours, by $0.07-$2.00. At that rate a given game's low changes roughly once
+        # every three weeks, so a 14-day window contains a handful of movements across the
+        # whole schedule - enough to HAVE the data, nowhere near enough to fit a decay
+        # curve against it. The requirement counts days because days are countable; it
+        # does not claim the answer will be there.
         earliest = (today + dt.timedelta(days=need_days - have_days)).isoformat()
     return {"id": entry["id"], "ready": not missing, "missing": missing,
             "earliestDataDate": earliest}
