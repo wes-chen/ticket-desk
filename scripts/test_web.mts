@@ -23,8 +23,8 @@ import {
 } from "../src/lib/economics.ts";
 import { FIT_THRESHOLD, sellRate, tally } from "../src/lib/outcomes.ts";
 import {
-  EMPTY_PROFILE, decodeProfile, encodeProfile, invoicePerSeat, isConfigured, seatCount,
-  type Profile,
+  EMPTY_PROFILE, decodeProfile, encodeProfile, invoicePerSeat, isConfigured,
+  recordListPrice, seatCount, type Profile,
 } from "../src/lib/profile.ts";
 
 // Accepted and ignored, so scripts/run_tests.py discovers this file the same way it
@@ -53,6 +53,82 @@ near("break-even at 15% would be higher", breakEvenList(51, 0.15), 60, 0.001);
 // The relationship the whole tool rests on: listing AT break-even exactly ties the
 // credit. If this drifts, every recommendation drifts with it.
 near("net at break-even equals the credit", netPayout(breakEvenList(51)), 51, 0.001);
+
+// ---- listing price history (ops#48) ----
+// listPrices holds one number and overwrites it, so a price change used to destroy its
+// predecessor. We recorded four sources' asks daily and none of our own.
+{
+  const t0 = new Date("2026-09-05T10:00:00Z");
+  const t1 = new Date("2026-09-05T18:00:00Z");
+  const base: Profile = { ...EMPTY_PROFILE };
+
+  const a = recordListPrice(base, 1, 70, t0);
+  check("first price is recorded", a.listPrices["1"], 70);
+  check("and appears in history", a.listPriceHistory!["1"].map((e) => e.price), [70]);
+  check("first entry is not marked backfilled",
+        a.listPriceHistory!["1"][0].backfilled, undefined);
+
+  const b = recordListPrice(a, 1, 85, t1);
+  check("history keeps BOTH prices", b.listPriceHistory!["1"].map((e) => e.price), [70, 85]);
+  check("current price is the latest", b.listPrices["1"], 85);
+  check("timestamps are recorded", b.listPriceHistory!["1"][1].at, t1.toISOString());
+
+  // Re-saving the same number must not pad the series with entries carrying no
+  // information - the series' value is that every entry is a real change.
+  const c = recordListPrice(b, 1, 85, new Date("2026-09-06T10:00:00Z"));
+  check("re-saving the same price appends nothing",
+        c.listPriceHistory!["1"].length, 2);
+
+  // A legacy price RE-SAVED UNCHANGED must still be marked backfilled. The guard used to
+  // require previous !== price, which dropped the marker in exactly the case it exists
+  // for: the entry then read as "set at this instant" when its real vintage is unknown.
+  // Found in review.
+  const sameLegacy: Profile = { ...EMPTY_PROFILE, listPrices: { "9": 70 } };
+  const same = recordListPrice(sameLegacy, 9, 70, t0);
+  check("a legacy price re-saved unchanged yields ONE entry",
+        same.listPriceHistory!["9"].length, 1);
+  check("and it is marked backfilled", same.listPriceHistory!["9"][0].backfilled, true);
+
+  // WHY THE UI MUST COMMIT ON BLUR, NOT ON CHANGE.
+  // recordListPrice appends on every change it is handed, which is correct for settled
+  // values and catastrophic for keystrokes: the input is a controlled <input
+  // type="number"> whose onChange fires per character, so wiring it directly recorded
+  // [70, 7, 8, 85] when editing 70 -> 85 - two permanent, unflagged phantom prices in a
+  // structure documented as never truncated. Asserting the hazard here so the trap is
+  // visible to whoever next touches the input, rather than rediscovered in review.
+  let keyed: Profile = { ...EMPTY_PROFILE, listPrices: { "7": 70 } };
+  for (const v of ["7", "", "8", "85"]) {
+    keyed = recordListPrice(keyed, 7, v === "" ? null : Number(v), t0);
+  }
+  check("feeding raw keystrokes pollutes the history - hence the draft",
+        keyed.listPriceHistory!["7"].map((e) => e.price), [70, 7, 8, 85]);
+
+  // A profile that predates history has a price and no entries. It must be preserved,
+  // and its timestamp must be honest about being when history STARTED.
+  const legacy: Profile = { ...EMPTY_PROFILE, listPrices: { "2": 70 } };
+  const d = recordListPrice(legacy, 2, 85, t1);
+  check("a pre-existing price is backfilled, not lost",
+        d.listPriceHistory!["2"].map((e) => e.price), [70, 85]);
+  check("and the backfilled entry says so",
+        d.listPriceHistory!["2"][0].backfilled, true);
+  check("while the new one does not",
+        d.listPriceHistory!["2"][1].backfilled, undefined);
+
+  // Clearing removes the current price. Deliberately appends nothing: a delist is not
+  // distinguishable from a typo correction, and recording one as the other is worse.
+  const e = recordListPrice(b, 1, null, t1);
+  check("clearing removes the current price", "1" in e.listPrices, false);
+  check("and does not truncate the history", e.listPriceHistory!["1"].length, 2);
+
+  // A profile with no history field at all must load and work.
+  const noField: Profile = { ...EMPTY_PROFILE, listPriceHistory: undefined };
+  check("a profile without the field still records",
+        recordListPrice(noField, 3, 60, t0).listPriceHistory!["3"].length, 1);
+
+  // Other games must be untouched.
+  const two = recordListPrice(recordListPrice(base, 1, 70, t0), 2, 40, t1);
+  check("games are independent", Object.keys(two.listPriceHistory!).sort(), ["1", "2"]);
+}
 
 // ---- the credit haircut, and the invariant that broke when it stopped being 1.0 ----
 // Account credit is not cash: it expires at season end, cannot buy playoffs and does not

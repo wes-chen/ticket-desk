@@ -6,9 +6,9 @@
       "ticketmaster": {
         "label": "Ticketmaster / NHL Ticket Exchange",
         "sellerFeeRate": 0.1,
-        "source": "MEASURED at THREE independent price points, all exactly 0.9000: $77.00 -> $69.30, $70.00 -> $63.00 (two listings), and $85.00 -> $76.50 (two listings, with the fee itemised as -$8.50 per ticket = exactly 10%).",
+        "source": "MEASURED at three independent price points, all exactly 0.9000: $70.00 -> $63.00, $77.00 -> $69.30, and $85.00 -> $76.50 (fee itemised as -$8.50 per ticket = exactly 10%).",
         "confidence": "measured",
-        "openQuestion": "RESOLVED 2026-09-05. Third-party sources cite 10-15%, but the rate is flat 10% across the two price points measured. The earlier corroboration (dividing instant offers by 0.9 yielding round dollars) was circular because it assumed 0.9; the $70 -> $63.00 observation is direct and independent of it. Still unmeasured: whether the rate holds at much higher prices, or differs by tier. Both $77 and $70 are low-priced listings on preseason inventory.",
+        "openQuestion": "Whether the rate holds at MUCH higher prices, or differs by tier. All three measurements are on preseason-tier inventory in a narrow $70-$85 band. RESOLVED for that band on 2026-09-06.",
         "whyItMatters": "Break-even = credit / (1 - feeRate). At 10% an A+ break-even is credit/0.90; at 15% it is credit/0.85 - roughly 6% higher on every game. A systematic error here biases every pricing decision in the same direction.",
         "validationPlan": "Largely done. To close the remaining gap, record 'You will make' at a materially higher list price (say $150+) on a regular-season tier.",
         "feeObservations": [
@@ -16,35 +16,18 @@
             "list": 77.0,
             "net": 69.3,
             "impliedRate": 0.1,
-            "game": "2026-09-22 VGK",
             "tier": "PRESEASON"
           },
           {
             "list": 70.0,
             "net": 63.0,
             "impliedRate": 0.1,
-            "game": "2026-09-22 VGK",
-            "tier": "PRESEASON"
-          },
-          {
-            "list": 70.0,
-            "net": 63.0,
-            "impliedRate": 0.1,
-            "game": "2026-09-24 ANA",
             "tier": "PRESEASON"
           },
           {
             "list": 85.0,
             "net": 76.5,
             "impliedRate": 0.1,
-            "game": "2026-09-22 VGK",
-            "tier": "PRESEASON"
-          },
-          {
-            "list": 85.0,
-            "net": 76.5,
-            "impliedRate": 0.1,
-            "game": "2026-09-24 ANA",
             "tier": "PRESEASON"
           }
         ],
@@ -65,7 +48,8 @@
           "confidence": "measured_single_point",
           "source": "Edit Listing dialog, 2026-09-05: prose read 'automatically removed on Tue Sep 22, 2026 07:00 PM' - puck drop - while the dropdown showed 'Tue Sep 22, 2026 09:00 PM (Default)'. The two disagree by two hours.",
           "_whyItMatters": "The model assumes an unsold listing simply expires worthless at puck drop. If listings are pulled EARLIER than puck drop, the window to sell is shorter than modelled, which matters in the endgame after the exchange floor is gone. Cheap to settle: read the dropdown's options."
-        }
+        },
+        "_privacy": "Isolated (list, net) pairs ONLY. These previously carried a `game` field, which made them the exact statement CLAUDE.md rule 1 forbids - which games we have listed, at what price, with what net. The pair alone measures Ticketmaster's fee and says nothing about our seats; naming the game made it a statement about our listings. Deduped too, because repeated identical pairs disclosed how many seats we hold."
       },
       "stubhub": {
         "label": "StubHub",
@@ -169,33 +153,26 @@
     ],
     "samples": [
       {
-        "date": "2026-09-22",
-        "opp": "VGK",
-        "tier": "PRESEASON",
         "offerPerTicket": 24.3,
-        "impliedBid": 27.0
+        "impliedBid": 27.0,
+        "tier": "PRESEASON"
       },
       {
-        "date": "2026-09-24",
-        "opp": "ANA",
-        "tier": "PRESEASON",
         "offerPerTicket": 27.9,
-        "impliedBid": 31.0
+        "impliedBid": 31.0,
+        "tier": "PRESEASON"
       },
       {
-        "date": "2026-11-27",
-        "opp": "VGK",
-        "tier": "A+",
         "offerPerTicket": 87.3,
-        "impliedBid": 97.0
+        "impliedBid": 97.0,
+        "tier": "A+"
       },
       {
-        "date": "2027-01-09",
-        "opp": "NYR",
-        "tier": "A+",
         "offerPerTicket": 96.3,
-        "impliedBid": 107.0
+        "impliedBid": 107.0,
+        "tier": "A+"
       }
-    ]
+    ],
+    "_privacy": "Isolated (offer, implied bid) pairs ONLY. These previously carried `date` and `opp`, which tied a buyer's bid FOR OUR SEATS to a specific game - an offer attributable to our listings, forbidden by rule 1. The pair alone is evidence about Ticketmaster's instant-offer formula, which rule 1 explicitly permits."
   }
 }

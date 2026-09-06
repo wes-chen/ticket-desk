@@ -46,6 +46,20 @@ export interface Outcome {
   note?: string;
 }
 
+export interface ListPriceObservation {
+  price: number;
+  /** ISO instant this entry was RECORDED. */
+  at: string;
+  /**
+   * Set when this entry preserves a price that already existed before history began.
+   *
+   * `at` is then when history started, NOT when the price was set - we do not know the
+   * latter and never will. Marking it is the difference between preserving a value and
+   * inventing a timestamp for it.
+   */
+  backfilled?: true;
+}
+
 export interface Profile {
   v: 1;
   seats: {
@@ -57,8 +71,24 @@ export interface Profile {
   invoiceTotal: number | null;
   /** Exchange credit per seat, by tier. Depends on seat location, hence private. */
   credits: Partial<Record<Tier, number>>;
-  /** Per-game intended list price, keyed by NHL gameId. */
+  /** Per-game intended list price, keyed by NHL gameId. The CURRENT value only. */
   listPrices: Record<string, number>;
+  /**
+   * Append-only history of what we have asked, per game.
+   *
+   * `listPrices` holds one number and overwrites it, so before this existed a price
+   * change destroyed its predecessor. We ran four collectors recording other sellers'
+   * asks every day and kept no record of our own - which made "did raising the price
+   * change anything" not hard to answer but IMPOSSIBLE, because the input did not exist.
+   *
+   * Never truncated. It is a few entries per game and its entire value is being complete.
+   *
+   * KNOWN LIMIT, stated rather than left to be discovered: this records prices that were
+   * SET. Clearing the field removes the current price without appending anything, so a
+   * delisting is not distinguishable from a typo correction. Recording one as the other
+   * would be worse than recording neither.
+   */
+  listPriceHistory?: Record<string, ListPriceObservation[]>;
   /**
    * Recorded outcomes, keyed by NHL gameId. The ONLY path to ops#8 ever existing:
    * asking prices alone cannot fit a probability of sale, and an outcome is not
@@ -87,10 +117,59 @@ export const EMPTY_PROFILE: Profile = {
   invoiceTotal: null,
   credits: {},
   listPrices: {},
+  // listPriceHistory is deliberately absent, not {}. It is optional, recordListPrice
+  // creates it on first use, and the profile travels between devices inside a URL
+  // FRAGMENT - so an empty object here would add bytes to every transfer link and make
+  // the round-trip encoding no longer identity for profiles that have never had a price.
   outcomes: {},
   feeObservations: [],
   instantOffers: {},
 };
+
+/**
+ * Record a list price, preserving what it replaced. Pure - returns a new Profile.
+ *
+ * Appends only on an actual CHANGE, so re-saving the same number does not pad the series
+ * with entries that carry no information. A pre-existing price with no history is
+ * backfilled first and marked as such.
+ */
+export function recordListPrice(
+  p: Profile,
+  gameId: number,
+  price: number | null,
+  now: Date = new Date(),
+): Profile {
+  const key = String(gameId);
+  const prices = { ...p.listPrices };
+  const history: Record<string, ListPriceObservation[]> = { ...(p.listPriceHistory ?? {}) };
+  const entries = [...(history[key] ?? [])];
+  const previous = p.listPrices[key];
+
+  if (price === null || Number.isNaN(price)) {
+    delete prices[key];
+    // Deliberately no entry - see the KNOWN LIMIT on listPriceHistory.
+    return { ...p, listPrices: prices, listPriceHistory: history };
+  }
+
+  // A price that predates history is preserved, but its timestamp is honest about being
+  // the moment history began rather than the moment the price was chosen.
+  //
+  // Deliberately NOT conditioned on `previous !== price`. It was, and that lost the
+  // marker in exactly the case the marker exists for: a legacy price re-saved unchanged
+  // produced a single UNFLAGGED entry, which reads as "set at this instant" when its real
+  // vintage is unknown. Found in review. When previous === price the backfilled entry is
+  // pushed here and the append below correctly declines to duplicate it.
+  if (entries.length === 0 && previous !== undefined) {
+    entries.push({ price: previous, at: now.toISOString(), backfilled: true });
+  }
+  if (entries.length === 0 || entries[entries.length - 1].price !== price) {
+    entries.push({ price, at: now.toISOString() });
+  }
+
+  prices[key] = price;
+  history[key] = entries;
+  return { ...p, listPrices: prices, listPriceHistory: history };
+}
 
 export function isConfigured(p: Profile): boolean {
   return p.seats.section.trim() !== "" && Object.keys(p.credits).length > 0;
