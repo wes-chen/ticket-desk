@@ -227,6 +227,13 @@ never gathered.
 Stop and ask for anything that is not an ordinary push: force-pushing, changing repo
 visibility, rewriting history, adding a secret, or deleting data.
 
+Two of those are now enforced on the remote rather than left to an agent's judgement:
+`main` rejects force-pushes and branch deletion, with `enforce_admins` on. That last flag
+is the load-bearing one - agents push with Wesley's own admin token, so without it the
+protection would have exempted exactly the actor it was meant to stop. Pull requests are
+deliberately **not** required: the collector and schedule workflows push straight to
+`main`, and requiring review would stop the data collection this rule exists to protect.
+
 ### What an agent may merge unattended
 
 Trust rung **2**, recorded in `harness/trust.json` in the ops repo. Everything merges
