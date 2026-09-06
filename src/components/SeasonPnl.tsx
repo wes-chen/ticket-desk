@@ -56,7 +56,7 @@ export default function SeasonPnlPanel({
           <strong>Doing nothing is worth {fmt(baseline.perSeat)} per seat</strong> ({fmt(baseline.total)}
           {" "}across {Math.max(profile.seats.seats.length, 1)}) &mdash; returning every ticket for
           credit, valued at {Math.round(economics.exchange.creditHaircut.value * 100)}% of face.
-          Everything above should be measured against this, not against zero.
+          The figures below should be measured against this, not against zero.
           {baseline.noFloor > 0 && (
             <>
               {" "}
