@@ -21,7 +21,9 @@ import {
   breakEvenList, exchangeDeadline, exchangeIsRealFloor, exits, guidance, hoursUntil,
   listToNet, minListPrice, netPayout, phaseOf, remainingCreditOutlets, type Game,
 } from "../src/lib/economics.ts";
-import { FIT_THRESHOLD, sellRate, tally } from "../src/lib/outcomes.ts";
+import {
+  CLOSING_SOON_HOURS, FIT_THRESHOLD, exportPayload, pending, sellRate, tally,
+} from "../src/lib/outcomes.ts";
 import {
   EMPTY_PROFILE, decodeProfile, encodeProfile, invoicePerSeat, isConfigured,
   recordListPrice, seatCount, type Profile,
@@ -321,6 +323,72 @@ t = tally(withOutcomes({ 1: "instant" }), games, now);
 r = sellRate(t);
 check("an instant sale is a market conclusion", r.concluded, 1);
 near("but it is not a 'sold'", r.rate!, 0);
+
+// ---- the two prompts (ops#50) ----
+// One outcome STOPS BEING POSSIBLE at the exchange deadline, so a single post-game prompt
+// could never separate "chose the credit" from "went unsold" - and conflating them biases
+// any later fit toward pessimism, counting a chosen exit as a failure to sell.
+{
+  // Deadline is T-48h before puck drop. Puck drop 2026-09-10T02:00Z -> deadline
+  // 2026-09-08T02:00Z.
+  const g = (id: number, startUTC: string): Game => ({
+    gameId: id, date: startUTC.slice(0, 10), startTimeUTC: startUTC,
+    opponent: { abbrev: "XXX", name: "X" }, tier: "A", gameType: "regular",
+  } as Game);
+  const gs = [g(1, "2026-09-10T02:00:00Z")];
+  const none = EMPTY_PROFILE;
+
+  // 12h before the deadline -> inside the window, still answerable both ways.
+  let p1 = pending(none, gs, new Date("2026-09-07T14:00:00Z"));
+  check("inside the closing window it prompts", p1.closing.map((x) => x.gameId), [1]);
+  check("and not as played", p1.played, []);
+
+  // 30h before the deadline -> further out than CLOSING_SOON_HOURS, no prompt yet.
+  p1 = pending(none, gs, new Date("2026-09-06T20:00:00Z"));
+  // NOTE: [a, b] not (a, b) - the comma operator would silently evaluate to `b` alone
+  // and assert nothing about `closing`, which is the half these tests exist for.
+  check("outside the window it is quiet", [p1.closing.length, p1.played.length], [0, 0]);
+
+  // Exactly at and past the deadline: the exchange is GONE, so this is no longer the
+  // closing prompt's business. h <= 0 must not be "closing".
+  p1 = pending(none, gs, new Date("2026-09-08T02:00:00Z"));
+  check("at the deadline it stops being a closing prompt", p1.closing, []);
+  p1 = pending(none, gs, new Date("2026-09-09T00:00:00Z"));
+  check("past the deadline but pre-game, neither bucket",
+        [p1.closing.length, p1.played.length], [0, 0]);
+
+  // After puck drop -> played, whatever the deadline did.
+  p1 = pending(none, gs, new Date("2026-09-11T00:00:00Z"));
+  check("after puck drop it is a played game", p1.played.map((x) => x.gameId), [1]);
+  check("and not still closing", p1.closing, []);
+
+  // A recorded outcome silences both prompts - the whole point.
+  const done = withOutcomes({ 1: "exchanged" });
+  p1 = pending(done, gs, new Date("2026-09-11T00:00:00Z"));
+  check("a recorded outcome silences the prompt",
+        [p1.closing.length, p1.played.length], [0, 0]);
+  p1 = pending(done, gs, new Date("2026-09-07T14:00:00Z"));
+  check("silenced inside the window too", p1.closing, []);
+
+  check("the window is a day, not the whole 48h", CLOSING_SOON_HOURS, 24);
+}
+
+// ---- export (ops#50) ----
+// Outcomes live in localStorage: right for privacy, and one cleared-site-data from
+// destroying up to 44 irreplaceable observations with no copy anywhere.
+{
+  const payload = exportPayload(withOutcomes({ 2: "sold", 1: "unsold" }), games,
+                                new Date("2026-09-05T00:00:00Z"));
+  check("count matches", payload.count, 2);
+  check("sorted by game date", payload.outcomes.map((o) => o.gameId), [1, 2]);
+  check("carries the game, not just the number", payload.outcomes[0].opponent, "XXX");
+  check("carries the outcome kind", payload.outcomes[0].kind, "unsold");
+  check("stamped", payload.exportedAt, "2026-09-05T00:00:00.000Z");
+  check("says it is private", payload._what.includes("PRIVATE"), true);
+  const empty = exportPayload(EMPTY_PROFILE, games, new Date("2026-09-05T00:00:00Z"));
+  check("an empty set exports cleanly", empty.count, 0);
+  check("with no rows", empty.outcomes, []);
+}
 
 r = sellRate(tally(withOutcomes({ 1: "exchanged", 2: "exchanged" }), games, now));
 check("all-censored gives no rate rather than zero", r.rate, null);

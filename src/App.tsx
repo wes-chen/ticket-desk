@@ -25,7 +25,10 @@ import {
 } from "./lib/profile";
 import { useLocalStorage } from "./lib/store";
 import { STALE_THRESHOLD, market, marketFor, staleDays, standing, standingNote } from "./lib/market";
-import { FIT_THRESHOLD, OUTCOME_LABEL, outcomeFor, sellRate, tally } from "./lib/outcomes";
+import {
+  CLOSING_SOON_HOURS, FIT_THRESHOLD, OUTCOME_LABEL, exportPayload, outcomeFor,
+  pending, sellRate, tally,
+} from "./lib/outcomes";
 import type { OutcomeKind } from "./lib/profile";
 import { calibrate } from "./lib/fees";
 import SellerObservations from "./components/SellerObservations";
@@ -147,6 +150,24 @@ function Dashboard({
     .slice(0, 5);
 
   const counts = useMemo(() => tally(profile, GAMES, now), [profile, now]);
+  // Split by which outcomes are still ANSWERABLE - see pending() in outcomes.ts. The
+  // exchange option disappears at the deadline, so a single post-game prompt could never
+  // separate "chose the credit" from "went unsold".
+  const needs = useMemo(() => pending(profile, GAMES, now), [profile, now]);
+
+  const downloadOutcomes = () => {
+    // The only durable copy of the training set. localStorage is right for privacy and
+    // is one browser setting away from destroying up to 44 irreplaceable observations.
+    const payload = exportPayload(profile, GAMES, now);
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ticket-desk-outcomes-${now.toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const rate = useMemo(() => sellRate(counts), [counts]);
 
   const setOutcome = (gameId: number, kind: string) => {
@@ -225,6 +246,47 @@ function Dashboard({
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
+        {/* FIRST, above everything. An unrecorded outcome is the only data loss in this
+            project that collecting harder later cannot fix - there are 44 chances a
+            season and each one passes exactly once. ops#50. */}
+        {(needs.closing.length > 0 || needs.played.length > 0) && (
+          <section
+            role="alert"
+            className="mb-6 rounded-lg border-2 border-red-500 bg-red-100 p-4 text-sm text-red-900 dark:border-red-600 dark:bg-red-950/50 dark:text-red-200"
+          >
+            <h2 className="text-base font-bold">Record an outcome</h2>
+            {needs.closing.length > 0 && (
+              <p className="mt-2">
+                <strong>
+                  Exchange window closes within {CLOSING_SOON_HOURS}h on{" "}
+                  {needs.closing.length} game{needs.closing.length === 1 ? "" : "s"}
+                </strong>{" "}
+                &mdash;{" "}
+                {needs.closing.map((g) => `${g.date} ${g.opponent.abbrev}`).join(", ")}. If you
+                are taking the credit, record it now: after the deadline &ldquo;returned for
+                credit&rdquo; is no longer one of the possible answers, and it cannot be told
+                apart from &ldquo;went unsold&rdquo; afterwards.
+              </p>
+            )}
+            {needs.played.length > 0 && (
+              <p className="mt-2">
+                <strong>
+                  {needs.played.length} played game{needs.played.length === 1 ? "" : "s"} with
+                  nothing recorded
+                </strong>{" "}
+                &mdash;{" "}
+                {needs.played.slice(0, 4).map((g) => `${g.date} ${g.opponent.abbrev}`).join(", ")}
+                {needs.played.length > 4 && ` +${needs.played.length - 4} more`}. Each is an
+                observation that is already gone.
+              </p>
+            )}
+            <p className="mt-2 text-xs opacity-80">
+              Outcomes are the only input a sell-timing model could ever be fit against, and
+              there are 44 a season.
+            </p>
+          </section>
+        )}
+
         {imported && (
           <div className="mb-6 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-200">
             Profile imported from link and saved to this device. The link has been cleared from the
@@ -457,6 +519,24 @@ function Dashboard({
             sell-timing model could ever be fit against, and they cannot be recovered after a
             game is played &mdash; there are 44 a season.
           </p>
+
+          {/* The only durable copy. These live in localStorage, which is right for privacy
+              and is one cleared-site-data away from destroying the whole set. */}
+          <div className="mt-2 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={downloadOutcomes}
+              disabled={counts.total === 0}
+              className="rounded border border-slate-300 px-2 py-1 text-xs font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
+            >
+              Export outcomes (JSON)
+            </button>
+            <span className="text-xs text-slate-500">
+              {counts.total === 0
+                ? "Nothing recorded yet."
+                : "Keep a copy outside the browser \u2014 clearing site data destroys these, and they cannot be re-collected. Private: contains our prices."}
+            </span>
+          </div>
 
           {counts.missed.length > 0 && (
             <p className="mt-3 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-800 dark:border-red-800/50 dark:bg-red-950/30 dark:text-red-300">
