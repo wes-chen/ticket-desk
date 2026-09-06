@@ -12,7 +12,7 @@
  * is count, and say plainly how far from useful the count still is.
  */
 
-import { exchangeDeadline, hoursUntil, type Game } from "./economics.ts";
+import { exchangeDeadline, exchangeIsRealFloor, hoursUntil, type Game } from "./economics.ts";
 import type { Outcome, OutcomeKind, Profile } from "./profile";
 
 export const OUTCOME_LABEL: Record<OutcomeKind, string> = {
@@ -120,6 +120,34 @@ export function exportPayload(profile: Profile, games: Game[], now: Date = new D
     count: rows.length,
     outcomes: rows,
   };
+}
+
+/**
+ * Which outcomes are still POSSIBLE for a game, as opposed to merely typeable.
+ *
+ * `exchanged` is dropped where the exchange has no real floor - the final home game,
+ * whose credit can only buy a remaining regular-season home game and there is none. The
+ * rest of the app already knows this: `guidance()` renders "No exchange floor - resale or
+ * nothing" and `exits()` marks the exchange exit unavailable. The outcome recorder was
+ * the one surface that did not, so it let someone record a choice the app had already
+ * told them was worthless, with no friction at the point of decision.
+ *
+ * `current` is always included even when it is no longer selectable. An outcome that was
+ * ALREADY RECORDED must stay visible and re-selectable: if it was recorded, it happened,
+ * and quietly dropping it from the list would blank the control and invite re-entry of
+ * something different. Rewriting history to match a model is how a dataset stops being
+ * evidence.
+ */
+export function selectableOutcomes(
+  game: Game,
+  season: Game[],
+  current?: OutcomeKind | null,
+): OutcomeKind[] {
+  const all = Object.keys(OUTCOME_LABEL) as OutcomeKind[];
+  // Without a season we cannot tell, and the safe default is to allow - claiming "no
+  // floor" without evidence would be worse than the permissiveness it replaces.
+  if (!season.length || exchangeIsRealFloor(game, season)) return all;
+  return all.filter((k) => k !== "exchanged" || k === current);
 }
 
 /**

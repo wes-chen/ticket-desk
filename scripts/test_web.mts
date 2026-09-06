@@ -23,7 +23,7 @@ import {
 } from "../src/lib/economics.ts";
 import {
   CLOSING_SOON_HOURS, FIT_THRESHOLD, arenaToday, defaultOutcomeDate, exportPayload,
-  pending, sellRate, tally, withOutcomeDate,
+  pending, selectableOutcomes, sellRate, tally, withOutcomeDate,
 } from "../src/lib/outcomes.ts";
 import {
   EMPTY_PROFILE, decodeProfile, encodeProfile, invoicePerSeat, isConfigured,
@@ -375,6 +375,40 @@ near("but it is not a 'sold'", r.rate!, 0);
   check("silenced inside the window too", p1.closing, []);
 
   check("the window is a day, not the whole 48h", CLOSING_SOON_HOURS, 24);
+}
+
+// ---- what is still POSSIBLE, not merely typeable (ops#55) ----
+// guidance() and exits() already know the final home game has no exchange floor. The
+// outcome recorder did not, so it let someone record a choice the app had already told
+// them was worthless.
+{
+  const season = [
+    { ...game("2026-10-01T02:00:00Z"), gameId: 1 },
+    { ...game("2026-10-03T02:00:00Z"), gameId: 2 },
+    { ...game("2027-04-10T02:00:00Z"), gameId: 3 },
+  ] as Game[];
+
+  check("an ordinary game offers all four outcomes",
+        selectableOutcomes(season[0], season).length, 4);
+  check("the FINAL home game does not offer 'exchanged'",
+        selectableOutcomes(season[2], season).includes("exchanged"), false);
+  check("but still offers the other three",
+        selectableOutcomes(season[2], season).sort(),
+        ["instant", "sold", "unsold"]);
+
+  // An ALREADY-RECORDED exchange stays selectable. If it was recorded it happened, and
+  // dropping it would blank the control and invite re-entry of something different -
+  // rewriting history to match a model is how a dataset stops being evidence.
+  check("a recorded exchange on the final game stays visible",
+        selectableOutcomes(season[2], season, "exchanged").includes("exchanged"), true);
+  // ...but only for that game. A recorded exchange elsewhere must not unlock it here.
+  check("and the exemption does not leak to a different current value",
+        selectableOutcomes(season[2], season, "sold").includes("exchanged"), false);
+
+  // No season -> cannot tell. Allowing is the safe default: claiming "no floor" without
+  // evidence is worse than the permissiveness it would replace.
+  check("without a season, all options remain",
+        selectableOutcomes(season[2], []).length, 4);
 }
 
 // ---- the outcome DATE (ops#54) ----

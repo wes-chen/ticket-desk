@@ -27,7 +27,7 @@ import { useLocalStorage } from "./lib/store";
 import { STALE_THRESHOLD, market, marketFor, staleDays, standing, standingNote } from "./lib/market";
 import {
   CLOSING_SOON_HOURS, FIT_THRESHOLD, OUTCOME_LABEL, defaultOutcomeDate, exportPayload,
-  outcomeFor, pending, sellRate, tally, withOutcomeDate,
+  outcomeFor, pending, selectableOutcomes, sellRate, tally, withOutcomeDate,
 } from "./lib/outcomes";
 import type { OutcomeKind } from "./lib/profile";
 import { calibrate } from "./lib/fees";
@@ -514,11 +514,19 @@ function Dashboard({
                               (r.outcome.atList != null ? ` at $${r.outcome.atList}` : "")
                             : past
                               ? "This game has been played and nothing was recorded - a permanently lost observation"
-                              : "Record what happened once it resolves"
+                              : !r.hasFloor
+                                ? "No 'returned for credit' option: credit from this game could only buy a remaining regular-season home game, and there is none"
+                                : "Record what happened once it resolves"
                         }
                       >
                         <option value="">{past ? "not recorded" : "--"}</option>
-                        {(Object.keys(OUTCOME_LABEL) as OutcomeKind[]).map((k) => (
+                        {/* "Returned for credit" is omitted for the final home game: its
+                            credit can only buy a remaining regular-season home game and
+                            there is none, so it is worth nothing. guidance() and exits()
+                            already say so; this was the surface that did not. An
+                            already-recorded outcome stays selectable regardless - if it
+                            was recorded, it happened. */}
+                        {selectableOutcomes(r.g, GAMES, r.outcome?.kind).map((k) => (
                           <option key={k} value={k}>
                             {OUTCOME_LABEL[k]}
                           </option>
