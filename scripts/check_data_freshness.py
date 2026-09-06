@@ -73,6 +73,19 @@ SUCCESS_DROP = 0.15
 # A quarter is an order of magnitude beyond that and means the source served fewer events.
 COVERAGE_DROP = 0.25
 
+# ...and at least this many games in absolute terms.
+#
+# A RELATIVE threshold alone is unstable on a small base, and rolling sources shrink to a
+# small base by design as the season ends. One game leaving to the calendar is 33% of a
+# three-game window and 50% of a two-game one, so the check would fire on the calendar
+# doing exactly what the calendar does - in the final week, when a red run that is actually
+# fine is worst, because those are the last games anyone can still act on.
+#
+# Three games, because calendar attrition is about one game every two days and never three
+# at once. The real regression this was built for was 29 -> 16, a drop of thirteen: it
+# clears both gates comfortably, and so would any genuine collapse.
+COVERAGE_DROP_MIN_GAMES = 3
+
 
 def load(path: pathlib.Path) -> list[dict]:
     if not path.exists():
@@ -227,7 +240,8 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     # never-priced check, and running both would report one fault twice.
     if rolling and len(days) >= 2:
         prev_n, cur_n = ok_by_day[days[-2]], ok_by_day[days[-1]]
-        if prev_n and (prev_n - cur_n) / prev_n > COVERAGE_DROP:
+        lost = prev_n - cur_n
+        if prev_n and lost >= COVERAGE_DROP_MIN_GAMES and lost / prev_n > COVERAGE_DROP:
             findings.append(("fatal",
                              f"coverage fell from {prev_n} to {cur_n} games between "
                              f"{days[-2]} and {days[-1]} ({(prev_n - cur_n) / prev_n:.0%}). "
@@ -369,6 +383,33 @@ def self_test() -> int:
     a = analyse(r, games(30, "2026-09-20"), date(2026, 9, 10), rolling=True)
     check("a 45% coverage drop is fatal",
           any("coverage fell" in m for _, m in a["findings"]), True)
+
+    # LATE SEASON, small base. One game leaving is 33% of a three-game window - over the
+    # relative threshold, and pure calendar. Firing here would go red in the final week,
+    # on the last games anyone can still act on, which is the worst possible time to be
+    # crying wolf.
+    small = ["2026-09-09", "2026-09-10"]
+    r = rows(small[:1], [0, 1, 2]) + rows(small[1:], [0, 1])
+    a = analyse(r, games(30, "2026-09-20"), date(2026, 9, 10), rolling=True)
+    check("one game leaving a 3-game window is the calendar, not a fault",
+          any("coverage fell" in m for _, m in a["findings"]), False)
+    # THE LIMITATION, asserted rather than discovered later. Losing TWO of three games is a
+    # 67% collapse and it does NOT fire, because two is below the absolute floor.
+    #
+    # That is the deliberate trade, not an oversight. The floor only ever binds on a small
+    # base, which only happens late in the season - when a missed collapse costs least
+    # (the series is nearly complete) and a false alarm costs most (a red run on the last
+    # games anyone can act on is one people learn to ignore). Early and mid-season the base
+    # is large and the floor never binds, because a real regression is 29 -> 16.
+    r = rows(small[:1], [0, 1, 2]) + rows(small[1:], [0])
+    a = analyse(r, games(30, "2026-09-20"), date(2026, 9, 10), rolling=True)
+    check("losing two of three does NOT fire - the floor binds, deliberately",
+          any("coverage fell" in m for _, m in a["findings"]), False)
+
+    # A collapse on a base big enough for the floor to clear still fires.
+    r = rows(small[:1], list(range(12))) + rows(small[1:], [0, 1])
+    a = analyse(r, games(30, "2026-09-20"), date(2026, 9, 10), rolling=True)
+    check("a 12 -> 2 collapse fires", any("coverage fell" in m for _, m in a["findings"]), True)
 
     # One game leaving to the calendar must NOT fire - that is the whole reason for a
     # threshold rather than any-drop-at-all.
