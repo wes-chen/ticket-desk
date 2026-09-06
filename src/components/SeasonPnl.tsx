@@ -10,7 +10,8 @@
  */
 
 import { fmt, type Game } from "../lib/economics";
-import { grossCashProceeds, seasonPnl } from "../lib/pnl";
+import economics from "../../config/economics.json";
+import { doNothingBaseline, grossCashProceeds, seasonPnl } from "../lib/pnl";
 import type { Profile } from "../lib/profile";
 
 export default function SeasonPnlPanel({
@@ -24,6 +25,8 @@ export default function SeasonPnlPanel({
 }) {
   const p = seasonPnl(profile, games);
   const gross = grossCashProceeds(p);
+  // The floor every recommendation has to beat. See doNothingBaseline in lib/pnl.ts.
+  const baseline = doNothingBaseline(profile, games, economics.exchange.creditHaircut.value);
 
   const exchanged = p.lines.filter((l) => l.outcome?.kind === "exchanged");
 
@@ -47,6 +50,31 @@ export default function SeasonPnlPanel({
         tracks face almost exactly, break-even against the exchange is also break-even against
         what you paid &mdash; so anything above basis on a game is real profit on that game.
       </p>
+
+      {baseline.games > 0 && (
+        <p className="mt-3 rounded border border-slate-300 bg-slate-50 p-2 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
+          <strong>Doing nothing is worth {fmt(baseline.perSeat)} per seat</strong> ({fmt(baseline.total)}
+          {" "}across {Math.max(profile.seats.seats.length, 1)}) &mdash; returning every ticket for
+          credit, valued at {Math.round(economics.exchange.creditHaircut.value * 100)}% of face.
+          Everything above should be measured against this, not against zero.
+          {baseline.noFloor > 0 && (
+            <>
+              {" "}
+              {baseline.noFloor} game{baseline.noFloor === 1 ? " is" : "s are"} excluded: credit from
+              the last home game can only buy a remaining home game, and there is none, so it is
+              worth nothing.
+            </>
+          )}
+          {baseline.missingBasis > 0 && (
+            <>
+              {" "}
+              {baseline.missingBasis} more {baseline.missingBasis === 1 ? "has" : "have"} no tier
+              credit entered and {baseline.missingBasis === 1 ? "is" : "are"} not counted, so this
+              is an under-estimate.
+            </>
+          )}
+        </p>
+      )}
 
       <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-5">
         <Stat label="Cash received" value={fmt(p.cash)} tone="good" />

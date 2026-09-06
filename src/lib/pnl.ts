@@ -25,7 +25,7 @@
  *    misleading. This is record-keeping.
  */
 
-import type { Game } from "./economics";
+import { exchangeIsRealFloor, type Game } from "./economics.ts";
 import type { Outcome, Profile, Tier } from "./profile";
 
 export interface GameLine {
@@ -160,6 +160,67 @@ export function seasonPnl(profile: Profile, games: Game[]): SeasonPnl {
     resolved,
     missingBasis,
   };
+}
+
+export interface DoNothingBaseline {
+  /** Cash-equivalent value of exchanging every game that CAN be exchanged, per seat. */
+  perSeat: number;
+  /** Across all seats. */
+  total: number;
+  /** Games counted - those with a known credit and a real exchange floor. */
+  games: number;
+  /**
+   * Games excluded because exchanging them yields credit with nowhere to spend it.
+   * In practice the final home game: its credit expires at its own puck drop.
+   */
+  noFloor: number;
+  /** Games excluded because their tier has no credit entered. */
+  missingBasis: number;
+}
+
+/**
+ * What the season yields if Wesley does nothing but return every ticket for credit.
+ *
+ * THE POINT. Every recommendation this tool makes should beat doing nothing, and until
+ * now nothing measured against that. A per-game break-even says whether listing beats
+ * exchanging THAT game; it never says whether the whole strategy beats the lazy one.
+ *
+ * NOT simply the sum of tier credits, and the difference is the interesting part.
+ * Exchanging the final home game yields credit that can only be spent on a
+ * regular-season home game which has not happened - and there is none. That credit is
+ * worth zero, so the game is EXCLUDED rather than counted at face. `exchangeIsRealFloor`
+ * already encodes this; the naive sum would overstate the baseline by one A+ game.
+ *
+ * Valued at the haircut, because credit is not cash - it expires at season end, cannot
+ * buy playoffs, and does not roll over. Comparing a cash strategy against a credit
+ * baseline at face value would flatter the credit.
+ */
+export function doNothingBaseline(
+  profile: Profile,
+  games: Game[],
+  creditHaircut = 1,
+): DoNothingBaseline {
+  const seats = Math.max(profile.seats.seats.length, 1);
+  let perSeat = 0;
+  let counted = 0;
+  let noFloor = 0;
+  let missingBasis = 0;
+
+  for (const g of games) {
+    const basis = creditFor(profile, g);
+    if (basis == null) {
+      missingBasis += 1;
+      continue;
+    }
+    if (!exchangeIsRealFloor(g, games)) {
+      noFloor += 1;
+      continue;
+    }
+    perSeat += basis * creditHaircut;
+    counted += 1;
+  }
+
+  return { perSeat, total: perSeat * seats, games: counted, noFloor, missingBasis };
 }
 
 /**

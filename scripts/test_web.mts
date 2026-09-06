@@ -524,7 +524,7 @@ check("no offers -> no delta", sr.delta, null);
 
 // --- pnl: season roll-up --------------------------------------------------------
 
-import { grossCashProceeds, seasonPnl } from "../src/lib/pnl.ts";
+import { doNothingBaseline, grossCashProceeds, seasonPnl } from "../src/lib/pnl.ts";
 
 const pnlGames: Game[] = [
   { ...game("2026-10-01T02:00:00Z"), gameId: 1, tier: "A" },
@@ -611,6 +611,41 @@ pl = seasonPnl(pnlProfile({}, { credits: { A: 100 } }), pnlGames);
 check("missing basis counted", pl.missingBasis, 2);
 check("face is null when any game's basis is unknown", pl.faceTotal, null);
 check("residual is null when face is unknown", pl.nonRefundableResidual, null);
+
+// ---- the do-nothing baseline (sweep idea #29) ----
+// Every recommendation should beat "return every ticket for credit", and nothing measured
+// against that until now.
+{
+  const p = pnlProfile({});
+  const b = doNothingBaseline(p, pnlGames);
+
+  // THE POINT: not the sum of all four credits. The LAST home game yields credit that can
+  // only be spent on a regular-season home game which has not happened - and there is
+  // none - so it is worth zero and excluded. Naive face total per seat is 380; the
+  // achievable baseline is 290, because the final B game (90) cannot be exchanged usefully.
+  check("the final game has no exchange floor and is excluded", b.noFloor, 1);
+  check("three games counted, not four", b.games, 3);
+  near("per seat excludes the unexchangeable game", b.perSeat, 290);
+  near("total scales by seats", b.total, 580);
+  // Guard the exact overstatement the naive version would produce.
+  check("and it is strictly below the naive face total", b.perSeat < 380, true);
+
+  // Credit is not cash. Comparing a cash strategy against a face-value credit baseline
+  // would flatter the credit.
+  const h = doNothingBaseline(p, pnlGames, 0.9);
+  near("haircut applies", h.perSeat, 261);
+  near("and to the total", h.total, 522);
+
+  // A tier with no credit entered cannot be valued - counted, not guessed at zero.
+  const partial = doNothingBaseline(pnlProfile({}, { credits: { A: 100 } }), pnlGames);
+  check("missing basis is reported", partial.missingBasis, 2);
+  check("and those games are not silently counted", partial.games, 2);
+  near("only the games with a known credit contribute", partial.perSeat, 200);
+
+  // An empty schedule must not divide by anything or invent a floor.
+  const none = doNothingBaseline(p, []);
+  check("no games -> zero baseline", [none.perSeat, none.games], [0, 0]);
+}
 
 // No invoice entered -> no residual claim.
 pl = seasonPnl(pnlProfile({}, { invoiceTotal: null }), pnlGames);
