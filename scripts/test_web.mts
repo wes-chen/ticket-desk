@@ -635,7 +635,8 @@ check("no offers -> no delta", sr.delta, null);
 // --- pnl: season roll-up --------------------------------------------------------
 
 import {
-  RESIDUAL_ALARM_RATE, doNothingBaseline, grossCashProceeds, reconciliation, seasonPnl,
+  EXPECTED_RESIDUAL_RATE, RESIDUAL_ALARM_RATE, RESIDUAL_ELEVATED_RATE,
+  doNothingBaseline, grossCashProceeds, reconciliation, seasonPnl,
 } from "../src/lib/pnl.ts";
 
 const pnlGames: Game[] = [
@@ -739,10 +740,53 @@ check("residual is null when face is unknown", pl.nonRefundableResidual, null);
   check("a 5% residual is implausible against a measured 0.3%", r0.implausible, true);
   check("and it says to check the credits", r0.message!.includes("mistyped"), true);
 
-  // A residual inside tolerance says nothing.
+  // A residual inside tolerance says nothing at all.
   const tight = seasonPnl(pnlProfile({}, { invoiceTotal: 762 }), pnlGames); // 381/seat vs 380
   check("a small residual is not flagged", reconciliation(tight).implausible, false);
+  check("and does not even raise a notice", reconciliation(tight).elevated, false);
   near("and its rate is tiny", reconciliation(tight).rate!, 0.0026, 0.0005);
+
+  // THE CASE THE FIRST VERSION MISSED, on a REALISTIC tier structure rather than the toy
+  // fixture. The toy has 4 games over 2 tiers, so one tier is 53% of face and any typo
+  // there looks enormous - it proves nothing about the real season.
+  //
+  // Real games-per-tier from config/tiers.json (A+ 7, A 8, B 7, C 11, D 9 = 42). Credit
+  // PROPORTIONS follow the public market medians in check_tier_market.py; the absolute
+  // values are synthetic and absurd, because real credits are private (rule 1).
+  //
+  // Computed across all five tiers, a 10% slip on any ONE lands at 1.37%-2.93% of the
+  // invoice - every one of them UNDER a 3% alarm and OVER a 1% notice. That range is why
+  // there are two bands and why the first single threshold could not work.
+  {
+    const counts: Record<string, number> = { "A+": 7, A: 8, B: 7, C: 11, D: 9 };
+    const credits: Record<string, number> = { "A+": 1380, A: 1270, B: 940, C: 720, D: 460 };
+    const realish: Game[] = [];
+    let id = 100;
+    for (const t of Object.keys(counts)) {
+      for (let i = 0; i < counts[t]; i++) {
+        realish.push({ ...game("2026-11-01T03:00:00Z"), gameId: id++, tier: t } as Game);
+      }
+    }
+    const face = realish.reduce((a, g) => a + credits[g.tier as string], 0);
+    const invoice = (face / (1 - EXPECTED_RESIDUAL_RATE)) * 2; // 2 seats
+
+    const ok = seasonPnl(
+      { ...EMPTY_PROFILE, seats: { section: "1", row: "1", seats: ["1", "2"] },
+        invoiceTotal: invoice, credits: credits as never }, realish);
+    check("a correctly-entered 42-game season is silent", reconciliation(ok).elevated, false);
+    check("and not alarming either", reconciliation(ok).implausible, false);
+
+    // Every tier, not just a convenient one: the band must catch a slip anywhere.
+    for (const t of Object.keys(counts)) {
+      const typo = { ...credits, [t]: Math.round(credits[t] * 0.9) };
+      const r = reconciliation(seasonPnl(
+        { ...EMPTY_PROFILE, seats: { section: "1", row: "1", seats: ["1", "2"] },
+          invoiceTotal: invoice, credits: typo as never }, realish));
+      check(`a 10% slip on tier ${t} is caught as elevated`, r.elevated, true);
+      check(`and tier ${t} does NOT reach the alarm - which is why one threshold failed`,
+            r.implausible, false);
+    }
+  }
 
   // Face EXCEEDING the invoice cannot happen - a credit is too high. Different message,
   // because it points at a different mistake.

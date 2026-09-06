@@ -53,6 +53,12 @@ export default function SeasonPnlPanel({
         what you paid &mdash; so anything above basis on a game is real profit on that game.
       </p>
 
+      {recon.elevated && (
+        <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200">
+          <strong>Worth checking the tier credits.</strong> {recon.message}
+        </p>
+      )}
+
       {recon.implausible && (
         <p
           role="alert"

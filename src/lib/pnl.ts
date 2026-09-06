@@ -171,19 +171,36 @@ export function seasonPnl(profile: Profile, games: Game[]): SeasonPnl {
 export const EXPECTED_RESIDUAL_RATE = 0.003;
 
 /**
- * Above this, the residual is more likely a mistyped tier credit than a fee.
- *
- * Ten times the measured value. Deliberately not tight: the point is to catch a
- * fat-finger, not to police a number that was measured once and may drift. A check that
- * fires on a real 1% residual would be switched off before it ever caught a typo.
+ * `measured_single_point`. The ~0.3% figure traces to ONE reconciliation against one
+ * invoice (a61bb4d). Tagged because every other load-bearing constant in this project
+ * carries a confidence field and this one was promoted from prose to code without it.
  */
+export const EXPECTED_RESIDUAL_CONFIDENCE = "measured_single_point";
+
+/**
+ * Two bands, because one threshold cannot do both jobs. Sized by the ERROR TO CATCH, not
+ * by a multiple of the baseline - which is how the first version got this wrong.
+ *
+ * Measured against the real tier structure (A+ 7, A 8, B 7, C 11, D 9 games) a ~10% slip
+ * on a SINGLE tier's credit moves the residual by only 1.1-2.6% of the invoice - under
+ * 3%, even on the largest tier. So a single threshold at 3% catches a decimal-point error
+ * or a swapped tier and misses the commonest fat-finger entirely.
+ *
+ * ELEVATED is a notice, not an alarm: "this is further from expected than measured, look
+ * at it". It can sit at 1% precisely because it does not cry wolf - it informs.
+ * IMPLAUSIBLE stays loud and stays loose, because a red alert that fires on a real
+ * residual drift is one that gets switched off before it ever catches a typo.
+ */
+export const RESIDUAL_ELEVATED_RATE = 0.01;
 export const RESIDUAL_ALARM_RATE = 0.03;
 
 export interface Reconciliation {
   /** Residual as a fraction of the invoice, or null when either side is unknown. */
   rate: number | null;
-  /** True when the residual is too large, or negative, to be the fee it claims to be. */
+  /** Too large, or negative, to be the fee it claims to be. Rendered as an alert. */
   implausible: boolean;
+  /** Further from the measured ~0.3% than expected, but not absurd. A notice. */
+  elevated: boolean;
   message: string | null;
 }
 
@@ -203,13 +220,14 @@ export interface Reconciliation {
  */
 export function reconciliation(p: SeasonPnl): Reconciliation {
   if (p.invoicePerSeat == null || p.faceTotal == null || p.invoicePerSeat <= 0) {
-    return { rate: null, implausible: false, message: null };
+    return { rate: null, implausible: false, elevated: false, message: null };
   }
   const rate = (p.invoicePerSeat - p.faceTotal) / p.invoicePerSeat;
   if (rate < 0) {
     return {
       rate,
       implausible: true,
+      elevated: false,
       message:
         "Total face exceeds the season invoice, which cannot happen - a tier credit is " +
         "entered too high. Tier credits are both the cost basis and the exchange payout, " +
@@ -220,6 +238,7 @@ export function reconciliation(p: SeasonPnl): Reconciliation {
     return {
       rate,
       implausible: true,
+      elevated: false,
       message:
         `The residual is ${(rate * 100).toFixed(1)}% of the invoice, against a measured ` +
         `~${(EXPECTED_RESIDUAL_RATE * 100).toFixed(1)}%. That is more likely a mistyped ` +
@@ -227,7 +246,19 @@ export function reconciliation(p: SeasonPnl): Reconciliation {
         `any break-even.`,
     };
   }
-  return { rate, implausible: false, message: null };
+  if (rate > RESIDUAL_ELEVATED_RATE) {
+    return {
+      rate,
+      implausible: false,
+      elevated: true,
+      message:
+        `The residual is ${(rate * 100).toFixed(1)}% of the invoice, against a measured ` +
+        `~${(EXPECTED_RESIDUAL_RATE * 100).toFixed(1)}%. Not impossible, but a ~10% slip ` +
+        `on one tier's credit lands in this range - worth checking that tier against the ` +
+        `invoice.`,
+    };
+  }
+  return { rate, implausible: false, elevated: false, message: null };
 }
 
 export interface DoNothingBaseline {
