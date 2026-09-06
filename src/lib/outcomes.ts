@@ -12,7 +12,7 @@
  * is count, and say plainly how far from useful the count still is.
  */
 
-import { exchangeDeadline, hoursUntil, type Game } from "./economics";
+import { exchangeDeadline, hoursUntil, type Game } from "./economics.ts";
 import type { Outcome, OutcomeKind, Profile } from "./profile";
 
 export const OUTCOME_LABEL: Record<OutcomeKind, string> = {

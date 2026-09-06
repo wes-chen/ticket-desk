@@ -97,6 +97,50 @@ def run_one(f: pathlib.Path) -> tuple[bool, str]:
     return r.returncode == 0, out
 
 
+# Relative imports inside src/ that Node's ESM loader cannot resolve.
+#
+# WHY THIS CHECK EXISTS. src/lib/outcomes.ts grew the first RUNTIME cross-import between
+# two src/lib modules (`import { exchangeDeadline } from "./economics"`). Every earlier
+# one was `import type`, which is erased and never reaches a loader. Vite and tsc both use
+# bundler-style resolution and accept the missing extension, so `npm run build` and
+# `tsc --noEmit` passed clean - while `node --experimental-strip-types`, which is what
+# runs the web suite, failed with ERR_MODULE_NOT_FOUND.
+#
+# The suite DID catch it. It is caught here as well because the failure surfaces as a
+# module-resolution stack trace rather than an assertion, which reads like a broken runner
+# rather than a broken import - and because it will recur every time src/lib grows another
+# runtime cross-import.
+#
+# `import type` is deliberately NOT flagged: it is erased before any loader sees it.
+IMPORT_RE = re.compile(
+    r"""^\s*import\s+(?!type\s)(?:[^'"]*?\sfrom\s+)?['"](\.[^'"]*)['"]""", re.M)
+
+
+def extensionless_imports(root: pathlib.Path) -> list[str]:
+    """Relative runtime imports with no extension in src/lib/ - the code Node actually loads.
+
+    SCOPED TO src/lib ON PURPOSE. The constraint is not "TypeScript should use extensions",
+    it is "Node's ESM loader must be able to resolve this". Only src/lib is loaded by Node,
+    because that is what scripts/test_web.mts imports. App.tsx and src/components are
+    bundled by Vite and never touched by a loader, and they hold 18 extensionless imports
+    that are entirely correct.
+
+    Flagging those would fail the build on 18 legitimate lines - a check that cries wolf
+    is one people switch off, which is how the real signal gets lost. First draft of this
+    function did exactly that; the narrowing is the point, not an afterthought.
+    """
+    out = []
+    src = root / "src" / "lib"
+    if not src.exists():
+        return out
+    for f in sorted(src.rglob("*.ts")) + sorted(src.rglob("*.tsx")):
+        for spec in IMPORT_RE.findall(f.read_text()):
+            if not pathlib.PurePosixPath(spec).suffix:
+                out.append(f"{f.relative_to(root)}: '{spec}' has no file extension - "
+                           f"Node's ESM loader cannot resolve it, though Vite and tsc can")
+    return out
+
+
 def main() -> int:
     tested, untested = discoverable()
 
@@ -108,6 +152,11 @@ def main() -> int:
         print(f"  {'PASS' if ok else 'FAIL'}  {f.name:28s} {last}")
         if not ok:
             failures.append((f.name, out))
+
+    # Module resolution, before coverage: a broken import reads as a broken runner.
+    bad_imports = extensionless_imports(ROOT)
+    for m in bad_imports:
+        print(f"  IMPORT  {m}")
 
     # Coverage: an untested script must be explicitly exempted, with a reason.
     unexplained = [f.name for f in untested if f.name not in EXEMPT]
@@ -133,7 +182,14 @@ def main() -> int:
         print("Add a --self-test, or add an entry to EXEMPT in scripts/run_tests.py "
               "saying why not.", file=sys.stderr)
 
-    if failures or unexplained:
+    if bad_imports:
+        print(f"\n{len(bad_imports)} UNRESOLVABLE IMPORT(S):", file=sys.stderr)
+        for m in bad_imports:
+            print(f"  - {m}", file=sys.stderr)
+        print("Add the explicit extension. Vite and tsc accept it without; the Node "
+              "loader that runs the web suite does not.", file=sys.stderr)
+
+    if failures or unexplained or bad_imports:
         return 1
     print("\nall suites pass")
     return 0
