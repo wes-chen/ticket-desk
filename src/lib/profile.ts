@@ -153,7 +153,13 @@ export function recordListPrice(
 
   // A price that predates history is preserved, but its timestamp is honest about being
   // the moment history began rather than the moment the price was chosen.
-  if (entries.length === 0 && previous !== undefined && previous !== price) {
+  //
+  // Deliberately NOT conditioned on `previous !== price`. It was, and that lost the
+  // marker in exactly the case the marker exists for: a legacy price re-saved unchanged
+  // produced a single UNFLAGGED entry, which reads as "set at this instant" when its real
+  // vintage is unknown. Found in review. When previous === price the backfilled entry is
+  // pushed here and the append below correctly declines to duplicate it.
+  if (entries.length === 0 && previous !== undefined) {
     entries.push({ price: previous, at: now.toISOString(), backfilled: true });
   }
   if (entries.length === 0 || entries[entries.length - 1].price !== price) {

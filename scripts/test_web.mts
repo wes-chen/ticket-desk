@@ -79,6 +79,30 @@ near("net at break-even equals the credit", netPayout(breakEvenList(51)), 51, 0.
   check("re-saving the same price appends nothing",
         c.listPriceHistory!["1"].length, 2);
 
+  // A legacy price RE-SAVED UNCHANGED must still be marked backfilled. The guard used to
+  // require previous !== price, which dropped the marker in exactly the case it exists
+  // for: the entry then read as "set at this instant" when its real vintage is unknown.
+  // Found in review.
+  const sameLegacy: Profile = { ...EMPTY_PROFILE, listPrices: { "9": 70 } };
+  const same = recordListPrice(sameLegacy, 9, 70, t0);
+  check("a legacy price re-saved unchanged yields ONE entry",
+        same.listPriceHistory!["9"].length, 1);
+  check("and it is marked backfilled", same.listPriceHistory!["9"][0].backfilled, true);
+
+  // WHY THE UI MUST COMMIT ON BLUR, NOT ON CHANGE.
+  // recordListPrice appends on every change it is handed, which is correct for settled
+  // values and catastrophic for keystrokes: the input is a controlled <input
+  // type="number"> whose onChange fires per character, so wiring it directly recorded
+  // [70, 7, 8, 85] when editing 70 -> 85 - two permanent, unflagged phantom prices in a
+  // structure documented as never truncated. Asserting the hazard here so the trap is
+  // visible to whoever next touches the input, rather than rediscovered in review.
+  let keyed: Profile = { ...EMPTY_PROFILE, listPrices: { "7": 70 } };
+  for (const v of ["7", "", "8", "85"]) {
+    keyed = recordListPrice(keyed, 7, v === "" ? null : Number(v), t0);
+  }
+  check("feeding raw keystrokes pollutes the history - hence the draft",
+        keyed.listPriceHistory!["7"].map((e) => e.price), [70, 7, 8, 85]);
+
   // A profile that predates history has a price and no entries. It must be preserved,
   // and its timestamp must be honest about being when history STARTED.
   const legacy: Profile = { ...EMPTY_PROFILE, listPrices: { "2": 70 } };

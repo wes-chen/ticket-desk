@@ -168,11 +168,27 @@ function Dashboard({
     setProfile({ ...profile, outcomes: next });
   };
 
-  const setList = (gameId: number, v: string) => {
-    // Through recordListPrice so the previous ask is preserved rather than overwritten.
-    // Before this, changing a price destroyed its predecessor and we had no record of
-    // our own asks at all - see listPriceHistory in profile.ts.
+  // Keystrokes go to a DRAFT; only a settled value reaches the profile.
+  //
+  // The input is a controlled <input type="number"> whose onChange fires per keystroke.
+  // While listPrices merely overwrote, that was harmless - intermediate states vanished.
+  // Routing it through recordListPrice made every keystroke an append to a structure
+  // documented as never truncated: editing 70 -> 85 recorded [70, 7, 8, 85], with 7 and 8
+  // permanent, unflagged, and indistinguishable afterwards from real pricing decisions.
+  // Found in review; the unit tests missed it because they call recordListPrice with
+  // settled values, which is not how the only caller invokes it.
+  const [listDraft, setListDraft] = useState<Record<string, string>>({});
+
+  const commitList = (gameId: number) => {
+    const key = String(gameId);
+    if (!(key in listDraft)) return; // nothing typed - a blur alone must not record
+    const v = listDraft[key];
     setProfile(recordListPrice(profile, gameId, v === "" ? null : Number(v)));
+    setListDraft((d) => {
+      const next = { ...d };
+      delete next[key];
+      return next;
+    });
   };
 
   return (
@@ -353,9 +369,15 @@ function Dashboard({
                       <input
                         type="number"
                         step="1"
-                        value={r.list ?? ""}
+                        value={listDraft[String(r.g.gameId)] ?? (r.list ?? "")}
                         placeholder="--"
-                        onChange={(e) => setList(r.g.gameId, e.target.value)}
+                        onChange={(e) =>
+                          setListDraft((d) => ({ ...d, [String(r.g.gameId)]: e.target.value }))
+                        }
+                        onBlur={() => commitList(r.g.gameId)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                        }}
                         className={`w-20 rounded border bg-transparent px-2 py-1 text-right text-sm tabular-nums ${
                           r.list != null && r.floor != null && r.list < r.floor
                             ? "border-red-500 text-red-600 dark:text-red-400"
