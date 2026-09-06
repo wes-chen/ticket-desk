@@ -53,6 +53,27 @@ ACCEPTED_FILE = ROOT / ".privacy-accepted"
 
 # Keys that must never appear in committed JSON - they hold seat-dependent or
 # account-dependent values.
+# A LINKAGE check, not a key check - and the distinction is the whole of CLAUDE.md rule 1:
+# "What is forbidden is the LINKAGE, not the field."
+#
+# The forbidden thing is "which games we have listed, at what price, with what net".
+# Neither half is private alone. An ISOLATED (list, net) pair is explicitly blessed as fee
+# calibration - it measures Ticketmaster's fee, not our seats. A gameId is public schedule
+# data. Put them in ONE object and they become exactly the forbidden statement.
+#
+# This existed as a real exposure: config/economics.json committed five entries shaped
+# {list, net, game, tier}, and every key-name check passed them because no individual name
+# is private. Found 2026-09-06.
+#
+# SELLER-side price fields only. `low`, `high` and `price` are deliberately absent: those
+# are other people's public listings, which the rule explicitly permits alongside a game -
+# the entire market series in data/market/ is that shape, and flagging it would make this
+# check fire on legitimate data every run.
+OWN_PRICE_FIELDS = {
+    "list", "net", "payout", "netPerSeat", "atList", "offerPerTicket", "impliedBid",
+}
+EVENT_FIELDS = {"game", "gameId", "event", "eventId", "opponent", "date"}
+
 FORBIDDEN_KEYS = {
     "creditPerSeat",
     "invoiceTotal",
@@ -63,6 +84,32 @@ FORBIDDEN_KEYS = {
     "faceValuePerSeat",
     "invoicePerSeat",
 }
+
+
+def linkages(obj, path="") -> list[str]:
+    """Objects that tie one of OUR prices to a specific game. See OWN_PRICE_FIELDS.
+
+    Walks dicts and lists, examining each dict's OWN keys - not inherited from a parent -
+    because the forbidden statement is a single object saying "this game, this price".
+    """
+    found = []
+    if isinstance(obj, dict):
+        keys = set(obj)
+        priced = keys & OWN_PRICE_FIELDS
+        evented = keys & EVENT_FIELDS
+        if priced and evented:
+            found.append(
+                f"{path or '<root>'}: ties our price ({', '.join(sorted(priced))}) to a "
+                f"specific event ({', '.join(sorted(evented))}) in one object - CLAUDE.md "
+                f"rule 1 forbids the LINKAGE, not the fields. An isolated (list, net) pair "
+                f"is fine; naming the game makes it a statement about our listings"
+            )
+        for k, v in obj.items():
+            found += linkages(v, f"{path}.{k}")
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            found += linkages(v, f"{path}[{i}]")
+    return found
 
 
 def walk(obj, path=""):
@@ -129,6 +176,8 @@ def structural(root: pathlib.Path = ROOT) -> list[str]:
                         f"{label}: forbidden key '{key}' at {path or '<root>'} "
                         f"- personal values belong in the browser profile, not the repo"
                     )
+            for msg in linkages(data):
+                problems.append(f"{label}: {msg}")
     return problems
 
 
@@ -299,6 +348,31 @@ def self_test() -> int:
         (root / "config" / "bad.json").write_text('{"tiers": [{"creditPerSeat": 120}]}')
         probs = structural(root)
         check("forbidden key in nested json caught", len(probs), 1)
+
+        # ---- the LINKAGE check (found a live exposure 2026-09-06) ----
+        # Rule 1's actual wording: "What is forbidden is the LINKAGE, not the field." Every
+        # key-name check passed {list, net, game, tier} because no individual name is private.
+        check("our price tied to a named game is flagged",
+              len(linkages({"list": 11111111, "net": 22222222, "game": "9999-99-99 XXX"})), 1)
+        check("our price tied to a date is flagged",
+              len(linkages({"offerPerTicket": 11111111, "date": "9999-99-99"})), 1)
+        check("an ISOLATED pair is fine - it measures the fee, not our seats",
+              linkages({"list": 11111111, "net": 22222222, "impliedRate": 0.1}), [])
+        check("a game with no price of ours is fine",
+              linkages({"game": "9999-99-99 XXX", "tier": "PRESEASON"}), [])
+        # The market series is exactly {gameId, date, low, high} - OTHER people's public
+        # listings, which rule 1 permits alongside a game. If this ever fires on that, the
+        # check is wrong, not the data, and it would fire on every run until someone
+        # disabled it.
+        check("other people's listings beside a game are NOT flagged",
+              linkages({"gameId": 1, "date": "9999-99-99", "low": 11111111,
+                        "high": 22222222, "source": "tickpick"}), [])
+        check("nested inside a list is found",
+              len(linkages({"samples": [{"list": 1, "game": "x"}]})), 1)
+        check("the path is reported",
+              "samples[0]" in linkages({"samples": [{"list": 1, "game": "x"}]})[0], True)
+        check("an empty object is fine", linkages({}), [])
+
         check("problem names the key", "creditPerSeat" in probs[0], True)
         (root / "config" / "bad.json").unlink()
 
