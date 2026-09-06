@@ -635,8 +635,8 @@ check("no offers -> no delta", sr.delta, null);
 // --- pnl: season roll-up --------------------------------------------------------
 
 import {
-  EXPECTED_RESIDUAL_RATE, RESIDUAL_ALARM_RATE, RESIDUAL_ELEVATED_RATE,
-  doNothingBaseline, grossCashProceeds, reconciliation, seasonPnl,
+  EXPECTED_RESIDUAL_RATE, RESIDUAL_ALARM_RATE, doNothingBaseline, grossCashProceeds,
+  reconciliation, seasonPnl,
 } from "../src/lib/pnl.ts";
 
 const pnlGames: Game[] = [
