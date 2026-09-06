@@ -135,9 +135,38 @@ export function exportPayload(profile: Profile, games: Game[], now: Date = new D
  * the app. It is still only a default - the user is the only party who knows the real
  * date, and the UI must let them say so.
  */
+export const ARENA_TZ = "America/Los_Angeles";
+
+/** Today's calendar date AT THE ARENA, not in UTC. */
+export function arenaToday(now: Date = new Date()): string {
+  // en-CA formats as YYYY-MM-DD, which is the shape game.date already uses.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: ARENA_TZ }).format(now);
+}
+
 export function defaultOutcomeDate(game: Game, now: Date = new Date()): string {
-  const today = now.toISOString().slice(0, 10);
+  // ARENA-local today, compared against an arena-local game.date. Using
+  // now.toISOString() here compared a UTC calendar date against a Pacific one - and
+  // Pacific trails UTC by 7-8h, so UTC's date rolls over first. A genuine sale at 21:00
+  // Pacific on the evening BEFORE a game returned the game's date, one day late: bounded
+  // to a day rather than weeks, but it reintroduced the exact late-side bias this
+  // function exists to remove, every evening rather than only once. Found in review.
+  const today = arenaToday(now);
   return today < game.date ? today : game.date;
+}
+
+/**
+ * Store an explicit outcome date. Pure, so "a supplied date is kept, not silently
+ * replaced with today" is testable - ops#54 asked for that assertion and the first
+ * attempt at this left the setter in the component where nothing could reach it.
+ *
+ * An empty date is refused rather than stored: a blank `on` would be worse than a
+ * slightly wrong one, because every consumer treats it as a real date.
+ */
+export function withOutcomeDate(profile: Profile, gameId: number, on: string): Profile {
+  const key = String(gameId);
+  const existing = profile.outcomes?.[key];
+  if (!existing || !on) return profile;
+  return { ...profile, outcomes: { ...profile.outcomes, [key]: { ...existing, on } } };
 }
 
 export function tally(profile: Profile, games: Game[], now: Date = new Date()): OutcomeTally {

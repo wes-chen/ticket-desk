@@ -27,7 +27,7 @@ import { useLocalStorage } from "./lib/store";
 import { STALE_THRESHOLD, market, marketFor, staleDays, standing, standingNote } from "./lib/market";
 import {
   CLOSING_SOON_HOURS, FIT_THRESHOLD, OUTCOME_LABEL, defaultOutcomeDate, exportPayload,
-  outcomeFor, pending, sellRate, tally,
+  outcomeFor, pending, sellRate, tally, withOutcomeDate,
 } from "./lib/outcomes";
 import type { OutcomeKind } from "./lib/profile";
 import { calibrate } from "./lib/fees";
@@ -202,12 +202,21 @@ function Dashboard({
     setProfile({ ...profile, outcomes: next });
   };
 
-  const setOutcomeDate = (gameId: number, on: string) => {
-    const existing = profile.outcomes?.[String(gameId)];
-    if (!existing || !on) return;
-    setProfile({
-      ...profile,
-      outcomes: { ...profile.outcomes, [String(gameId)]: { ...existing, on } },
+  // Same draft pattern as the list price, and for the same reason: a controlled input
+  // whose onChange REJECTS a value leaves the DOM showing what the user typed while
+  // storage holds something else, until an unrelated re-render snaps it back. Clearing a
+  // date field is exactly that case - the empty value is refused, correctly, and without
+  // a draft the field would sit visibly blank over a stored date. Found in review.
+  const [dateDraft, setDateDraft] = useState<Record<string, string>>({});
+
+  const commitOutcomeDate = (gameId: number) => {
+    const key = String(gameId);
+    if (!(key in dateDraft)) return;
+    setProfile(withOutcomeDate(profile, gameId, dateDraft[key]));
+    setDateDraft((d) => {
+      const next = { ...d };
+      delete next[key];
+      return next;
     });
   };
 
@@ -524,9 +533,11 @@ function Dashboard({
                       {r.outcome && (
                         <input
                           type="date"
-                          value={r.outcome.on}
-                          max={r.g.date}
-                          onChange={(e) => setOutcomeDate(r.g.gameId, e.target.value)}
+                          value={dateDraft[String(r.g.gameId)] ?? r.outcome.on}
+                          onChange={(e) =>
+                            setDateDraft((d) => ({ ...d, [String(r.g.gameId)]: e.target.value }))
+                          }
+                          onBlur={() => commitOutcomeDate(r.g.gameId)}
                           title="The date this actually happened - not the date you recorded it. This is the field a sell-timing model is fit against."
                           className="mt-1 block w-full rounded border border-slate-200 bg-transparent px-1 py-0.5 text-[11px] tabular-nums text-slate-500 dark:border-slate-800"
                         />

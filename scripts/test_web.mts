@@ -22,8 +22,8 @@ import {
   listToNet, minListPrice, netPayout, phaseOf, remainingCreditOutlets, type Game,
 } from "../src/lib/economics.ts";
 import {
-  CLOSING_SOON_HOURS, FIT_THRESHOLD, defaultOutcomeDate, exportPayload, pending,
-  sellRate, tally,
+  CLOSING_SOON_HOURS, FIT_THRESHOLD, arenaToday, defaultOutcomeDate, exportPayload,
+  pending, sellRate, tally, withOutcomeDate,
 } from "../src/lib/outcomes.ts";
 import {
   EMPTY_PROFILE, decodeProfile, encodeProfile, invoicePerSeat, isConfigured,
@@ -399,6 +399,39 @@ near("but it is not a 'sold'", r.rate!, 0);
   // game than the truth. Asserted as a property, not a date.
   const late = defaultOutcomeDate(g, new Date("2026-10-30T12:00:00Z"));
   check("the default is never after puck drop", late <= g.date, true);
+
+  // THE BOUNDARY THE FIRST VERSION GOT WRONG. `today` was computed from toISOString(),
+  // a UTC calendar date, and compared against game.date, which is ARENA-LOCAL. Pacific
+  // trails UTC by 7-8h, so UTC rolls over first: a genuine sale at 21:00 Pacific on the
+  // evening BEFORE the game returned the game's date - one day late, every evening,
+  // reintroducing the exact late-side bias this function removes. Found in review; both
+  // earlier tests sat away from the boundary and could not see it.
+  eqDate("21:00 Pacific the evening before is NOT the game date",
+         defaultOutcomeDate(g, new Date("2026-10-09T04:00:00Z")), "2026-10-08");
+  eqDate("arena today is arena-local, not UTC",
+         arenaToday(new Date("2026-10-09T04:00:00Z")), "2026-10-08");
+  eqDate("and agrees with UTC in the middle of the arena's day",
+         arenaToday(new Date("2026-10-09T19:00:00Z")), "2026-10-09");
+}
+
+// A supplied date must be KEPT, not silently replaced - ops#54 asked for exactly this
+// assertion, and the first attempt left the setter inside the component where no test
+// could reach it.
+{
+  const withOne: Profile = {
+    ...EMPTY_PROFILE,
+    outcomes: { "1": { kind: "sold", on: "2026-10-09", atList: 70, netPerSeat: 63 } },
+  };
+  check("a supplied date is stored",
+        withOutcomeDate(withOne, 1, "2026-10-02").outcomes!["1"].on, "2026-10-02");
+  check("and the rest of the outcome is untouched",
+        withOutcomeDate(withOne, 1, "2026-10-02").outcomes!["1"].atList, 70);
+  // A blank date is worse than a slightly wrong one: every consumer treats `on` as real.
+  check("an empty date is refused", withOutcomeDate(withOne, 1, "").outcomes!["1"].on,
+        "2026-10-09");
+  check("a game with no outcome is untouched",
+        withOutcomeDate(withOne, 99, "2026-10-02").outcomes!["1"].on, "2026-10-09");
+  check("and the input profile is not mutated", withOne.outcomes!["1"].on, "2026-10-09");
 }
 
 // tally().missed and pending().played must be the SAME set, because they are now the same
