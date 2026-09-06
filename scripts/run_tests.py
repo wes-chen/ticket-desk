@@ -32,6 +32,14 @@ EXEMPT = {
         "IS a validator - it cross-checks the tier table against the live NHL API on "
         "date and opponent and exits non-zero on disagreement. Its 'test' is running it."
     ),
+    "jpeg_to_png.mjs": (
+        "needs a real Chromium, which is also the only JPEG decoder on this machine, so "
+        "a self-test could not verify the conversion without the very dependency under "
+        "test. It self-verifies AT RUNTIME instead: it compares the decoded "
+        "naturalWidth/Height against the requested size and refuses rather than "
+        "resample, so a silently scaled PNG - the one failure that would matter, since "
+        "extract_price_bands.py reads band edges a few pixels wide - cannot pass quietly."
+    ),
     "probe_browser.mjs": (
         "needs a real browser and network; run manually. Its verdict logic is duplicated "
         "in probe_sources.py, which IS self-tested against captured observations."
