@@ -122,22 +122,40 @@ export function exportPayload(profile: Profile, games: Game[], now: Date = new D
   };
 }
 
+/**
+ * The date to DEFAULT an outcome to, given when it is being recorded.
+ *
+ * Not simply today. `Outcome.on` is documented as the date the outcome HAPPENED, and it
+ * is the dependent variable for P(sell | price, days-to-game) - so recording visit timing
+ * instead biases days-to-game toward zero and makes sales look later than they were.
+ *
+ * No outcome can happen after puck drop: a sale, an exchange and an unsold verdict are
+ * all settled by then. So the default is the earlier of today and the game's local date,
+ * which bounds the error rather than letting it grow with how long someone took to open
+ * the app. It is still only a default - the user is the only party who knows the real
+ * date, and the UI must let them say so.
+ */
+export function defaultOutcomeDate(game: Game, now: Date = new Date()): string {
+  const today = now.toISOString().slice(0, 10);
+  return today < game.date ? today : game.date;
+}
+
 export function tally(profile: Profile, games: Game[], now: Date = new Date()): OutcomeTally {
   const byKind: Record<OutcomeKind, number> = { sold: 0, exchanged: 0, unsold: 0, instant: 0 };
   let total = 0;
-  const missed: Game[] = [];
 
   for (const g of games) {
     const o = outcomeFor(profile, g.gameId);
     if (o) {
       byKind[o.kind] += 1;
       total += 1;
-    } else if (new Date(g.startTimeUTC) < now) {
-      // A played game with nothing recorded. Surfaced rather than ignored, because this
-      // is the one kind of data loss that cannot be undone by collecting harder later.
-      missed.push(g);
     }
   }
+
+  // Derived from pending(), not re-computed. Both used to apply the same rule to the same
+  // inputs by separate code paths - they agreed, and could drift, at which point the
+  // banner and the panel beneath it would contradict each other about the same games.
+  const missed = pending(profile, games, now).played;
 
   return { total, byKind, missed, needed: Math.max(0, FIT_THRESHOLD - total) };
 }

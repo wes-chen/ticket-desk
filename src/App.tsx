@@ -26,8 +26,8 @@ import {
 import { useLocalStorage } from "./lib/store";
 import { STALE_THRESHOLD, market, marketFor, staleDays, standing, standingNote } from "./lib/market";
 import {
-  CLOSING_SOON_HOURS, FIT_THRESHOLD, OUTCOME_LABEL, exportPayload, outcomeFor,
-  pending, sellRate, tally,
+  CLOSING_SOON_HOURS, FIT_THRESHOLD, OUTCOME_LABEL, defaultOutcomeDate, exportPayload,
+  outcomeFor, pending, sellRate, tally,
 } from "./lib/outcomes";
 import type { OutcomeKind } from "./lib/profile";
 import { calibrate } from "./lib/fees";
@@ -162,11 +162,19 @@ function Dashboard({
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
     );
+    // Attached, clicked, removed - and the object URL revoked LATE. Revoking on the next
+    // line is tolerated by Chromium but documented to abort the download in Firefox and
+    // iOS Safari, and Wesley uses this on his phone. The failure mode is a button that
+    // appears to do nothing, on the only thing standing between cleared site data and the
+    // loss of every recorded outcome.
     const a = document.createElement("a");
     a.href = url;
     a.download = `ticket-desk-outcomes-${now.toISOString().slice(0, 10)}.json`;
+    a.style.display = "none";
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   };
   const rate = useMemo(() => sellRate(counts), [counts]);
 
@@ -176,9 +184,14 @@ function Dashboard({
       delete next[String(gameId)];
     } else {
       const list = profile.listPrices[String(gameId)] ?? null;
+      const g = GAMES.find((x) => x.gameId === gameId);
       next[String(gameId)] = {
         kind: kind as OutcomeKind,
-        on: new Date().toISOString().slice(0, 10),
+        // The earlier of today and puck drop, not simply today. `on` is the dependent
+        // variable for P(sell | price, days-to-game); recording the date it was TYPED
+        // biases days-to-game toward zero. Editable below, because only Wesley knows
+        // when it actually happened.
+        on: g ? defaultOutcomeDate(g, now) : new Date().toISOString().slice(0, 10),
         // Captured at the moment of recording, not read back later: the list price can
         // change afterwards, and an outcome is only meaningful against the price that
         // was actually standing when it happened.
@@ -187,6 +200,15 @@ function Dashboard({
       };
     }
     setProfile({ ...profile, outcomes: next });
+  };
+
+  const setOutcomeDate = (gameId: number, on: string) => {
+    const existing = profile.outcomes?.[String(gameId)];
+    if (!existing || !on) return;
+    setProfile({
+      ...profile,
+      outcomes: { ...profile.outcomes, [String(gameId)]: { ...existing, on } },
+    });
   };
 
   // Keystrokes go to a DRAFT; only a settled value reaches the profile.
@@ -493,6 +515,22 @@ function Dashboard({
                           </option>
                         ))}
                       </select>
+                      {/* The date it HAPPENED, not the date it was typed. `on` is the
+                          dependent variable for P(sell | price, days-to-game), so a
+                          data-entry timestamp biases days-to-game toward zero and makes
+                          sales look later than they were. Defaulted to the earlier of
+                          today and puck drop, which bounds the error; only Wesley knows
+                          the real date, so he can change it. */}
+                      {r.outcome && (
+                        <input
+                          type="date"
+                          value={r.outcome.on}
+                          max={r.g.date}
+                          onChange={(e) => setOutcomeDate(r.g.gameId, e.target.value)}
+                          title="The date this actually happened - not the date you recorded it. This is the field a sell-timing model is fit against."
+                          className="mt-1 block w-full rounded border border-slate-200 bg-transparent px-1 py-0.5 text-[11px] tabular-nums text-slate-500 dark:border-slate-800"
+                        />
+                      )}
                     </td>
                   </tr>
                 );

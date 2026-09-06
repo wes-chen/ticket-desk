@@ -22,7 +22,8 @@ import {
   listToNet, minListPrice, netPayout, phaseOf, remainingCreditOutlets, type Game,
 } from "../src/lib/economics.ts";
 import {
-  CLOSING_SOON_HOURS, FIT_THRESHOLD, exportPayload, pending, sellRate, tally,
+  CLOSING_SOON_HOURS, FIT_THRESHOLD, defaultOutcomeDate, exportPayload, pending,
+  sellRate, tally,
 } from "../src/lib/outcomes.ts";
 import {
   EMPTY_PROFILE, decodeProfile, encodeProfile, invoicePerSeat, isConfigured,
@@ -39,6 +40,9 @@ function check(label: string, got: unknown, want: unknown) {
   const a = JSON.stringify(got);
   const b = JSON.stringify(want);
   if (a !== b) fails.push(`${label}: got ${a}, want ${b}`);
+}
+function eqDate(label: string, got: string, want: string) {
+  if (got !== want) fails.push(`${label}: got ${got}, want ${want}`);
 }
 function near(label: string, got: number, want: number, tol = 0.005) {
   if (Math.abs(got - want) > tol) fails.push(`${label}: got ${got}, want ~${want}`);
@@ -371,6 +375,45 @@ near("but it is not a 'sold'", r.rate!, 0);
   check("silenced inside the window too", p1.closing, []);
 
   check("the window is a day, not the whole 48h", CLOSING_SOON_HOURS, 24);
+}
+
+// ---- the outcome DATE (ops#54) ----
+// `on` is documented as the date the outcome HAPPENED and is the dependent variable for
+// P(sell | price, days-to-game). Recording the date it was TYPED biases days-to-game
+// toward zero and makes sales look later than they were - and it fails quietly, producing
+// well-formed rows that look exactly like a training set.
+{
+  const g = { ...game("2026-10-10T02:00:00Z"), date: "2026-10-09" } as Game;
+
+  // Recorded on the day: today is before the game, so today is right.
+  eqDate("recorded early, today wins",
+         defaultOutcomeDate(g, new Date("2026-10-01T12:00:00Z")), "2026-10-01");
+  // Recorded LATE - the failure this fixes. No outcome can happen after puck drop, so the
+  // default is capped at the game date rather than growing with how long someone took to
+  // open the app.
+  eqDate("recorded three weeks late, capped at the game date",
+         defaultOutcomeDate(g, new Date("2026-10-30T12:00:00Z")), "2026-10-09");
+  eqDate("recorded on the day of the game", 
+         defaultOutcomeDate(g, new Date("2026-10-09T23:00:00Z")), "2026-10-09");
+  // The bias this bounds: without the cap, a late entry would read 21 days closer to the
+  // game than the truth. Asserted as a property, not a date.
+  const late = defaultOutcomeDate(g, new Date("2026-10-30T12:00:00Z"));
+  check("the default is never after puck drop", late <= g.date, true);
+}
+
+// tally().missed and pending().played must be the SAME set, because they are now the same
+// derivation. They used to be two code paths applying one rule, which agreed and could
+// drift - at which point the banner and the panel beneath it would disagree about the
+// same games.
+{
+  const gs = [game("2026-09-01T02:00:00Z"), game("2026-12-01T03:00:00Z")].map(
+    (x, i) => ({ ...x, gameId: i + 1 } as Game),
+  );
+  const at = new Date("2026-10-01T00:00:00Z");
+  check("missed is exactly pending().played",
+        tally(EMPTY_PROFILE, gs, at).missed.map((x) => x.gameId),
+        pending(EMPTY_PROFILE, gs, at).played.map((x) => x.gameId));
+  check("and it is the played one", tally(EMPTY_PROFILE, gs, at).missed.map((x) => x.gameId), [1]);
 }
 
 // ---- export (ops#50) ----
