@@ -11,7 +11,7 @@
 
 import { fmt, type Game } from "../lib/economics";
 import economics from "../../config/economics.json";
-import { doNothingBaseline, grossCashProceeds, seasonPnl } from "../lib/pnl";
+import { doNothingBaseline, grossCashProceeds, reconciliation, seasonPnl } from "../lib/pnl";
 import type { Profile } from "../lib/profile";
 
 export default function SeasonPnlPanel({
@@ -27,6 +27,8 @@ export default function SeasonPnlPanel({
   const gross = grossCashProceeds(p);
   // The floor every recommendation has to beat. See doNothingBaseline in lib/pnl.ts.
   const baseline = doNothingBaseline(profile, games, economics.exchange.creditHaircut.value);
+  // Judged, not merely displayed - see reconciliation() in lib/pnl.ts.
+  const recon = reconciliation(p);
 
   const exchanged = p.lines.filter((l) => l.outcome?.kind === "exchanged");
 
@@ -50,6 +52,16 @@ export default function SeasonPnlPanel({
         tracks face almost exactly, break-even against the exchange is also break-even against
         what you paid &mdash; so anything above basis on a game is real profit on that game.
       </p>
+
+      {recon.implausible && (
+        <p
+          role="alert"
+          className="mt-3 rounded border-2 border-red-500 bg-red-100 p-2 text-xs text-red-900 dark:border-red-600 dark:bg-red-950/50 dark:text-red-200"
+        >
+          <strong>The tier credits do not reconcile against the invoice.</strong>{" "}
+          {recon.message}
+        </p>
+      )}
 
       {baseline.games > 0 && (
         <p className="mt-3 rounded border border-slate-300 bg-slate-50 p-2 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">

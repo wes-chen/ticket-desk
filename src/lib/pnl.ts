@@ -162,6 +162,74 @@ export function seasonPnl(profile: Profile, games: Game[]): SeasonPnl {
   };
 }
 
+/**
+ * The invoice-versus-face residual that has actually been measured: about 0.3%.
+ *
+ * The invoice slightly exceeds the sum of tier credits, and that gap is the slice of the
+ * season the exchange structurally cannot return. It is small and it is real.
+ */
+export const EXPECTED_RESIDUAL_RATE = 0.003;
+
+/**
+ * Above this, the residual is more likely a mistyped tier credit than a fee.
+ *
+ * Ten times the measured value. Deliberately not tight: the point is to catch a
+ * fat-finger, not to police a number that was measured once and may drift. A check that
+ * fires on a real 1% residual would be switched off before it ever caught a typo.
+ */
+export const RESIDUAL_ALARM_RATE = 0.03;
+
+export interface Reconciliation {
+  /** Residual as a fraction of the invoice, or null when either side is unknown. */
+  rate: number | null;
+  /** True when the residual is too large, or negative, to be the fee it claims to be. */
+  implausible: boolean;
+  message: string | null;
+}
+
+/**
+ * Judge the reconciliation rather than merely displaying it.
+ *
+ * The app has always shown "invoice minus total face = non-refundable residual". It never
+ * said whether that number was PLAUSIBLE - so a mistyped tier credit renders as a larger,
+ * entirely legitimate-looking residual. That matters more than a cosmetic wrong number:
+ * tier credits are the cost basis AND the exchange payout, so one bad entry moves every
+ * break-even in the model in the same direction, silently.
+ *
+ * Two ways it can be wrong, and they mean different things:
+ *   negative  - total face EXCEEDS what was paid, which cannot happen. A credit is too high.
+ *   too large - the residual is many times the measured fee. A credit is too low, or one
+ *               tier was entered against the wrong tier.
+ */
+export function reconciliation(p: SeasonPnl): Reconciliation {
+  if (p.invoicePerSeat == null || p.faceTotal == null || p.invoicePerSeat <= 0) {
+    return { rate: null, implausible: false, message: null };
+  }
+  const rate = (p.invoicePerSeat - p.faceTotal) / p.invoicePerSeat;
+  if (rate < 0) {
+    return {
+      rate,
+      implausible: true,
+      message:
+        "Total face exceeds the season invoice, which cannot happen - a tier credit is " +
+        "entered too high. Tier credits are both the cost basis and the exchange payout, " +
+        "so this moves every break-even in the model.",
+    };
+  }
+  if (rate > RESIDUAL_ALARM_RATE) {
+    return {
+      rate,
+      implausible: true,
+      message:
+        `The residual is ${(rate * 100).toFixed(1)}% of the invoice, against a measured ` +
+        `~${(EXPECTED_RESIDUAL_RATE * 100).toFixed(1)}%. That is more likely a mistyped ` +
+        `tier credit than a fee - check the credits against the invoice before trusting ` +
+        `any break-even.`,
+    };
+  }
+  return { rate, implausible: false, message: null };
+}
+
 export interface DoNothingBaseline {
   /** Cash-equivalent value of exchanging every game that CAN be exchanged, per seat. */
   perSeat: number;

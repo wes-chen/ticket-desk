@@ -634,7 +634,9 @@ check("no offers -> no delta", sr.delta, null);
 
 // --- pnl: season roll-up --------------------------------------------------------
 
-import { doNothingBaseline, grossCashProceeds, seasonPnl } from "../src/lib/pnl.ts";
+import {
+  RESIDUAL_ALARM_RATE, doNothingBaseline, grossCashProceeds, reconciliation, seasonPnl,
+} from "../src/lib/pnl.ts";
 
 const pnlGames: Game[] = [
   { ...game("2026-10-01T02:00:00Z"), gameId: 1, tier: "A" },
@@ -721,6 +723,45 @@ pl = seasonPnl(pnlProfile({}, { credits: { A: 100 } }), pnlGames);
 check("missing basis counted", pl.missingBasis, 2);
 check("face is null when any game's basis is unknown", pl.faceTotal, null);
 check("residual is null when face is unknown", pl.nonRefundableResidual, null);
+
+// ---- reconciliation is JUDGED, not just displayed (sweep idea #18) ----
+// The app always showed "invoice minus total face = residual". It never said whether that
+// was plausible - so a mistyped tier credit rendered as a larger, legitimate-looking
+// residual. Tier credits are the cost basis AND the exchange payout, so one bad entry
+// moves every break-even in the model, in the same direction, silently.
+{
+  // pnlProfile: invoice 800 over 2 seats = 400/seat; face = 2x100 + 2x90 = 380/seat.
+  // Residual 20/400 = 5%, which is ALREADY above the 3% alarm - so the fixture itself
+  // demonstrates the check firing on realistic-looking data.
+  const p0 = seasonPnl(pnlProfile({}), pnlGames);
+  const r0 = reconciliation(p0);
+  near("residual rate is computed", r0.rate!, 0.05);
+  check("a 5% residual is implausible against a measured 0.3%", r0.implausible, true);
+  check("and it says to check the credits", r0.message!.includes("mistyped"), true);
+
+  // A residual inside tolerance says nothing.
+  const tight = seasonPnl(pnlProfile({}, { invoiceTotal: 762 }), pnlGames); // 381/seat vs 380
+  check("a small residual is not flagged", reconciliation(tight).implausible, false);
+  near("and its rate is tiny", reconciliation(tight).rate!, 0.0026, 0.0005);
+
+  // Face EXCEEDING the invoice cannot happen - a credit is too high. Different message,
+  // because it points at a different mistake.
+  const over = seasonPnl(pnlProfile({}, { invoiceTotal: 700 }), pnlGames); // 350/seat vs 380
+  check("face above invoice is implausible", reconciliation(over).implausible, true);
+  check("and says the credit is too HIGH",
+        reconciliation(over).message!.includes("too high"), true);
+  check("its rate is negative", reconciliation(over).rate! < 0, true);
+
+  // Unknowns must stay silent rather than guess.
+  check("no invoice -> nothing to say",
+        reconciliation(seasonPnl(pnlProfile({}, { invoiceTotal: null }), pnlGames)).implausible,
+        false);
+  check("a missing tier credit -> nothing to say",
+        reconciliation(seasonPnl(pnlProfile({}, { credits: { A: 100 } }), pnlGames)).implausible,
+        false);
+  check("the alarm is ten times the measured residual, not a tight fit",
+        RESIDUAL_ALARM_RATE, 0.03);
+}
 
 // ---- the do-nothing baseline (sweep idea #29) ----
 // Every recommendation should beat "return every ticket for credit", and nothing measured
