@@ -67,6 +67,12 @@ GAME_GAP_DAYS = 3
 # A day whose success rate falls this far below the previous day's is a partial failure.
 SUCCESS_DROP = 0.15
 
+# How far a ROLLING source's coverage may fall day-over-day before it is a fault rather
+# than the calendar. A rolling window legitimately shrinks as games are played - but this
+# schedule runs 44 games over ~7 months, so roughly one game (about 2%) leaves per day.
+# A quarter is an order of magnitude beyond that and means the source served fewer events.
+COVERAGE_DROP = 0.25
+
 
 def load(path: pathlib.Path) -> list[dict]:
     if not path.exists():
@@ -205,6 +211,31 @@ def analyse(rows: list[dict], games: list[dict], today: date,
                                       f"{worst} consecutive observation days while other games "
                                       f"have data - a per-game hole, which stays green in CI."))
 
+    # COVERAGE REGRESSION, for rolling sources only.
+    #
+    # The horizon rule accepts any coverage level as long as it starts from the front, so
+    # a source that suddenly serves half as many events is recorded as a moved horizon
+    # rather than a problem. That is not hypothetical: TicketNetwork was measured at 29/44
+    # from a residential IP and delivered 16/44 on its first scheduled run from a GitHub
+    # runner - a 45% drop, silently accepted, while the other three sources held steady.
+    #
+    # A rolling window DOES shrink legitimately as games are played, but slowly: this
+    # schedule has 44 games over ~7 months, so at most about one game leaves per day,
+    # around 2%. A drop of a quarter in a day is not the calendar.
+    #
+    # Only for rolling sources. A non-rolling source losing games is already fatal via the
+    # never-priced check, and running both would report one fault twice.
+    if rolling and len(days) >= 2:
+        prev_n, cur_n = ok_by_day[days[-2]], ok_by_day[days[-1]]
+        if prev_n and (prev_n - cur_n) / prev_n > COVERAGE_DROP:
+            findings.append(("fatal",
+                             f"coverage fell from {prev_n} to {cur_n} games between "
+                             f"{days[-2]} and {days[-1]} ({(prev_n - cur_n) / prev_n:.0%}). "
+                             f"A rolling window loses about one game a day to the calendar, "
+                             f"not a quarter of its coverage - the source is serving fewer "
+                             f"events, and the horizon rule would otherwise record that as "
+                             f"expected."))
+
     # Partial-failure detection: success rate dropping day over day.
     for prev, cur in zip(days, days[1:]):
         a = ok_by_day[prev] / tot_by_day[prev] if tot_by_day[prev] else 0
@@ -329,6 +360,35 @@ def self_test() -> int:
     a = analyse(r, gs, today)
     check("one missed day for a game is not flagged", any("per-game hole" in m
                                                           for _, m in a["findings"]), False)
+
+    # ---- coverage regression on a rolling source ----
+    # Measured, not hypothetical: TicketNetwork gave 29/44 residential and 16/44 on its
+    # first scheduled runner run, and the horizon rule recorded it as "expected".
+    two = ["2026-09-09", "2026-09-10"]
+    r = rows(two[:1], list(range(29))) + rows(two[1:], list(range(16)))
+    a = analyse(r, games(30, "2026-09-20"), date(2026, 9, 10), rolling=True)
+    check("a 45% coverage drop is fatal",
+          any("coverage fell" in m for _, m in a["findings"]), True)
+
+    # One game leaving to the calendar must NOT fire - that is the whole reason for a
+    # threshold rather than any-drop-at-all.
+    r = rows(two[:1], list(range(29))) + rows(two[1:], list(range(28)))
+    a = analyse(r, games(30, "2026-09-20"), date(2026, 9, 10), rolling=True)
+    check("losing one game a day is the calendar, not a fault",
+          any("coverage fell" in m for _, m in a["findings"]), False)
+
+    # A NON-rolling source is covered by the never-priced check; running both would report
+    # one fault twice.
+    r = rows(two[:1], list(range(29))) + rows(two[1:], list(range(16)))
+    a = analyse(r, games(30, "2026-09-20"), date(2026, 9, 10), rolling=False)
+    check("non-rolling sources are not double-reported",
+          any("coverage fell" in m for _, m in a["findings"]), False)
+
+    # A single day cannot regress against anything.
+    a = analyse(rows(two[:1], list(range(29))), games(30, "2026-09-20"),
+                date(2026, 9, 10), rolling=True)
+    check("one day of data cannot regress",
+          any("coverage fell" in m for _, m in a["findings"]), False)
 
     # ---- scheduled-ness is DERIVED from the workflows (ops#39) ----
     # A source that is genuinely scheduled and has never produced a row is BROKEN, not
