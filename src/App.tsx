@@ -26,7 +26,8 @@ import {
 import { useLocalStorage } from "./lib/store";
 import { STALE_THRESHOLD, market, marketFor, staleDays, standing, standingNote } from "./lib/market";
 import {
-  CLOSING_SOON_HOURS, FIT_THRESHOLD, OUTCOME_LABEL, defaultOutcomeDate, exportPayload,
+  CLOSING_SOON_HOURS, FIT_THRESHOLD, OUTCOME_LABEL, arenaToday, defaultOutcomeDate,
+  exportPayload,
   outcomeFor, pending, selectableOutcomes, sellRate, tally, withOutcomeDate,
 } from "./lib/outcomes";
 import type { OutcomeKind } from "./lib/profile";
@@ -191,7 +192,11 @@ function Dashboard({
         // variable for P(sell | price, days-to-game); recording the date it was TYPED
         // biases days-to-game toward zero. Editable below, because only Wesley knows
         // when it actually happened.
-        on: g ? defaultOutcomeDate(g, now) : new Date().toISOString().slice(0, 10),
+        // arenaToday(), not toISOString(): the fallback should not be UTC when the
+        // capped path beside it is arena-local. Reachable only if a gameId is not in
+        // GAMES, which should not happen - but a should-not-happen path with a different
+        // timezone is how the next instance of this bug gets written.
+        on: g ? defaultOutcomeDate(g, now) : arenaToday(now),
         // Captured at the moment of recording, not read back later: the list price can
         // change afterwards, and an outcome is only meaningful against the price that
         // was actually standing when it happened.

@@ -12,6 +12,7 @@
 
 import { useMemo, useState } from "react";
 import { fmt, type Game } from "../lib/economics";
+import { arenaToday } from "../lib/outcomes";
 import { calibrate } from "../lib/fees";
 import { impliedBid, isRoundDollar, series, verdictAgainstCredit } from "../lib/offers";
 import type { Profile, Tier } from "../lib/profile";
@@ -23,7 +24,12 @@ const INPUT =
 const BTN =
   "rounded border border-teal-600 px-3 py-1 text-sm font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-40 dark:border-teal-500 dark:text-teal-300 dark:hover:bg-teal-950/40";
 
-const today = () => new Date().toISOString().slice(0, 10);
+// ARENA-local, not UTC. These stamp fee observations and instant offers, both recorded
+// while Wesley is looking at the seller page - Pacific events. toISOString() is UTC, so
+// anything entered after 5pm local was dated TOMORROW. Same class as the outcome-date bug
+// in ops#54 and the heartbeat clock; the sibling recorder was left behind when that one
+// was fixed.
+const today = () => arenaToday();
 
 export default function SellerObservations({
   profile,

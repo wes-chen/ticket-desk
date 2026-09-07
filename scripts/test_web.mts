@@ -442,6 +442,22 @@ near("but it is not a 'sold'", r.rate!, 0);
   // earlier tests sat away from the boundary and could not see it.
   eqDate("21:00 Pacific the evening before is NOT the game date",
          defaultOutcomeDate(g, new Date("2026-10-09T04:00:00Z")), "2026-10-08");
+  // THE SWEEP THAT FOUND THE SIBLINGS. Three UTC-vs-local bugs in one day justified
+  // searching for the class rather than waiting for the fourth. Four call sites matched;
+  // two were real. This pins the distinction so the next reader does not "fix" the
+  // correct one.
+  //
+  //   market.ts staleDays()   UTC vs UTC   CORRECT - collectors write observedDate from
+  //                                        datetime.now(timezone.utc)
+  //   export filename         UTC          cosmetic, left alone deliberately
+  //   SellerObservations      was UTC      WRONG - fee/offer observations are Pacific events
+  //   App.tsx fallback        was UTC      WRONG - inconsistent with the path beside it
+  //
+  // 04:00Z is 21:00 the PREVIOUS day in Pacific. A recorder stamping UTC there dates the
+  // entry a day late, which is exactly what ops#54 was filed about for outcomes.
+  eqDate("a 21:00 Pacific observation is dated that day, not the next",
+         arenaToday(new Date("2026-10-09T04:00:00Z")), "2026-10-08");
+
   eqDate("arena today is arena-local, not UTC",
          arenaToday(new Date("2026-10-09T04:00:00Z")), "2026-10-08");
   eqDate("and agrees with UTC in the middle of the arena's day",
