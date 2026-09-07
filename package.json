@@ -45,7 +45,9 @@
     "test:comps": "python3 scripts/comps.py --self-test",
     "check:chart": "python3 scripts/check_chart_asset.py",
     "test:chart": "python3 scripts/check_chart_asset.py --self-test",
-    "fetch:chart": "python3 scripts/fetch_chart.py"
+    "fetch:chart": "python3 scripts/fetch_chart.py",
+    "check:resale": "python3 scripts/resale_store.py",
+    "test:resale": "python3 scripts/resale_store.py --self-test"
   },
   "dependencies": {
     "react": "^19.0.0",
