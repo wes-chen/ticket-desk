@@ -1,0 +1,1483 @@
+{
+ "_comment": "Comp sets derived from TM member-map price equality. NOT a demand measurement and NOT the movement study ops#11 asked for - see scripts/comps.py docstring.",
+ "_method": "sections priced identically in every game where both were observed",
+ "games": [
+  {
+   "date": "2026-09-22",
+   "distinctPrices": 8,
+   "gameId": 2026010032,
+   "tier": "PRESEASON"
+  },
+  {
+   "date": "2026-10-03",
+   "distinctPrices": 13,
+   "gameId": 2026020034,
+   "tier": "B"
+  },
+  {
+   "date": "2026-10-27",
+   "distinctPrices": 11,
+   "gameId": 2026020198,
+   "tier": "D"
+  }
+ ],
+ "sections": {
+  "101": {
+   "comps": [
+    115
+   ],
+   "nearMisses": [],
+   "observedIn": 3
+  },
+  "102": {
+   "comps": [],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 114
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 116
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 128
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 106
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 107
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 109
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 110
+    }
+   ],
+   "observedIn": 3
+  },
+  "103": {
+   "comps": [
+    104,
+    112
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 113
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 106
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 107
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 109
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 110
+    }
+   ],
+   "observedIn": 3
+  },
+  "104": {
+   "comps": [
+    103,
+    112
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 113
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 106
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 107
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 109
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 110
+    }
+   ],
+   "observedIn": 3
+  },
+  "106": {
+   "comps": [
+    107,
+    109,
+    110
+   ],
+   "nearMisses": [
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 102
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 103
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 104
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 112
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 113
+    }
+   ],
+   "observedIn": 3
+  },
+  "107": {
+   "comps": [
+    106,
+    109,
+    110
+   ],
+   "nearMisses": [
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 102
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 103
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 104
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 112
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 113
+    }
+   ],
+   "observedIn": 3
+  },
+  "109": {
+   "comps": [
+    106,
+    107,
+    110
+   ],
+   "nearMisses": [
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 102
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 103
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 104
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 112
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 113
+    }
+   ],
+   "observedIn": 3
+  },
+  "110": {
+   "comps": [
+    106,
+    107,
+    109
+   ],
+   "nearMisses": [
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 102
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 103
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 104
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 112
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 113
+    }
+   ],
+   "observedIn": 3
+  },
+  "112": {
+   "comps": [
+    103,
+    104
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 113
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 106
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 107
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 109
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 110
+    }
+   ],
+   "observedIn": 3
+  },
+  "113": {
+   "comps": [],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 103
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 104
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 112
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 106
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 107
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 109
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 110
+    }
+   ],
+   "observedIn": 3
+  },
+  "114": {
+   "comps": [
+    116,
+    128
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 102
+    }
+   ],
+   "observedIn": 3
+  },
+  "115": {
+   "comps": [
+    101
+   ],
+   "nearMisses": [],
+   "observedIn": 3
+  },
+  "116": {
+   "comps": [
+    114,
+    128
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 102
+    }
+   ],
+   "observedIn": 3
+  },
+  "117": {
+   "comps": [],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 118
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 120
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 121
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 123
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 124
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 126
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 127
+    }
+   ],
+   "observedIn": 3
+  },
+  "118": {
+   "comps": [
+    120,
+    121,
+    123,
+    124,
+    126
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 117
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 127
+    }
+   ],
+   "observedIn": 3
+  },
+  "120": {
+   "comps": [
+    118,
+    121,
+    123,
+    124,
+    126
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 117
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 127
+    }
+   ],
+   "observedIn": 3
+  },
+  "121": {
+   "comps": [
+    118,
+    120,
+    123,
+    124,
+    126
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 117
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 127
+    }
+   ],
+   "observedIn": 3
+  },
+  "123": {
+   "comps": [
+    118,
+    120,
+    121,
+    124,
+    126
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 117
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 127
+    }
+   ],
+   "observedIn": 3
+  },
+  "124": {
+   "comps": [
+    118,
+    120,
+    121,
+    123,
+    126
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 117
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 127
+    }
+   ],
+   "observedIn": 3
+  },
+  "126": {
+   "comps": [
+    118,
+    120,
+    121,
+    123,
+    124
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 117
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 127
+    }
+   ],
+   "observedIn": 3
+  },
+  "127": {
+   "comps": [],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 118
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 120
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 121
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 123
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 124
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 126
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 117
+    }
+   ],
+   "observedIn": 3
+  },
+  "128": {
+   "comps": [
+    114,
+    116
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 102
+    }
+   ],
+   "observedIn": 3
+  },
+  "201": {
+   "comps": [
+    215
+   ],
+   "nearMisses": [
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 202
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 214
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 216
+    }
+   ],
+   "observedIn": 3
+  },
+  "202": {
+   "comps": [
+    214,
+    216
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 228
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 201
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 215
+    }
+   ],
+   "observedIn": 3
+  },
+  "203": {
+   "comps": [],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 204
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 205
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 206
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 207
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 208
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 209
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 210
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 211
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 212
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 213
+    }
+   ],
+   "observedIn": 3
+  },
+  "204": {
+   "comps": [
+    205,
+    206,
+    207,
+    208,
+    209,
+    210,
+    211,
+    212,
+    213
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 203
+    }
+   ],
+   "observedIn": 3
+  },
+  "205": {
+   "comps": [
+    204,
+    206,
+    207,
+    208,
+    209,
+    210,
+    211,
+    212,
+    213
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 203
+    }
+   ],
+   "observedIn": 3
+  },
+  "206": {
+   "comps": [
+    204,
+    205,
+    207,
+    208,
+    209,
+    210,
+    211,
+    212,
+    213
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 203
+    }
+   ],
+   "observedIn": 3
+  },
+  "207": {
+   "comps": [
+    204,
+    205,
+    206,
+    208,
+    209,
+    210,
+    211,
+    212,
+    213
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 203
+    }
+   ],
+   "observedIn": 3
+  },
+  "208": {
+   "comps": [
+    204,
+    205,
+    206,
+    207,
+    209,
+    210,
+    211,
+    212,
+    213
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 203
+    }
+   ],
+   "observedIn": 3
+  },
+  "209": {
+   "comps": [
+    204,
+    205,
+    206,
+    207,
+    208,
+    210,
+    211,
+    212,
+    213
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 203
+    }
+   ],
+   "observedIn": 3
+  },
+  "210": {
+   "comps": [
+    204,
+    205,
+    206,
+    207,
+    208,
+    209,
+    211,
+    212,
+    213
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 203
+    }
+   ],
+   "observedIn": 3
+  },
+  "211": {
+   "comps": [
+    204,
+    205,
+    206,
+    207,
+    208,
+    209,
+    210,
+    212,
+    213
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 203
+    }
+   ],
+   "observedIn": 3
+  },
+  "212": {
+   "comps": [
+    204,
+    205,
+    206,
+    207,
+    208,
+    209,
+    210,
+    211,
+    213
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 203
+    }
+   ],
+   "observedIn": 3
+  },
+  "213": {
+   "comps": [
+    204,
+    205,
+    206,
+    207,
+    208,
+    209,
+    210,
+    211,
+    212
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 203
+    }
+   ],
+   "observedIn": 3
+  },
+  "214": {
+   "comps": [
+    202,
+    216
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 228
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 201
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 215
+    }
+   ],
+   "observedIn": 3
+  },
+  "215": {
+   "comps": [
+    201
+   ],
+   "nearMisses": [
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 202
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 214
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 216
+    }
+   ],
+   "observedIn": 3
+  },
+  "216": {
+   "comps": [
+    202,
+    214
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 228
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 201
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 215
+    }
+   ],
+   "observedIn": 3
+  },
+  "217": {
+   "comps": [
+    220,
+    221,
+    227
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 218
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 219
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 222
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 223
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 224
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 225
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 226
+    }
+   ],
+   "observedIn": 3
+  },
+  "218": {
+   "comps": [
+    219,
+    222,
+    223,
+    224,
+    225
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 217
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 220
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 221
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 226
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 227
+    }
+   ],
+   "observedIn": 3
+  },
+  "219": {
+   "comps": [
+    218,
+    222,
+    223,
+    224,
+    225
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 217
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 220
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 221
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 226
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 227
+    }
+   ],
+   "observedIn": 3
+  },
+  "220": {
+   "comps": [
+    217,
+    221,
+    227
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 218
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 219
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 222
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 223
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 224
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 225
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 226
+    }
+   ],
+   "observedIn": 3
+  },
+  "221": {
+   "comps": [
+    217,
+    220,
+    227
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 218
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 219
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 222
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 223
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 224
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 225
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 226
+    }
+   ],
+   "observedIn": 3
+  },
+  "222": {
+   "comps": [
+    218,
+    219,
+    223,
+    224,
+    225
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 217
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 220
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 221
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 226
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 227
+    }
+   ],
+   "observedIn": 3
+  },
+  "223": {
+   "comps": [
+    218,
+    219,
+    222,
+    224,
+    225
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 217
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 220
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 221
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 226
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 227
+    }
+   ],
+   "observedIn": 3
+  },
+  "224": {
+   "comps": [
+    218,
+    219,
+    222,
+    223,
+    225
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 217
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 220
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 221
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 226
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 227
+    }
+   ],
+   "observedIn": 3
+  },
+  "225": {
+   "comps": [
+    218,
+    219,
+    222,
+    223,
+    224
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 217
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 220
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 221
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 226
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 227
+    }
+   ],
+   "observedIn": 3
+  },
+  "226": {
+   "comps": [],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 218
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 219
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 222
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 223
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 224
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 225
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 217
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 220
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 221
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 227
+    }
+   ],
+   "observedIn": 3
+  },
+  "227": {
+   "comps": [
+    217,
+    220,
+    221
+   ],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 218
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 219
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 222
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 223
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 224
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 225
+    },
+    {
+     "agreed": 1,
+     "of": 3,
+     "section": 226
+    }
+   ],
+   "observedIn": 3
+  },
+  "228": {
+   "comps": [],
+   "nearMisses": [
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 202
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 214
+    },
+    {
+     "agreed": 2,
+     "of": 3,
+     "section": 216
+    }
+   ],
+   "observedIn": 3
+  }
+ }
+}

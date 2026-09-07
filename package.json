@@ -40,7 +40,9 @@
     "check:rowprices": "python3 scripts/check_row_prices.py",
     "extract:bands": "python3 scripts/extract_price_bands.py",
     "check:sectionrank": "python3 scripts/section_rank.py",
-    "test:sectionrank": "python3 scripts/section_rank.py --self-test"
+    "test:sectionrank": "python3 scripts/section_rank.py --self-test",
+    "comps": "python3 scripts/comps.py",
+    "test:comps": "python3 scripts/comps.py --self-test"
   },
   "dependencies": {
     "react": "^19.0.0",
