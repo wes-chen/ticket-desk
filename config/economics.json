@@ -6,9 +6,9 @@
       "ticketmaster": {
         "label": "Ticketmaster / NHL Ticket Exchange",
         "sellerFeeRate": 0.1,
-        "source": "MEASURED at three independent price points, all exactly 0.9000: $70.00 -> $63.00, $77.00 -> $69.30, and $85.00 -> $76.50 (fee itemised as -$8.50 per ticket = exactly 10%).",
+        "source": "MEASURED at four independent price points, all exactly 0.9000: $70.00 -> $63.00, $77.00 -> $69.30, $85.00 -> $76.50, and $150.00 -> $135.00 (fee itemised as -$15.00 per ticket = exactly 10%).",
         "confidence": "measured",
-        "openQuestion": "Whether the rate holds at MUCH higher prices, or differs by tier. All three measurements are on preseason-tier inventory in a narrow $70-$85 band. RESOLVED for that band on 2026-09-06.",
+        "openQuestion": "RESOLVED for price on 2026-09-07. The rate is flat 10% across $70-$150, a 2.14x range - it was previously measured only within a 21% band and the concern was that it might step at higher asks. It does not. $150 matters specifically because the A+ break-even is around $133, so this covers where regular-season listings will actually sit. STILL UNMEASURED: whether the rate differs by TIER. All four observations are on preseason inventory, because those are the only active listings.",
         "whyItMatters": "Break-even = credit / (1 - feeRate). At 10% an A+ break-even is credit/0.90; at 15% it is credit/0.85 - roughly 6% higher on every game. A systematic error here biases every pricing decision in the same direction.",
         "validationPlan": "Largely done. To close the remaining gap, record 'You will make' at a materially higher list price (say $150+) on a regular-season tier.",
         "feeObservations": [
@@ -27,6 +27,12 @@
           {
             "list": 85.0,
             "net": 76.5,
+            "impliedRate": 0.1,
+            "tier": "PRESEASON"
+          },
+          {
+            "list": 150.0,
+            "net": 135.0,
             "impliedRate": 0.1,
             "tier": "PRESEASON"
           }
@@ -186,8 +192,14 @@
         "offerPerTicket": 96.3,
         "impliedBid": 107.0,
         "tier": "A+"
+      },
+      {
+        "offerPerTicket": 31.5,
+        "impliedBid": 35.0,
+        "tier": "PRESEASON"
       }
     ],
-    "_privacy": "Isolated (offer, implied bid) pairs ONLY. These previously carried `date` and `opp`, which tied a buyer's bid FOR OUR SEATS to a specific game - an offer attributable to our listings, forbidden by rule 1. The pair alone is evidence about Ticketmaster's instant-offer formula, which rule 1 explicitly permits."
+    "_privacy": "Isolated (offer, implied bid) pairs ONLY. These previously carried `date` and `opp`, which tied a buyer's bid FOR OUR SEATS to a specific game - an offer attributable to our listings, forbidden by rule 1. The pair alone is evidence about Ticketmaster's instant-offer formula, which rule 1 explicitly permits.",
+    "_movement": "The offer MOVES. The same preseason listing showed $24.30/ticket (implied bid $27) on 2026-09-05 and $31.50/ticket (implied bid $35) on 2026-09-07 - up 29.6% in two days, while the resale arena low for the same game moved by at most $2. So the instant offer is a live bid that responds faster than the comp series does, which makes it a signal in its own right rather than only a floor. Not modelled: two observations of one game cannot say whether it tracks demand or is repriced on a schedule."
   }
 }
