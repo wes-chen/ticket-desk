@@ -23,6 +23,26 @@ agent's mid-debug script plus a stray `.pyc`, under a message describing neither
 author of a commit message stops being the author of its changes, which destroys the one
 thing this history is good for.
 
+**Check at the START of a tick, not when you notice.** This is the rule, because the
+default failure is not ignoring the risk - it is never asking. On 2026-09-07 a session
+worked two hours in the shared checkout, then discovered a peer agent only because issue
+numbers appeared that it had not filed. Nothing was lost, but only because staging was
+explicit-path. The check is one tool call:
+
+```
+ListAgents        # peer sessions, with live/idle state - THE instrument
+```
+
+**`git worktree list` is the wrong instrument for this and will mislead you.** Worktrees
+outlive their sessions, so it reports leftovers as if they were colleagues. Measured the
+same day: three agent worktrees existed; one had a 13-hour-old index and was dead, one
+was 38 minutes old, and `ListAgents` showed the single live peer directly. If you must
+fall back to it, read commit and index times, never mere existence:
+
+```bash
+git -C <worktree> log -1 --format=%cr      # a dead worktree looks identical without this
+```
+
 So when a second agent is active:
 
 ```bash
@@ -203,6 +223,53 @@ exists for exactly this and is append-only so a correction supersedes rather tha
 And when an issue's last mile is an action only Wesley can take, that is not a closing note -
 it is a `type:input` issue with a validator, or the issue stays open. "One thing only you can
 verify" written into a close is a requirement with nowhere to live.
+
+### A learning goes to the file that will be READ, not into the day's log
+
+The generalisation of the two rules above, and the reason they both had to be written
+twice. The log is a *narrative of a tick*. Nothing polls it. An autonomous session reads
+`CLAUDE.md` and the tracker and nothing else - it does not read yesterday's log any more
+than it reads yesterday's chat. **A learning that stays in the log is a learning that
+happened to nobody.**
+
+This is measurable rather than theoretical. The 2026-09-07 backstop tick produced four
+learnings and routed three of them correctly by accident:
+
+| learned | went to | right? |
+| --- | --- | --- |
+| `grep -c` counts lines, so the ops#56 check inverted its own answer | `CLAUDE.md` constraints | yes |
+| the 300dpi chart was never persisted, so ops#53 is unrunnable | ops#66, a `type:input` | yes |
+| the `**Closing**` marker is needed *alongside* the per-type marker | log only | yes - `CONTRACTS.md` already said it |
+| check for a peer agent at the *start* of a tick, not two hours in | **log only** | **no** |
+
+The one that leaked was the one about *process* rather than about the world - which is the
+category most likely to be dismissed as "just how this run went". Wesley caught it by
+asking; nothing in the system would have.
+
+**Route by who needs to read it, not by how it feels:**
+
+| what you learned | where it goes |
+| --- | --- |
+| a rule every agent should follow | `CLAUDE.md` |
+| a fact about a source, a block, a format | `CLAUDE.md`, "Known constraints" |
+| a procedure for one role | `harness/agents/<role>.md` in ops |
+| a measured constant | `config/` or a `data/` store, with `confidence` - see the rule above |
+| an answer to a tracked question | an issue comment with `**Finding**` and a confidence |
+| work that should happen later | a tracker issue, per the suggestion rule above |
+| what merely happened this tick | the log, and *only* the log |
+
+The last row is the point: the log is the right home for narrative, and the wrong home for
+anything a future session must know.
+
+**So every log entry carries a `**Learned:**` field, next to `**Abandoned:**`.** It names
+*destinations* - a file, a section, an issue number - not prose. A lesson restated in the
+log is the failure this rule exists to stop; a pointer is checkable. "Nothing
+generalisable" is a valid and common entry, and saying it is not a failure - most ticks
+genuinely produce none.
+
+`ops:harness/check_log.py` enforces both fields and that `Learned` resolves to something,
+because `Abandoned` had been required by convention alone since it was introduced and
+nothing had ever checked it.
 
 ### Issue types are contracts, not labels
 
