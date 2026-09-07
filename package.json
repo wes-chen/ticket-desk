@@ -38,7 +38,9 @@
     "issues:audit": "python3 scripts/check_issues.py",
     "test:issues": "python3 scripts/check_issues.py --self-test",
     "check:rowprices": "python3 scripts/check_row_prices.py",
-    "extract:bands": "python3 scripts/extract_price_bands.py"
+    "extract:bands": "python3 scripts/extract_price_bands.py",
+    "check:sectionrank": "python3 scripts/section_rank.py",
+    "test:sectionrank": "python3 scripts/section_rank.py --self-test"
   },
   "dependencies": {
     "react": "^19.0.0",
