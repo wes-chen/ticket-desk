@@ -62,8 +62,29 @@ class Invalid(Exception):
     pass
 
 
+def as_int(x):
+    """int(x) or None. Never raises.
+
+    `key()` needs numeric section and gameId, and `validate()` reaches `key()` for
+    duplicate detection even on rows it has already found problems with. Casting there
+    raised `ValueError` on a non-numeric value - escaping this module's own `Invalid`
+    type and contradicting the refuse-rather-than-trust docstring above. Caught in review
+    of ops#65; the suite missed it because its bad-section fixture used `999`, which is
+    numeric and therefore the wrong KIND of wrong.
+    """
+    if isinstance(x, bool):  # bools are ints in Python and are never a real id
+        return None
+    try:
+        return int(x)
+    except (TypeError, ValueError):
+        return None
+
+
 def key(r):
-    """The identity of a row. A same-day re-read UPSERTS rather than appending."""
+    """The identity of a row. A same-day re-read UPSERTS rather than appending.
+
+    Assumes section and gameId are numeric - `validate()` skips the duplicate check for
+    any row where they are not, rather than crashing here."""
     return (r["observedDate"], int(r["gameId"]), int(r["section"]),
             str(r["row"]), r["listingType"])
 
@@ -88,9 +109,17 @@ def validate(rows, game_ids=None):
         sec, gid = r["section"], r["gameId"]
         where = f"{where} (game {gid} sec {sec} row {r['row']})"
 
-        if sec not in SECTIONS:
-            problems.append(f"{where}: section {sec} is not one of the 50 real sections")
-        if game_ids is not None and int(gid) not in game_ids:
+        # Resolve the key fields FIRST. Everything below may append problems, and the
+        # duplicate check at the end needs both numeric; a row that fails here is
+        # reported and then skipped rather than carried into key().
+        sec_i, gid_i = as_int(sec), as_int(gid)
+        if sec_i is None:
+            problems.append(f"{where}: section must be a number, got {sec!r}")
+        elif sec_i not in SECTIONS:
+            problems.append(f"{where}: section {sec_i} is not one of the 50 real sections")
+        if gid_i is None:
+            problems.append(f"{where}: gameId must be a number, got {gid!r}")
+        elif game_ids is not None and gid_i not in game_ids:
             problems.append(f"{where}: gameId is not a known home game")
         if r["listingType"] not in LISTING_TYPES:
             problems.append(f"{where}: listingType must be one of "
@@ -121,6 +150,11 @@ def validate(rows, game_ids=None):
                                 f"repo - ownership is derived at read time from the "
                                 f"profile, see CLAUDE.md rule 1")
 
+        if sec_i is None or gid_i is None:
+            # Cannot form an identity for this row, so no duplicate check. Every other
+            # problem with it has already been recorded above, and crashing here is what
+            # review of ops#65 caught.
+            continue
         k = key(r)
         if k in seen:
             problems.append(f"{where}: duplicate of an earlier row with the same "
@@ -226,6 +260,24 @@ def self_test():
     check("and cites the rule", "CLAUDE.md rule 1" in got[0], True)
 
     check("bad section refused", len(validate([row(section=999)])), 1)
+
+    # ops#65 review, F2. validate() reached key(), which cast int(), and RAISED on a
+    # non-numeric value instead of refusing - escaping this module's own Invalid type.
+    # The existing bad-section fixture used 999: numeric, and therefore the wrong KIND of
+    # wrong. These assert refusal, and would raise rather than fail if it regressed.
+    check("a non-numeric gameId is refused, not raised",
+          len(validate([row(gameId="VGK")])), 1)
+    check("a non-numeric section is refused, not raised",
+          len(validate([row(section="110A")])), 1)
+    check("a null section is refused, not raised",
+          len(validate([row(section=None)])), 1)
+    # Bools are ints in Python and are never a real id.
+    check("a boolean gameId is refused", len(validate([row(gameId=True)])), 1)
+    # A numeric string is a transcription artefact, not an error - accept it.
+    check("a numeric-string section is accepted", validate([row(section="110")]), [])
+    # Two unkeyable rows must not collide in the duplicate check either.
+    check("two unkeyable rows each report once",
+          len(validate([row(gameId="VGK"), row(gameId="ANA")])), 2)
     check("bad listingType refused", len(validate([row(listingType="auction")])), 1)
     check("zero price refused", len(validate([row(price=0)])), 1)
     check("boolean price refused", len(validate([row(price=True)])), 1)
