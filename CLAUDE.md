@@ -175,6 +175,35 @@ Say what is explicitly out of scope, too. ops#61 wants a profile export and name
 sync as **not** in scope, because sync needs a credential in the browser and would drag a
 small UI change into the protected set.
 
+### A measured value goes in a STORE, not in an issue body
+
+The companion to the rule above, and it has already cost this project twice in one day.
+
+An issue body is prose. Nothing polls it, and once the issue closes nothing reads it at all.
+A config file or a `data/` store *is* read - by the build, by the checks, by any session
+sweeping for a constant. So a number that only exists in an issue is a number the next
+session will conclude does not exist.
+
+Both failures on 2026-09-07 had that exact shape:
+
+- The **season invoice total, per-seat invoice and tier-table reconciliation** lived in
+  ops#13's body and in **zero** structured stores. A session looking for the cost basis found
+  nothing, declared the invoice unavailable, and estimated it at ~$3,798/seat against a real
+  face of $4,048 - an unnecessary substitute that was also **worse than the number already
+  in hand**. Wesley had to point out he had provided it.
+- The instruction to **subscribe to `deadlines.ics` and confirm an alarm fires** lived in
+  ops#10's *closing comment*. It went unconfirmed for days while ops#20's deferral quietly
+  assumed the reminder existed. Recovered as ops#63.
+
+So: when an issue establishes a value, write it to `config/` or a `data/` store in the same
+sitting, with its `confidence` and its provenance, and let the issue *reference* the store
+rather than *be* the record. Private values go to `ops:data/profile/snapshots.jsonl`, which
+exists for exactly this and is append-only so a correction supersedes rather than overwrites.
+
+And when an issue's last mile is an action only Wesley can take, that is not a closing note -
+it is a `type:input` issue with a validator, or the issue stays open. "One thing only you can
+verify" written into a close is a requirement with nowhere to live.
+
 ### Issue types are contracts, not labels
 
 Wesley is the **product manager**: he decides, agents implement, and this tracker is the
