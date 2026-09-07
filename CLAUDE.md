@@ -379,9 +379,17 @@ npm run schedule       # refresh + VALIDATE data/schedule.json against the NHL A
 npm run check:privacy  # privacy checks alone
 npm run check:bands    # validate config/price_bands.json (section -> price band map)
 npm run check:tiermarket   # cross-check the tier table against collected market prices
+npm run collect            # all four collectors, then summarise
 npm run collect:tickpick   # TickPick prices -> data/market/tickpick.jsonl (+ raw to raw-out/)
+npm run collect:gametime   # second source, 44/44, AggregateOffer
+npm run collect:ticketnetwork  # third, ROLLING window - see the time-join warning below
+npm run collect:scorebig   # fourth, ROLLING - its declared UTC offset is wrong, see below
 npm run resolve:tickpick   # rebuild data/tickpick_events.json from TickPick's sitemap
 npm run summarize:market   # derive data/market/summary.json, which the app imports
+npm run check:freshness    # gap + staleness + coverage-regression across all four sources
+npm run hypotheses         # readiness of each registered hypothesis, then run the ready ones
+npm run calendar           # rebuild deadlines.ics - the T-48h alarms, 7d/24h/1h per game
+npm run issues:audit       # issue hygiene against the live tracker (network + gh auth)
 npm run resolve:tm     # TM Discovery event ids -> data/tm_events.json
 npm run test:tm        # resolver self-test against real captured fixtures; no key, no network
 python3 scripts/probe_sources.py --label local  # HTTP-level reachability (no browser needed)
@@ -402,6 +410,19 @@ assignment is missing - the band prices are transcribed but no section has been 
 yet. Its placement checks (arc contiguity and mirror symmetry around each level's ring)
 are written and self-tested against a deliberately misfiled section, so they work the
 moment the chart is transcribed. See ops#19.
+
+**There are FOUR collectors, not one.** This section used to describe only TickPick, which
+would have left a session believing the project had a single source. All four share
+`scripts/market_store.py`, whose semantics are subtle and worth reading before touching a
+collector: one row per event per UTC day, UPSERTED so a same-day re-run corrects rather
+than appends; deterministic sort so a daily commit diffs cleanly; and a read that hits its
+size cap is an ERROR, never data - that last rule exists because this project has produced
+the same silent-truncation bug three times.
+
+`scripts/hypotheses.py` is the discovery register. It answers "can this question be asked
+yet" before it answers the question, and refuses the ones the data cannot support - see
+its docstring on why a readiness estimate is data availability rather than statistical
+power.
 
 `scripts/collect_tickpick.py` is the working price collector. Plain HTTP, no browser,
 44/44 home games, running daily in Actions. **Aggregates commit; raw ld+json goes to a
