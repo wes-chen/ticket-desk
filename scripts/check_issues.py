@@ -153,6 +153,37 @@ BODY_CONTRACTS: dict[str, list[tuple[str, str]]] = {
 # it - which in practice is an agent that died mid-run and left the ticket locked.
 CLAIM = re.compile(r"\*\*Claiming\b", re.I)
 
+# ops#68. An issue that ESTABLISHES a value must say where the value landed. The audit
+# measured 5.2% of numeric values in marker-carrying issues living in an issue and nowhere
+# else - invisible the moment it closes. Both known losses have this shape: ops#13's cost
+# basis was re-derived (badly) from scratch, and ops#10's calendar step went unconfirmed
+# for days.
+#
+# Deliberately NOT a provenance graph. 90.8% of values are already in a store; this closes
+# the leak rather than rebuilding the record-keeping.
+RECORDED = re.compile(r"^[ \t>]*\*\*Recorded in\*\*", re.I | re.M)
+
+# Refusing to store something is a real answer and must be sayable, or the check becomes a
+# nag and gets switched off - the failure ops#68 explicitly warns about, and the one the
+# pre-push SKIPPED grep already caused once.
+RECORDED_NOWHERE = re.compile(r"^[ \t>]*\*\*Recorded in\*\*\s*[-\u2014:]*\s*nowhere\b",
+                              re.I | re.M)
+
+# A path named by the marker. Backticked first (the documented form), else a bare token
+# that looks like a path. `ops:` marks the PRIVATE repo, which this checker cannot see.
+RECORDED_PATH = re.compile(r"\*\*Recorded in\*\*[^\n]*?`([^`]+)`", re.I)
+RECORDED_PATH_BARE = re.compile(
+    r"\*\*Recorded in\*\*\s*[-\u2014:]*\s*((?:ops:)?[\w.\-]+/[\w./\-]+)", re.I)
+
+# Existing closed issues predate the marker. 26 carry contract markers and reflagging
+# history forever is the noise that got the old empty-issue rule deleted - the same
+# reasoning ops#68 asked for and that already scopes the log's `Learned` field.
+RECORDED_FROM_ISSUE = 74
+
+# Markers that mean "this issue established something". A type:build or type:meta closes
+# on a merged PR rather than on a value, so neither is asked for a pointer.
+ESTABLISHING = ("**Finding**", "**Input accepted**")
+
 # The other half of a claim, and the one that was missing. `claimed` with no comment is a
 # lock nobody can attribute; a claim with no DISCHARGE is a lock nobody released - the
 # actor announced it was working and then stopped, which is invisible until someone else
@@ -193,6 +224,32 @@ def has_resolution(bodies: list[str]) -> str | None:
                 return "legacy"
     return None
 
+
+
+
+def recorded_paths(n, title, blob, root=ROOT):
+    """Check every path a **Recorded in** marker names. A pointer to nothing is worse
+    than no pointer - it reads as provenance while leading somewhere that does not exist.
+
+    An `ops:` prefix names the PRIVATE repo, which this checker cannot see from the
+    public one. Those are accepted unverified rather than flagged, because flagging a
+    correct pointer is the cry-wolf failure ops#68 warned about; the prefix is what makes
+    "unverifiable" distinguishable from "wrong".
+    """
+    found = RECORDED_PATH.findall(blob) or RECORDED_PATH_BARE.findall(blob)
+    if not found:
+        return [("flag", f"#{n} has **Recorded in** but names no path - say where, or "
+                         f"say 'nowhere, and why': {title}")]
+    out = []
+    for raw in found:
+        path = raw.strip().split("->")[0].split("\u2192")[0].strip().strip("`")
+        if path.startswith("ops:"):
+            continue  # private repo, not visible from here - see docstring
+        if not (root / path).exists():
+            out.append(("flag", f"#{n} **Recorded in** names {path!r}, which does not "
+                                f"exist - a pointer to nothing reads as provenance: "
+                                f"{title}"))
+    return out
 
 def classify(issue: dict, bodies: list[str],
              now: dt.datetime | None = None) -> list[tuple[str, str]]:
@@ -259,6 +316,18 @@ def classify(issue: dict, bodies: list[str],
             out.append(("flag", f"#{n} claim horizon passed {horizon:%Y-%m-%dT%H:%MZ} and "
                                 f"it is still open and claimed - discharge it (deliver, "
                                 f"or say what blocked you) or release it: {title}"))
+    # ---- ops#68: a value established here must say where it landed ----
+    if state == "closed" and n >= RECORDED_FROM_ISSUE:
+        establishes = [m for m in ESTABLISHING if m.lower() in blob.lower()]
+        if establishes:
+            if not RECORDED.search(blob):
+                out.append(("flag", f"#{n} closed with {establishes[0]} but no "
+                                    f"**Recorded in** - the value it established is in "
+                                    f"prose only, which is how ops#13 and ops#10 were "
+                                    f"lost: {title}"))
+            elif not RECORDED_NOWHERE.search(blob):
+                out.extend(recorded_paths(n, title, blob))
+
     if "claimed" in labels and state == "open" and not CLAIM.search(blob):
         out.append(("flag", f"#{n} is labelled claimed but no agent said so - "
                             f"stale lock, release it: {title}"))
@@ -470,6 +539,57 @@ def self_test() -> int:
     # ---- claim locks ----
     check("claimed without a claim comment is a stale lock",
           levels(iss(23, "open", ["type:build", "claimed"]), ["some notes"]), ["flag"])
+    # ---- ops#68: **Recorded in** ----
+    FIND = "**Finding** - the fee is 10%"
+    # 1. established a value, said where it went, and the path exists.
+    check("recorded in a real path passes",
+          levels(iss(80, "closed", ["type:research"]),
+                 [FIND, "**Closing - done**\n**Recorded in** `config/economics.json`"]), [])
+    # 2. established a value and said nothing.
+    got = levels(iss(81, "closed", ["type:research"]), [FIND, "**Closing - done**"])
+    check("no Recorded in is flagged", got, ["flag"])
+    # 3. a pointer to nothing - worse than no pointer, because it reads as provenance.
+    check("a path that does not exist is flagged",
+          levels(iss(82, "closed", ["type:research"]),
+                 [FIND, "**Closing**\n**Recorded in** `config/nope.json`"]), ["flag"])
+    # 4. refusing to store is a real answer and must be sayable, or the check is a nag.
+    check("the nowhere form passes",
+          levels(iss(83, "closed", ["type:research"]),
+                 [FIND, "**Closing**\n**Recorded in** - nowhere, and why: it is a "
+                        "worked example in absurd values"]), [])
+
+    # An ops: path is in the PRIVATE repo and cannot be seen from here. Accepting it
+    # unverified is the whole reason the prefix exists - flagging a correct pointer is
+    # the cry-wolf failure ops#68 warns about.
+    check("an ops: path is accepted unverified",
+          levels(iss(84, "closed", ["type:research"]),
+                 [FIND, "**Closing**\n**Recorded in** `ops:data/profile/snapshots.jsonl`"]),
+          [])
+    # A key suffix after the path must not be treated as part of the filename.
+    check("a -> key suffix is stripped before checking",
+          levels(iss(85, "closed", ["type:research"]),
+                 [FIND, "**Closing**\n**Recorded in** `config/economics.json -> resale`"]), [])
+    # The marker with no path at all is not provenance.
+    check("Recorded in naming no path is flagged",
+          levels(iss(86, "closed", ["type:research"]),
+                 [FIND, "**Closing**\n**Recorded in** somewhere sensible"]), ["flag"])
+
+    # Scope. Existing closed issues predate the marker; reflagging history is the noise
+    # that killed the old empty-issue rule.
+    check("an issue below the cutoff is exempt",
+          levels(iss(RECORDED_FROM_ISSUE - 1, "closed", ["type:research"]),
+                 [FIND, "**Closing - done**"]), [])
+    # An OPEN issue has not established anything yet - the pointer is due at close.
+    check("an open issue is not asked for a pointer",
+          levels(iss(87, "open", ["type:research", "ready"]), [FIND]), [])
+    # type:build closes on a merged PR, not on a value, so it is never asked.
+    check("a build issue with no Finding is not asked",
+          levels(iss(88, "closed", ["type:build"]), ["**Closing - merged**"]), [])
+    # Input accepted establishes a value just as much as a Finding does.
+    check("Input accepted also requires a pointer",
+          levels(iss(89, "closed", ["type:input"]),
+                 ["**Input accepted**", "**Closing - done**"]), ["flag"])
+
     # ---- claim discharge: the half that was missing ----
     NOW = dt.datetime(2026, 9, 7, 12, 0, tzinfo=dt.timezone.utc)
     live = "**Claiming** - agent-x, reviewing head abc123, horizon 2026-09-07T20:00:00Z"
