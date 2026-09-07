@@ -49,7 +49,22 @@
           "source": "Edit Listing dialog, 2026-09-05: prose read 'automatically removed on Tue Sep 22, 2026 07:00 PM' - puck drop - while the dropdown showed 'Tue Sep 22, 2026 09:00 PM (Default)'. The two disagree by two hours.",
           "_whyItMatters": "The model assumes an unsold listing simply expires worthless at puck drop. If listings are pulled EARLIER than puck drop, the window to sell is shorter than modelled, which matters in the endgame after the exchange floor is gone. Cheap to settle: read the dropdown's options."
         },
-        "_privacy": "Isolated (list, net) pairs ONLY. These previously carried a `game` field, which made them the exact statement CLAUDE.md rule 1 forbids - which games we have listed, at what price, with what net. The pair alone measures Ticketmaster's fee and says nothing about our seats; naming the game made it a statement about our listings. Deduped too, because repeated identical pairs disclosed how many seats we hold."
+        "_privacy": "Isolated (list, net) pairs ONLY. These previously carried a `game` field, which made them the exact statement CLAUDE.md rule 1 forbids - which games we have listed, at what price, with what net. The pair alone measures Ticketmaster's fee and says nothing about our seats; naming the game made it a statement about our listings. Deduped too, because repeated identical pairs disclosed how many seats we hold.",
+        "buyerFeeRate": {
+          "value": 0.21,
+          "confidence": "measured_single_point",
+          "source": "One isolated (list, all-in buyer price) pair observed 2026-09-07 on the public event page: 85.00 -> 102.85, which is exactly +21.00%. The page states 'We're All In: Prices include fees (before taxes).'",
+          "_whyItMatters": "This is the number that decides whether a listing is COMPETITIVE, and the model did not have it. We reason in list prices; a buyer chooses on all-in prices. net = (1 - sellerFeeRate) / (1 + buyerFeeRate) x buyer price = 0.7438 x buyer price, so the platform takes 25.6% of what the buyer pays. Concretely: to net more than a tier credit C, a buyer must pay C / 0.7438 all-in - about 34% more than C. Comparing our list price against a primary or comp price, as this project did until now, understates how far above the market our ask really sits.",
+          "openQuestion": "One point, one price. Whether 21% is flat, tiered, or capped is unknown - the seller side looked flat across three points in a 21% band and still has an open question above $85. Needs a second (list, all-in) pair at a materially different price.",
+          "_privacy": "The isolated pair only, with no game, section, row or seat. Per CLAUDE.md rule 1 a (list, net) or (list, all-in) pair measures Ticketmaster's fee and says nothing about our seats; attaching the game would make it the forbidden statement about our listings. Same treatment as feeObservations, whose `game` field had to be stripped for exactly this reason."
+        },
+        "buyerFeeObservations": [
+          {
+            "list": 85.0,
+            "allInBuyerPrice": 102.85,
+            "impliedRate": 0.21
+          }
+        ]
       },
       "stubhub": {
         "label": "StubHub",
