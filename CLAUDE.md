@@ -530,12 +530,24 @@ successes cannot be audited.
   `G5vYZ_...`. Both are real and both are needed - the legacy id keys TM's web pages,
   which is what the scraper will use. `data/tm_events.json` carries both for all 44
   games.
-- **Actions cron times are nominal, not actual.** Observed three times, all on the
-  schedule refresh nominally at 13:17 UTC: it ran at 16:52 UTC (**215 min late**), at
-  16:04 UTC (**167 min late**), and on 2026-09-06 at 16:17 UTC (**180 min late**). So
-  hours-late is the norm here, not an outlier - and at n=3 the spread is a tight 167-215
-  min, which is a range rather than a wide unknown. Still treat that range rather than any
-  single number as the expectation. GitHub queues scheduled runs at low priority, and
+- **Actions cron times are nominal, not actual.** Observed four times, all on the
+  schedule refresh nominally at 13:17 UTC and all `event=schedule` (manual
+  `workflow_dispatch` runs excluded):
+
+  | date | ran at | late |
+  | --- | --- | --- |
+  | (earlier) | 16:52 UTC | 215 min |
+  | 2026-09-05 | 16:04 UTC | 168 min |
+  | 2026-09-06 | 16:17 UTC | 181 min |
+  | **2026-09-07** | **18:15 UTC** | **298 min** |
+
+  So hours-late is the norm here, not an outlier. **The earlier "tight 167-215 min" claim
+  did not survive its fourth observation** - 2026-09-07 came in 39% beyond the previous
+  worst, and a session that had internalised 215 as the ceiling would have called a healthy
+  run broken. Treat **167-298 min** as the range, treat the range rather than any single
+  number as the expectation, and expect the ceiling to move again: four points is not a
+  distribution, and the only thing measured so far is that the tail is longer than the last
+  measurement suggested. GitHub queues scheduled runs at low priority, and
   off-the-hour minutes help but do not eliminate it. Consequences: a "daily" collector is
   really "roughly daily, whenever GitHub gets to it", and a run that looks hours overdue
   is probably delayed rather than broken - check `gh run list` for a queued run and the
