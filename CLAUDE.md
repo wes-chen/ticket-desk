@@ -150,6 +150,31 @@ delivered - say so in a comment and leave it open. Where the remaining work is g
 a different problem, close it and point at the issue that owns that problem, rather than
 retitling and carrying two issues for one gap.
 
+### A suggestion made in conversation gets filed, not just said
+
+Wesley's standing instruction, 2026-09-07: **file suggestions as work issues to be tackled
+on autonomous ticks.** When an agent proposes something in chat - a fix, a hardening, a
+follow-up it noticed while doing something else - the proposal goes on the tracker before
+the conversation moves on.
+
+The reason is that this project's ticks are driven by the tracker and nothing else. An
+autonomous session polls issues; it does not read yesterday's chat. So a good idea that
+stays in a message is invisible to every future session, and the agent that had it will
+not be around to remember. Two things have already been rescued from that fate by being
+written down instead - the `enforce_admins` hole in ops#42 and the fresh-clone hole in
+ops#59 - and both were noticed in passing rather than as assigned work.
+
+Split by who acts, which is the same split the type labels already encode: work an agent
+can do becomes a `type:build` (or `type:research`) issue with acceptance criteria and gets
+picked up on a tick, and only a fork whose answer is a *preference* becomes a
+`type:decision` for Wesley. Do not file both for one idea, and do not put an agent-doable
+item on his queue - that is the failure this practice exists to avoid, in the other
+direction.
+
+Say what is explicitly out of scope, too. ops#61 wants a profile export and names real
+sync as **not** in scope, because sync needs a credential in the browser and would drag a
+small UI change into the protected set.
+
 ### Issue types are contracts, not labels
 
 Wesley is the **product manager**: he decides, agents implement, and this tracker is the
