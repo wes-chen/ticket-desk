@@ -32,6 +32,7 @@ import {
 } from "./lib/outcomes";
 import type { OutcomeKind } from "./lib/profile";
 import { calibrate } from "./lib/fees";
+import { backupFilename, buildBackup, restoreBackup } from "./lib/backup";
 import SellerObservations from "./components/SellerObservations";
 import SeasonPnlPanel from "./components/SeasonPnl";
 
@@ -156,10 +157,33 @@ function Dashboard({
   // separate "chose the credit" from "went unsold".
   const needs = useMemo(() => pending(profile, GAMES, now), [profile, now]);
 
+  const [restoreNote, setRestoreNote] = useState<string | null>(null);
+
+  const importProfile = (file: File) => {
+    // Read, validate, then replace as ONE step. restoreBackup returns a complete profile
+    // or an error and never a partial one, because a half-applied profile is worse than
+    // a rejected one - and the transfer link's silent wholesale overwrite (ops#61) is
+    // exactly the failure that looks like success.
+    const reader = new FileReader();
+    reader.onerror = () => setRestoreNote("Could not read that file.");
+    reader.onload = () => {
+      const res = restoreBackup(String(reader.result ?? ""));
+      if (!res.ok) {
+        setRestoreNote(res.error);
+        return;
+      }
+      setProfile(res.profile);
+      const n = Object.keys(res.profile.listPrices ?? {}).length;
+      setRestoreNote(`Restored. ${n} list price${n === 1 ? "" : "s"} loaded, and any price history with them.`);
+    };
+    reader.readAsText(file);
+  };
+
   const downloadOutcomes = () => {
-    // The only durable copy of the training set. localStorage is right for privacy and
-    // is one browser setting away from destroying up to 44 irreplaceable observations.
-    const payload = exportPayload(profile, GAMES, now);
+    // The only durable copy - now of the WHOLE profile, not just outcomes. ops#61:
+    // listPriceHistory exists so a price change does not destroy the previous value, and
+    // it was the one structure with no route out of the browser.
+    const payload = buildBackup(profile, exportPayload(profile, GAMES, now).outcomes, now);
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
     );
@@ -170,7 +194,7 @@ function Dashboard({
     // loss of every recorded outcome.
     const a = document.createElement("a");
     a.href = url;
-    a.download = `ticket-desk-outcomes-${now.toISOString().slice(0, 10)}.json`;
+    a.download = backupFilename(now);
     a.style.display = "none";
     document.body.appendChild(a);
     a.click();
@@ -363,6 +387,16 @@ function Dashboard({
           </section>
         )}
 
+        {/* ops#61: the symptom was "it doesn't save anywhere". It does - but only here,
+            on this device, in this browser. The absence of this line is why that was
+            surprising rather than obvious. */}
+        <p className="mt-6 text-xs text-slate-500">
+          Prices you type are saved <strong>on this device only</strong> &mdash; per browser,
+          per origin. They are not on your phone and not on the server.{" "}
+          <span className="text-slate-400">
+            Back them up below, and restore on the other device.
+          </span>
+        </p>
         <section className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
           <table className="w-full min-w-[56rem] text-sm">
             <thead className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800">
@@ -588,17 +622,34 @@ function Dashboard({
             <button
               type="button"
               onClick={downloadOutcomes}
-              disabled={counts.total === 0}
+              disabled={counts.total === 0 && Object.keys(profile.listPrices ?? {}).length === 0}
               className="rounded border border-slate-300 px-2 py-1 text-xs font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
             >
-              Export outcomes (JSON)
+              Back up everything (JSON)
             </button>
+            <label className="cursor-pointer rounded border border-slate-300 px-2 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">
+              Restore from file
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) importProfile(f);
+                  // Cleared so re-picking the SAME file fires onChange again - otherwise a
+                  // failed restore cannot be retried without switching files.
+                  e.target.value = "";
+                }}
+              />
+            </label>
             <span className="text-xs text-slate-500">
-              {counts.total === 0
-                ? "Nothing recorded yet."
-                : "Keep a copy outside the browser \u2014 clearing site data destroys these, and they cannot be re-collected. Private: contains our prices."}
+              Prices, price history, seats, credits and outcomes. Private: contains our
+              prices.
             </span>
           </div>
+          {restoreNote && (
+            <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{restoreNote}</p>
+          )}
 
           {counts.missed.length > 0 && (
             <p className="mt-3 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-800 dark:border-red-800/50 dark:bg-red-950/30 dark:text-red-300">

@@ -22,6 +22,9 @@ import {
   listToNet, minListPrice, netPayout, phaseOf, remainingCreditOutlets, type Game,
 } from "../src/lib/economics.ts";
 import {
+  BACKUP_SCHEMA, backupFilename, buildBackup, restoreBackup,
+} from "../src/lib/backup.ts";
+import {
   CLOSING_SOON_HOURS, FIT_THRESHOLD, arenaToday, defaultOutcomeDate, exportPayload,
   pending, selectableOutcomes, sellRate, tally, withOutcomeDate,
 } from "../src/lib/outcomes.ts";
@@ -874,5 +877,72 @@ check("no net recorded -> no cash invented", pl.cash, 0);
 // --- report ---------------------------------------------------------------------
 
 for (const f of fails) console.error(`  FAIL ${f}`);
+/* ---- ops#61: whole-profile backup and restore -------------------------------- */
+
+const histProfile = {
+  ...EMPTY_PROFILE,
+  seats: { section: "111111", row: "111111", seats: ["111111"] },
+  invoiceTotal: 11111111,
+  credits: { B: 11111 },
+  listPrices: { "2026010032": 11111 },
+  // The backfilled marker is the thing most likely to be silently dropped by any
+  // reshaping step, so the round-trip criterion turns on it specifically.
+  listPriceHistory: {
+    "2026010032": [
+      { price: 11111, at: "2026-09-04", backfilled: true as const },
+      { price: 22222, at: "2026-09-05" },
+    ],
+  },
+  outcomes: { "2026010032": { kind: "sold" as const, on: "2026-09-22", atList: 11111, netPerSeat: 11111 } },
+};
+
+// THE acceptance criterion: a round trip must compare equal, markers included.
+const rt = restoreBackup(JSON.stringify(buildBackup(histProfile, [], new Date("2026-09-07T00:00:00Z"))));
+check("round trip succeeds", rt.ok, true);
+check("round trip preserves the whole profile",
+  rt.ok && rt.profile, histProfile);
+check("round trip preserves the backfilled marker",
+  rt.ok && rt.profile.listPriceHistory?.["2026010032"]?.[0]?.backfilled, true);
+
+// An older export predating ops#48 has no listPriceHistory. It must LOAD, not throw.
+const older = JSON.stringify(buildBackup(
+  { ...EMPTY_PROFILE, listPrices: { "2026010032": 11111 } }, [], new Date()));
+const oldRes = restoreBackup(older);
+check("an older profile without history loads", oldRes.ok, true);
+check("and gains no phantom history",
+  oldRes.ok && oldRes.profile.listPriceHistory, undefined);
+
+// Refuse rather than partially apply. Each of these must change nothing.
+check("a foreign JSON object is refused", restoreBackup('{"hello":"world"}').ok, false);
+check("invalid JSON is refused", restoreBackup("not json").ok, false);
+check("a JSON array is refused", restoreBackup("[]").ok, false);
+check("a backup with no profile is refused",
+  restoreBackup(JSON.stringify({ _schema: BACKUP_SCHEMA })).ok, false);
+check("a future schema version is refused",
+  restoreBackup(JSON.stringify({ _schema: BACKUP_SCHEMA, profile: { v: 2 } })).ok, false);
+check("a profile missing listPrices is refused",
+  restoreBackup(JSON.stringify({ _schema: BACKUP_SCHEMA,
+    profile: { v: 1, seats: {}, credits: {} } })).ok, false);
+// Present-but-wrong shape is a corrupted file. Dropping it silently would lose exactly
+// the history this feature exists to protect.
+check("a malformed listPriceHistory is refused",
+  restoreBackup(JSON.stringify({ _schema: BACKUP_SCHEMA,
+    profile: { v: 1, seats: {}, credits: {}, listPrices: {}, listPriceHistory: [] } })).ok, false);
+
+// The refusal message must tell Wesley nothing changed, since the fear is a half-apply.
+const refused = restoreBackup('{"hello":"world"}');
+check("refusal says nothing was changed",
+  !refused.ok && refused.error.includes("not a Ticket Desk"), true);
+
+// outcomesView is derived and must never be read back - two writable copies of one fact
+// is how they diverge.
+const withView = JSON.stringify(buildBackup(histProfile, [{ gameId: 999999 }], new Date()));
+const vres = restoreBackup(withView);
+check("outcomesView is ignored on import",
+  vres.ok && JSON.stringify(vres.profile.outcomes), JSON.stringify(histProfile.outcomes));
+
+check("filename carries the date",
+  backupFilename(new Date("2026-09-07T12:00:00Z")), "ticket-desk-profile-2026-09-07.json");
+
 console.log(`self-test: ${fails.length ? "FAILED" : "passed"} (${fails.length} failure(s))`);
 process.exit(fails.length ? 1 : 0);
