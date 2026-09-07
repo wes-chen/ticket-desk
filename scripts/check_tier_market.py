@@ -162,6 +162,24 @@ def run() -> int:
         for w in warnings:
             print(f"  ? {w}")
 
+    # NOTHING TO CHECK IS NOT A PASS.
+    #
+    # The missing-file branch above already gets this right - "check SKIPPED (no market
+    # data), not clean". But a summary that EXISTS with zero games fell through to the
+    # verdict below and printed "CONSISTENT so far, on 0 day of data", which is a positive
+    # finding about nothing. It even names the zero and leads with CONSISTENT anyway.
+    #
+    # Reachable for real: if every collector fails, summarize_market still writes a
+    # summary with an empty games list. That is exactly the moment this check should say
+    # it checked nothing, and it was the moment it said the tier table looked fine.
+    #
+    # Same class as the privacy passes reporting "clean" without .private-patterns, and the
+    # coverage horizon accepting a collapse as an expected window.
+    if not summary.get("games"):
+        print("\ncheck SKIPPED - the summary has no priced games, so nothing was "
+              "compared. Not clean.")
+        return 0
+
     # One observation day is suggestive, not conclusive, and saying otherwise would be
     # the invented precision this project refuses.
     if days < 2:
@@ -175,6 +193,13 @@ def run() -> int:
             print(f"  - {p}", file=sys.stderr)
         return 1
     return 0
+
+
+def _verdict_for(games_in_summary: list, days: int) -> str:
+    """What the run would report. Extracted so the empty case is testable without a repo."""
+    if not games_in_summary:
+        return "skipped"
+    return "suggestive" if days < 2 else "consistent"
 
 
 def self_test() -> int:
@@ -222,6 +247,14 @@ def self_test() -> int:
 
     # Missing market data must not crash.
     check("no market rows", analyse(games(["A+", "A"]), [])["n"], 0)
+
+    # NOTHING TO CHECK IS NOT A PASS. A summary that exists with zero priced games used
+    # to print "CONSISTENT so far, on 0 day of data" - a positive verdict about nothing -
+    # while the missing-file branch beside it correctly said "SKIPPED, not clean".
+    check("zero priced games is a SKIP, not a pass", _verdict_for([], 0), "skipped")
+    check("and still a skip even if days claims otherwise", _verdict_for([], 5), "skipped")
+    check("one day of real data is suggestive", _verdict_for([{"gameId": 1}], 1), "suggestive")
+    check("two days is consistent", _verdict_for([{"gameId": 1}], 2), "consistent")
 
     for f in fails:
         print(f"  FAIL {f}", file=sys.stderr)
