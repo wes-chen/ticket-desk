@@ -224,6 +224,37 @@ And when an issue's last mile is an action only Wesley can take, that is not a c
 it is a `type:input` issue with a validator, or the issue stays open. "One thing only you can
 verify" written into a close is a requirement with nowhere to live.
 
+### A claim is a debt, not a deliverable
+
+Claiming work announces that you are doing it. **It is not doing it, and a tick that ends
+on a claim has produced nothing while telling everyone else the ticket is taken** - which
+is worse than not claiming, because it blocks the next actor too.
+
+This happened on 2026-09-07. A session claimed the review of ops PR #69, posted the claim
+comment, and then reported its work complete. The review itself did not exist. Wesley
+asked "did you post your review?" and the answer was no. Nothing detected it: the claim
+was well-formed, the horizon had not expired, and every other check was green.
+
+So, whenever you claim anything - an issue, a review, a PR - exactly one of these ends
+your involvement:
+
+- **you deliver it**, and say so where the claim was made;
+- **you record what blocked you**, concretely, and leave the claim with a live horizon; or
+- **you release it** - drop the `claimed` label, strike the registry row, say so in the log.
+
+"I claimed it" is none of those. Before you report a tick complete, check what you are
+still holding:
+
+```bash
+npm run issues:audit     # flags an open claim past its horizon, and one with no horizon
+```
+
+`scripts/check_issues.py` enforces both halves now. It always caught a `claimed` label
+with **no** claim comment - a lock nobody can attribute. The missing half was the reverse:
+a claim nobody discharged. **Note the gap it still has:** `fetch()` filters pull requests
+out (`select(has("pull_request")|not)`), so a claim made on a *PR* - which is exactly what
+happened here - is still not audited. Do not read a clean audit as proof you hold nothing.
+
 ### A learning goes to the file that will be READ, not into the day's log
 
 The generalisation of the two rules above, and the reason they both had to be written

@@ -39,6 +39,7 @@ Usage:
 """
 
 import argparse
+import datetime as dt
 import json
 import pathlib
 import re
@@ -152,6 +153,34 @@ BODY_CONTRACTS: dict[str, list[tuple[str, str]]] = {
 # it - which in practice is an agent that died mid-run and left the ticket locked.
 CLAIM = re.compile(r"\*\*Claiming\b", re.I)
 
+# The other half of a claim, and the one that was missing. `claimed` with no comment is a
+# lock nobody can attribute; a claim with no DISCHARGE is a lock nobody released - the
+# actor announced it was working and then stopped, which is invisible until someone else
+# wants the ticket. The protocol requires the claim comment to carry a horizon ("when to
+# assume I died"), so a horizon in the past on a still-open claim is the mechanical signal.
+#
+# Accepts a bare date or an ISO timestamp, because both forms are already in use.
+HORIZON = re.compile(
+    r"\b(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2})?\s*Z?)?", re.I)
+
+
+def claim_horizon(bodies: list[str]) -> dt.datetime | None:
+    """Latest horizon stated in any claim comment, as UTC. None if none is parseable."""
+    latest = None
+    for b in bodies:
+        if not b or not CLAIM.search(b):
+            continue
+        m = HORIZON.search(b)
+        if not m:
+            continue
+        day = dt.date.fromisoformat(m.group(1))
+        hh = int(m.group(2)) if m.group(2) else 23
+        mm = int(m.group(3)) if m.group(3) else 59
+        when = dt.datetime(day.year, day.month, day.day, hh, mm, tzinfo=dt.timezone.utc)
+        if latest is None or when > latest:
+            latest = when
+    return latest
+
 
 def has_resolution(bodies: list[str]) -> str | None:
     """Return 'canonical', 'legacy', or None."""
@@ -165,7 +194,8 @@ def has_resolution(bodies: list[str]) -> str | None:
     return None
 
 
-def classify(issue: dict, bodies: list[str]) -> list[tuple[str, str]]:
+def classify(issue: dict, bodies: list[str],
+             now: dt.datetime | None = None) -> list[tuple[str, str]]:
     """Return (level, message) findings for one issue. Pure - no network."""
     n = issue["number"]
     title = (issue.get("title") or "")[:60]
@@ -220,6 +250,15 @@ def classify(issue: dict, bodies: list[str]) -> list[tuple[str, str]]:
                     out.append(("flag", f"#{n} is {tl} but lacks {what}: {title}"))
 
     # A lock nobody can attribute. See CLAIM.
+    if "claimed" in labels and state == "open" and CLAIM.search(blob):
+        horizon = claim_horizon(bodies)
+        if horizon is None:
+            out.append(("flag", f"#{n} has a claim with no horizon - nothing can tell a "
+                                f"live claim from an abandoned one: {title}"))
+        elif now is not None and horizon < now:
+            out.append(("flag", f"#{n} claim horizon passed {horizon:%Y-%m-%dT%H:%MZ} and "
+                                f"it is still open and claimed - discharge it (deliver, "
+                                f"or say what blocked you) or release it: {title}"))
     if "claimed" in labels and state == "open" and not CLAIM.search(blob):
         out.append(("flag", f"#{n} is labelled claimed but no agent said so - "
                             f"stale lock, release it: {title}"))
@@ -265,7 +304,7 @@ def run(strict: bool, limit: int) -> int:
 
     flags, notes = [], []
     for issue, bodies in pairs:
-        for level, msg in classify(issue, bodies):
+        for level, msg in classify(issue, bodies, now=dt.datetime.now(dt.timezone.utc)):
             (flags if level == "flag" else notes).append(msg)
 
     n_open = sum(1 for i, _ in pairs if i["state"].lower() == "open")
@@ -295,8 +334,8 @@ def self_test() -> int:
     GOOD_DECISION = ("## Recommendation\nDo A, medium confidence.\n\n"
                      "<details><summary>copy-paste prompt</summary>...</details>")
 
-    def levels(issue, bodies):
-        return sorted(l for l, _ in classify(issue, bodies))
+    def levels(issue, bodies, now=None):
+        return sorted(l for l, _ in classify(issue, bodies, now=now))
 
     # The canonical marker.
     check("canonical marker detected", has_resolution(["**Closing - built.**"]), "canonical")
@@ -431,9 +470,44 @@ def self_test() -> int:
     # ---- claim locks ----
     check("claimed without a claim comment is a stale lock",
           levels(iss(23, "open", ["type:build", "claimed"]), ["some notes"]), ["flag"])
+    # ---- claim discharge: the half that was missing ----
+    NOW = dt.datetime(2026, 9, 7, 12, 0, tzinfo=dt.timezone.utc)
+    live = "**Claiming** - agent-x, reviewing head abc123, horizon 2026-09-07T20:00:00Z"
+    dead = "**Claiming** - agent-x, reviewing head abc123, horizon 2026-09-07T06:00:00Z"
+    nohz = "**Claiming** - agent-x, I will get to this"
+
+    check("a live claim is not flagged",
+          levels(iss(30, "open", ["type:build", "claimed"]), [live], now=NOW), [])
+    check("a claim past its horizon is flagged",
+          levels(iss(31, "open", ["type:build", "claimed"]), [dead], now=NOW), ["flag"])
+    check("a claim with no horizon is flagged",
+          levels(iss(32, "open", ["type:build", "claimed"]), [nohz], now=NOW), ["flag"])
+    # A closed issue discharges its claim by being closed - never flag it. Closing with no
+    # closing comment is a different finding and the existing rule already covers it.
+    check("closing discharges the claim",
+          levels(iss(33, "closed", ["type:build", "claimed"]), [dead, "**Closing - done**"],
+                 now=NOW), [])
+    # A bare date means end of that day, not midnight - otherwise every same-day claim
+    # would read as already expired the moment it was written.
+    check("a bare date horizon lasts the whole day",
+          levels(iss(34, "open", ["type:build", "claimed"]),
+                 ["**Claiming** - agent-x, horizon 2026-09-07"], now=NOW), [])
+    check("yesterday's bare date is expired",
+          levels(iss(35, "open", ["type:build", "claimed"]),
+                 ["**Claiming** - agent-x, horizon 2026-09-06"], now=NOW), ["flag"])
+    # The latest horizon wins, so an actor may extend its own claim by re-claiming.
+    check("a re-claim extends the horizon",
+          levels(iss(36, "open", ["type:build", "claimed"]), [dead, live], now=NOW), [])
+    # Without a clock the rule must stay silent rather than guess.
+    check("no clock means no staleness verdict",
+          levels(iss(37, "open", ["type:build", "claimed"]), [dead]), [])
+
+    # Carries a horizon because the protocol requires one (harness/agents/README.md).
+    # This fixture used to omit it and asserted "fine", which encoded a weaker contract
+    # than the protocol states - the horizon rule above is what caught that.
     check("claimed with a claim comment is fine",
           levels(iss(24, "open", ["type:build", "claimed"]),
-                 ["**Claiming** - worker-a, building the validator"]), [])
+                 ["**Claiming** - worker-a, building the validator, horizon 2026-09-09"]), [])
 
     # Every type must have a routing entry, or an issue could be filed under a label the
     # audit silently ignores - the exact class of gap that let a nested data store go
