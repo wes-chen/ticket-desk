@@ -42,7 +42,9 @@
     "check:sectionrank": "python3 scripts/section_rank.py",
     "test:sectionrank": "python3 scripts/section_rank.py --self-test",
     "comps": "python3 scripts/comps.py",
-    "test:comps": "python3 scripts/comps.py --self-test"
+    "test:comps": "python3 scripts/comps.py --self-test",
+    "check:chart": "python3 scripts/check_chart_asset.py",
+    "test:chart": "python3 scripts/check_chart_asset.py --self-test"
   },
   "dependencies": {
     "react": "^19.0.0",
