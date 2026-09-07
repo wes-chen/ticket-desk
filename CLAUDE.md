@@ -339,11 +339,37 @@ successes cannot be audited.
   under headless Chromium from the runner while fine over plain HTTP, so the browser row
   of the 2x2 still holds.
 
-  One loose end, deliberately left as a log line to read rather than an issue:
-  TicketNetwork's runner body is 202KB against 288KB residential with the same price
-  count. Because it is a rolling source, being served fewer events would not fail - it
-  would silently move the horizon. Compare the first scheduled run against the
-  residential baselines of TicketNetwork 29/44 and ScoreBig 19/44.
+  **TicketNetwork's coverage is IP-dependent, and that is now settled** (ops#56). The
+  runner is served a smaller page than a residential client, on the same URL, the same
+  day:
+
+  |  | body | joined |
+  | --- | --- | --- |
+  | residential 2026-09-05 | 288KB | 29/44 |
+  | GitHub runner 2026-09-06 | 202KB | **16/44** |
+  | residential 2026-09-07 | 288KB | 29/44 |
+
+  The residential window was 29 on *both sides* of the runner's 16, so TicketNetwork did
+  not narrow its window for everyone - the runner is simply served less. **Accepted, not
+  fixed**: TickPick and Gametime both cover 44/44, so this source is supplementary, and
+  the remedies (a residential proxy, or scheduling on Wesley's machine) cost more than the
+  13 extra games are worth. Do not "fix" it by comparing runner coverage against the
+  residential 29 - for scheduled runs the correct baseline is **16**.
+
+  **The check that nearly settled it backwards.** ops#56 shipped this one-liner for
+  Wesley to run:
+
+  ```bash
+  curl -s ... | grep -c "SAP Center"     # WRONG
+  ```
+
+  `grep -c` counts matching **lines**, not occurrences. The page carries 157 occurrences
+  across 65 lines, so it returns **65** against a documented baseline of 157 - which the
+  issue's own decision rule read as "dropped to roughly half, TicketNetwork narrowed its
+  window, nothing to fix", the exact opposite of the truth. Use `grep -o ... | wc -l`, or
+  better, run the collector itself with `--store` pointed at a scratch path and compare
+  the join count, which is the number that actually matters. Seventh instance in this
+  project of the instrument being the thing that was wrong.
 
 - **The two new sources disagree about time, and both are right in their own way. Do not
   unify their joins.** Measured 2026-09-05:
