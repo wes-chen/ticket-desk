@@ -1,6 +1,6 @@
 {
   "_comment": "Derived from the per-source stores in data/market/ by scripts/summarize_market.py. low/high are the cheapest and priciest listings in the WHOLE ARENA, all-in, on TickPick - NOT a comp for any specific seat, and NOT the channel these tickets are sold on. See the script docstring.",
-  "generatedAt": "2026-09-11T18:19:12Z",
+  "generatedAt": "2026-09-11T18:25:00Z",
   "source": "tickpick",
   "sources": [
     "gametime",
@@ -25,7 +25,7 @@
       "ticketnetwork": {
         "games": 29,
         "medianRatioToPrimary": 1.0,
-        "minRatio": 0.9333,
+        "minRatio": 0.9412,
         "maxRatio": 1.16
       }
     },
@@ -84,7 +84,7 @@
           "observedDate": "2026-09-11"
         },
         "ticketnetwork": {
-          "low": 14,
+          "low": 15,
           "high": null,
           "observedDate": "2026-09-11"
         },
@@ -504,9 +504,9 @@
           "observedDate": "2026-09-11"
         },
         "ticketnetwork": {
-          "low": 71,
+          "low": 70,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         },
         "scorebig": {
           "low": 65.91,
@@ -534,7 +534,7 @@
         "ticketnetwork": {
           "low": 24,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         },
         "scorebig": {
           "low": 21.98,
@@ -562,7 +562,7 @@
         "ticketnetwork": {
           "low": 50,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         },
         "scorebig": {
           "low": 46.92,
@@ -590,7 +590,7 @@
         "ticketnetwork": {
           "low": 24,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         }
       }
     },
@@ -611,9 +611,9 @@
           "observedDate": "2026-09-11"
         },
         "ticketnetwork": {
-          "low": 82,
+          "low": 80,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         }
       }
     },
@@ -634,9 +634,9 @@
           "observedDate": "2026-09-11"
         },
         "ticketnetwork": {
-          "low": 72,
+          "low": 70,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         }
       }
     },
@@ -657,9 +657,9 @@
           "observedDate": "2026-09-11"
         },
         "ticketnetwork": {
-          "low": 68,
+          "low": 72,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         }
       }
     },
@@ -682,7 +682,7 @@
         "ticketnetwork": {
           "low": 29,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         }
       }
     },
@@ -703,9 +703,9 @@
           "observedDate": "2026-09-11"
         },
         "ticketnetwork": {
-          "low": 34,
+          "low": 35,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         }
       }
     },
@@ -728,7 +728,7 @@
         "ticketnetwork": {
           "low": 62,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         }
       }
     },
@@ -749,9 +749,9 @@
           "observedDate": "2026-09-11"
         },
         "ticketnetwork": {
-          "low": 77,
+          "low": 75,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         }
       }
     },
@@ -774,7 +774,7 @@
         "ticketnetwork": {
           "low": 34,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         }
       }
     },
@@ -795,9 +795,9 @@
           "observedDate": "2026-09-11"
         },
         "ticketnetwork": {
-          "low": 70,
+          "low": 68,
           "high": null,
-          "observedDate": "2026-09-08"
+          "observedDate": "2026-09-11"
         }
       }
     },
