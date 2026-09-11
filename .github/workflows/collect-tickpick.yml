@@ -99,9 +99,27 @@ jobs:
       - name: Cross-check tiers against the market
         run: python3 scripts/check_tier_market.py
 
+      # Persist the observations before the diagnostic gate below. A primary collector
+      # failure stops the workflow before this point, but a secondary source regression
+      # must not discard today's valid TickPick series: that data cannot be backfilled.
+      - name: Commit aggregates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain data/market/ data/tickpick_events.json)" ]]; then
+            git add data/market/ data/tickpick_events.json
+            git commit -m "chore: tickpick prices $(date -u +%Y-%m-%d)"
+            git pull --rebase --autostash
+            git push
+          else
+            echo "no change"
+          fi
+
       # STRICT here on purpose: in the collector's own run, a gap means the collector is
-      # broken, and a silent collector is worse than a noisy one. `npm run build` runs
-      # the same check advisory, so stale data cannot block the deploy that ships a fix.
+      # broken, and a silent collector is worse than a noisy one. This runs after the
+      # aggregate commit so a secondary-source regression remains noisy without losing
+      # the non-backfillable primary observation. `npm run build` runs the same check
+      # advisory, so stale data cannot block the deploy that ships a fix.
       - name: Check for gaps
         run: python3 scripts/check_data_freshness.py --strict
 
@@ -115,19 +133,6 @@ jobs:
           path: raw-out/
           retention-days: 90
           if-no-files-found: warn
-
-      - name: Commit aggregates
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [[ -n "$(git status --porcelain data/market/ data/tickpick_events.json)" ]]; then
-            git add data/market/ data/tickpick_events.json
-            git commit -m "chore: tickpick prices $(date -u +%Y-%m-%d)"
-            git pull --rebase --autostash
-            git push
-          else
-            echo "no change"
-          fi
 
       - name: Summary
         if: always()
