@@ -25,6 +25,9 @@ import {
   BACKUP_SCHEMA, backupFilename, buildBackup, restoreBackup,
 } from "../src/lib/backup.ts";
 import {
+  CALENDAR_FEED_FILE, CALENDAR_SUBSCRIBE_URL, PUBLISHED_BASE, subscribeUrl,
+} from "../src/lib/calendar.ts";
+import {
   CLOSING_SOON_HOURS, FIT_THRESHOLD, arenaToday, defaultOutcomeDate, exportPayload,
   pending, selectableOutcomes, sellRate, tally, withOutcomeDate,
 } from "../src/lib/outcomes.ts";
@@ -874,9 +877,6 @@ pl = seasonPnl(
 );
 check("no net recorded -> no cash invented", pl.cash, 0);
 
-// --- report ---------------------------------------------------------------------
-
-for (const f of fails) console.error(`  FAIL ${f}`);
 /* ---- ops#61: whole-profile backup and restore -------------------------------- */
 
 const histProfile = {
@@ -943,6 +943,35 @@ check("outcomesView is ignored on import",
 
 check("filename carries the date",
   backupFilename(new Date("2026-09-07T12:00:00Z")), "ticket-desk-profile-2026-09-07.json");
+
+/* ---- ops#64: the subscribe link is not the download link ---------------------- */
+
+// The whole defect: a relative .ics href is a one-time import while the copy promises a
+// subscription. The subscribe URL must therefore be ABSOLUTE and webcal-schemed.
+check("subscribe url uses the webcal scheme",
+  CALENDAR_SUBSCRIBE_URL.startsWith("webcal://"), true);
+check("subscribe url points at the published feed",
+  CALENDAR_SUBSCRIBE_URL, "webcal://wes-chen.github.io/ticket-desk/deadlines.ics");
+
+// Derived by scheme swap so the two cannot drift apart; host and path are untouched.
+check("http is swapped too, not just https",
+  subscribeUrl("http://example.test/x/"), "webcal://example.test/x/deadlines.ics");
+check("a host with a port survives",
+  subscribeUrl("https://example.test:8080/"), "webcal://example.test:8080/deadlines.ics");
+
+// It must NOT be derived from the current origin: subscribing from a localhost dev build
+// has to follow the real published feed, or the phone that opens it resolves nothing.
+check("subscribe url is absolute, never relative",
+  CALENDAR_SUBSCRIBE_URL.includes("localhost"), false);
+
+// The published base must keep its trailing slash, or the file name concatenates onto
+// the last path segment and silently produces a 404.
+check("published base ends in a slash", PUBLISHED_BASE.endsWith("/"), true);
+check("feed file has no leading slash", CALENDAR_FEED_FILE.startsWith("/"), false);
+
+// --- report ---------------------------------------------------------------------
+
+for (const f of fails) console.error(`  FAIL ${f}`);
 
 console.log(`self-test: ${fails.length ? "FAILED" : "passed"} (${fails.length} failure(s))`);
 process.exit(fails.length ? 1 : 0);

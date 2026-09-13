@@ -205,6 +205,20 @@ def self_test() -> int:
         if got != want:
             fails.append(f"{label}: got {got!r}, want {want!r}")
 
+    # ops#64. The app offers a webcal:// SUBSCRIBE link built from its own copy of this
+    # URL, so the two must not drift - a mismatch would publish the feed at one address
+    # and subscribe phones to another, and nothing else would notice. Checked rather than
+    # asserted in a comment, because a comment saying "must match" is a wish.
+    lib = ROOT / "src" / "lib" / "calendar.ts"
+    if not lib.exists():
+        fails.append(f"{lib} is missing - the app's subscribe URL has no source")
+    else:
+        m = re.search(r'PUBLISHED_BASE\s*=\s*"([^"]+)"', lib.read_text())
+        if not m:
+            fails.append("could not find PUBLISHED_BASE in src/lib/calendar.ts")
+        else:
+            check("app subscribe base matches the publishing APP_URL", m.group(1), APP_URL)
+
     # Folding.
     check("short line untouched", fold("SUMMARY:hi"), "SUMMARY:hi")
     long = "DESCRIPTION:" + "x" * 200
