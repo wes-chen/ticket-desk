@@ -170,6 +170,38 @@ delivered - say so in a comment and leave it open. Where the remaining work is g
 a different problem, close it and point at the issue that owns that problem, rather than
 retitling and carrying two issues for one gap.
 
+### An issue that establishes a VALUE says where the value landed
+
+`**Closing - <why>**` records that work finished. It does not record where the *number*
+went, and a number that lives only in a closing comment is invisible the moment the issue
+closes - nothing polls issues, and a closed one is not even read.
+
+Measured 2026-09-07 across every numeric value in marker-carrying issues: **90.8%** live
+in a `config/` or `data/` store, 3.9% in code or `CLAUDE.md`, and **5.2% in an issue and
+nowhere else**. Both known losses have exactly that shape - ops#13's cost basis was
+re-derived from scratch, badly, and ops#10's calendar step went unconfirmed for days.
+
+So a closing comment carrying `**Finding**` or `**Input accepted**` must also carry:
+
+```
+**Recorded in** `config/economics.json -> resale.platforms.ticketmaster.buyerFeeRate`
+```
+
+Two forms are accepted and both are checked by `scripts/check_issues.py`:
+
+- **a path**, verified to exist. A pointer to nothing is worse than no pointer, because it
+  reads as provenance. Prefix a private-repo path with `ops:` - the checker runs from the
+  public repo and cannot see the other one, and the prefix is what distinguishes
+  *unverifiable* from *wrong*.
+- **`**Recorded in** - nowhere, and why: ...`** Refusing to store something is a real
+  answer. A worked example in absurd values (rule 1 requires those) and a deliberately
+  discarded estimate are both correct absences, and a check that could not say so would
+  become a nag and get switched off.
+
+`type:build` and `type:meta` are not asked for a pointer: they close on a merged PR rather
+than on a value. Issues below #74 are exempt - they predate the marker, and reflagging
+history forever is the noise that got the old empty-issue rule deleted.
+
 ### A suggestion made in conversation gets filed, not just said
 
 Wesley's standing instruction, 2026-09-07: **file suggestions as work issues to be tackled
