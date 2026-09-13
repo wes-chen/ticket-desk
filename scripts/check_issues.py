@@ -180,9 +180,28 @@ RECORDED_PATH_BARE = re.compile(
 # reasoning ops#68 asked for and that already scopes the log's `Learned` field.
 RECORDED_FROM_ISSUE = 74
 
-# Markers that mean "this issue established something". A type:build or type:meta closes
-# on a merged PR rather than on a value, so neither is asked for a pointer.
-ESTABLISHING = ("**Finding**", "**Input accepted**")
+# Markers that mean "this issue established something", keyed by the type: label whose
+# CONTRACT that marker actually is. ops#68 itself only ever asks for two: a closed
+# type:research issue must carry **Finding**, a closed type:input issue must carry
+# **Input accepted**. type:build and type:meta close on a merged PR rather than on a
+# value; type:decision's contract marker (**Decision**) records a CHOICE and
+# type:incident's (**Cause**/**Guard**) record a root cause and its mitigation - none of
+# those three is a measured value that belongs in a config/data store, so none
+# participates here.
+#
+# GATED ON THE ISSUE'S TYPE, not on the substring appearing anywhere in the blob. The
+# first version scanned the whole issue (body + every comment) for these strings with no
+# regard for what type the issue actually carries, and it false-flagged live: ops#74 is a
+# type:decision issue that closed correctly with **Decision (recorded)**, but an earlier,
+# unrelated comment on it used the word "**Finding**" informally, and the blob-wide scan
+# read that as an unrecorded finding. The fix mirrors the existing per-type CONTRACTS
+# loop just above - intersect against `types` and only check the marker that belongs to
+# a type the issue actually has - because a mention of another type's vocabulary is not
+# this issue failing that type's contract.
+ESTABLISHING: dict[str, str] = {
+    "type:research": "**Finding**",
+    "type:input": "**Input accepted**",
+}
 
 # The other half of a claim, and the one that was missing. `claimed` with no comment is a
 # lock nobody can attribute; a claim with no DISCHARGE is a lock nobody released - the
@@ -318,7 +337,8 @@ def classify(issue: dict, bodies: list[str],
                                 f"or say what blocked you) or release it: {title}"))
     # ---- ops#68: a value established here must say where it landed ----
     if state == "closed" and n >= RECORDED_FROM_ISSUE:
-        establishes = [m for m in ESTABLISHING if m.lower() in blob.lower()]
+        establishes = [ESTABLISHING[tl] for tl in sorted(types)
+                       if tl in ESTABLISHING and ESTABLISHING[tl].lower() in blob.lower()]
         if establishes:
             if not RECORDED.search(blob):
                 out.append(("flag", f"#{n} closed with {establishes[0]} but no "
@@ -589,6 +609,29 @@ def self_test() -> int:
     check("Input accepted also requires a pointer",
           levels(iss(89, "closed", ["type:input"]),
                  ["**Input accepted**", "**Closing - done**"]), ["flag"])
+
+    # The ops#74 shape, reproduced. A type:decision issue that closes correctly with its
+    # OWN contract marker must not be flagged just because some earlier, unrelated
+    # comment happens to contain another type's vocabulary ("**Finding**") in passing
+    # prose. This is the live false positive the reviewer reproduced against the real
+    # tracker - the rule must be gated on the issue's actual type:, not on a substring
+    # search over the whole blob.
+    check("a decision closed on its own contract is not flagged for someone else's marker "
+          "used in passing (ops#74 shape)",
+          levels(iss(90, "closed", ["type:decision"]),
+                 ["earlier, unrelated note: see the **Finding** from issue #11111111 for "
+                  "background",
+                  "**Closing - decided**\n**Decision (recorded)** - chose option "
+                  "11111111 because it was cheapest"]),
+          [])
+    # Same shape, but the type genuinely IS one that establishes a value (type:research) -
+    # the marker must still fire. Guards against overcorrecting into never checking.
+    check("a research issue with a real Finding is still checked even amid other prose",
+          levels(iss(91, "closed", ["type:research"]),
+                 ["earlier, unrelated note: see the **Decision** from issue #11111111 for "
+                  "background",
+                  "**Closing - measured**\n**Finding** - absurd ratio 11111111"]),
+          ["flag"])
 
     # ---- claim discharge: the half that was missing ----
     NOW = dt.datetime(2026, 9, 7, 12, 0, tzinfo=dt.timezone.utc)
