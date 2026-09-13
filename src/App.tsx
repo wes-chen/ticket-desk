@@ -32,10 +32,14 @@ import {
 } from "./lib/outcomes";
 import type { OutcomeKind } from "./lib/profile";
 import { calibrate } from "./lib/fees";
+import { CALENDAR_SUBSCRIBE_URL } from "./lib/calendar";
 import SellerObservations from "./components/SellerObservations";
 import SeasonPnlPanel from "./components/SeasonPnl";
 
 const GAMES = scheduleData.games as Game[];
+// Derived, not hardcoded: the feed carries one deadline per home game, and a
+// literal count drifts silently the first time the schedule changes.
+const homeGameCount = GAMES.length;
 const FEE = economics.resale.platforms.ticketmaster.sellerFeeRate;
 // What a dollar of account credit is worth in cash terms. ASSUMED, and permanently so -
 // it is a preference, not a fact, and no amount of collection settles it. 0.9 is Wesley's
@@ -668,13 +672,27 @@ function Dashboard({
             deadline an unsold ticket is worth <strong>$0</strong> &mdash; the credit is gone, not
             reduced.
           </p>
-          <p className="mt-3">
+          <p className="mt-3 flex flex-wrap items-center gap-2">
             <a
-              href="deadlines.ics"
+              href={CALENDAR_SUBSCRIBE_URL}
               className="inline-flex rounded border border-teal-600 px-3 py-1.5 text-sm font-medium text-teal-700 hover:bg-teal-50 dark:border-teal-500 dark:text-teal-300 dark:hover:bg-teal-950/40"
             >
-              Add 44 deadlines to calendar
+              Subscribe &mdash; stays up to date
             </a>
+            <a
+              href="deadlines.ics"
+              download
+              className="inline-flex rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Download once ({homeGameCount} deadlines)
+            </a>
+          </p>
+          <p className="mt-2 text-xs text-slate-500">
+            <strong>Subscribe</strong> if your calendar offers it: the feed is re-read, so a
+            rescheduled game moves its own alarm. <strong>Download</strong> copies today&rsquo;s
+            {" "}{homeGameCount} events in and never looks again &mdash; which is worse than it
+            sounds, because a stale import fires an alarm for a deadline that has moved, or none
+            for one that has appeared.
           </p>
           <p className="mt-2 text-xs text-slate-400">
             The feed carries the game, the deadline and the whole-arena asking range &mdash; but not
