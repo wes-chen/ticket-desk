@@ -86,6 +86,62 @@ COVERAGE_DROP = 0.25
 # clears both gates comfortably, and so would any genuine collapse.
 COVERAGE_DROP_MIN_GAMES = 3
 
+# A coverage drop must PERSIST this many observation days before it is fatal.
+#
+# Measured 2026-09-13, and it contradicts what CLAUDE.md had recorded. TicketNetwork was
+# believed to serve 16/44 to a datacenter runner and 29/44 to a residential client - an IP
+# effect, settled in ops#56 on a single runner observation. The actual runner series is:
+#
+#   09-06: 16   09-07: 16   09-08: 29   09-11: 29   09-12: 29   09-13: 16
+#
+# Every one of those days was collected by github-actions[bot], so the runner served 29 on
+# three separate days. The source FLAPS; it is not partitioned by IP. A day-over-day gate
+# therefore fires on roughly every other run, and a check that cries wolf on a coin flip
+# is one people learn to skip - the same reasoning behind the 2-day staleness threshold
+# and the deleted empty-issue rule in check_issues.py.
+#
+# Two days, because that is the smallest window that distinguishes a flap from a step. A
+# genuine regression - the source dropping events for good - stays fatal one day later
+# than before, which costs nothing: nobody can backfill a rolling window anyway.
+COVERAGE_DROP_PERSIST_DAYS = 2
+
+# Outage days whose absence has been reviewed and consciously accepted.
+#
+# The gap check is right that a hole is permanent - TickPick has no historical endpoint,
+# so a missed day is gone. But "permanent" cuts both ways: an unbackfillable hole makes
+# --strict fail on EVERY subsequent run, forever, for a reason no future run can fix. Six
+# consecutive red collector runs is what that looks like, and a permanently red gate
+# cannot signal the next real break.
+#
+# Same treatment as .privacy-accepted, deliberately: accepted days are still PRINTED,
+# they just stop being fatal. An accepted hole should stay visible rather than being
+# erased from the output - ops#8 must not later fit a curve across a gap it cannot see.
+#
+# Committed, unlike .private-patterns, because the runner's --strict run is the one that
+# needs it. A gap day NOT listed here is fatal exactly as before.
+ACCEPTED_GAPS_FILE = ROOT / ".freshness-accepted"
+
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def load_accepted(path: pathlib.Path | None = None) -> set[str]:
+    """Accepted outage dates, one ISO date per line; `#` comments carry the reason."""
+    path = path or ACCEPTED_GAPS_FILE
+    if not path.exists():
+        return set()
+    out = set()
+    for ln in path.read_text().splitlines():
+        ln = ln.split("#", 1)[0].strip()
+        if not ln:
+            continue
+        if not DATE_RE.match(ln):
+            # Loud rather than silent: a typo here would quietly un-accept a gap and turn
+            # the gate red again for a reason nobody could find.
+            print(f"  ignoring unparseable line in {path.name}: {ln!r}", file=sys.stderr)
+            continue
+        out.add(ln)
+    return out
+
 
 def load(path: pathlib.Path) -> list[dict]:
     if not path.exists():
@@ -125,7 +181,8 @@ def workflow_text() -> dict[str, str]:
 
 
 def analyse(rows: list[dict], games: list[dict], today: date,
-            rolling: bool = False) -> dict:
+            rolling: bool = False, accepted: set[str] | None = None) -> dict:
+    accepted = accepted or set()
     days = sorted({r["observedDate"] for r in rows})
     ok_by_day = collections.Counter()
     tot_by_day = collections.Counter()
@@ -142,7 +199,7 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         # newly added source - which is exactly when it would fire.
         return {"days": [], "findings": [("fatal", "the market store is empty")],
                 "staleDays": None, "okByDay": {}, "totByDay": {},
-                "horizon": None, "beyondHorizon": []}
+                "horizon": None, "beyondHorizon": [], "acceptedGaps": []}
 
     last = date.fromisoformat(days[-1])
     stale = (today - last).days
@@ -159,6 +216,11 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         expected.append(d.isoformat())
         d += timedelta(days=1)
     missing = [x for x in expected if x not in set(days)]
+    # An accepted outage day is still a hole and is still reported - it just stops being
+    # fatal. Splitting here rather than filtering `missing` earlier keeps the accepted
+    # days visible in the returned shape, so the caller can print them.
+    seen_accepted = [x for x in missing if x in accepted]
+    missing = [x for x in missing if x not in accepted]
     if missing:
         findings.append(("fatal" if len(missing) > 1 else "warn",
                          f"{len(missing)} day(s) missing inside the series: "
@@ -238,17 +300,43 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     #
     # Only for rolling sources. A non-rolling source losing games is already fatal via the
     # never-priced check, and running both would report one fault twice.
-    if rolling and len(days) >= 2:
-        prev_n, cur_n = ok_by_day[days[-2]], ok_by_day[days[-1]]
-        lost = prev_n - cur_n
-        if prev_n and lost >= COVERAGE_DROP_MIN_GAMES and lost / prev_n > COVERAGE_DROP:
+    #
+    # PERSISTENCE, added 2026-09-13. The gate above is necessary but not sufficient: it
+    # compares two adjacent days, and TicketNetwork alternates between 29 and 16 on the
+    # SAME runner (see COVERAGE_DROP_PERSIST_DAYS). So a drop is now fatal only once it
+    # has held for COVERAGE_DROP_PERSIST_DAYS observation days against the level
+    # immediately before it; a single-day dip is reported as a warning instead, which
+    # keeps it visible without going red on a flap.
+    def dropped(base: int, n: int) -> bool:
+        lost = base - n
+        return bool(base) and lost >= COVERAGE_DROP_MIN_GAMES and lost / base > COVERAGE_DROP
+
+    if rolling and len(days) >= COVERAGE_DROP_PERSIST_DAYS + 1:
+        base_day = days[-(COVERAGE_DROP_PERSIST_DAYS + 1)]
+        base_n = ok_by_day[base_day]
+        run = days[-COVERAGE_DROP_PERSIST_DAYS:]
+        if all(dropped(base_n, ok_by_day[d]) for d in run):
             findings.append(("fatal",
-                             f"coverage fell from {prev_n} to {cur_n} games between "
-                             f"{days[-2]} and {days[-1]} ({(prev_n - cur_n) / prev_n:.0%}). "
+                             f"coverage fell from {base_n} to {ok_by_day[run[-1]]} games "
+                             f"after {base_day} and has stayed down for "
+                             f"{len(run)} observation day(s) ({run[0]}..{run[-1]}). "
                              f"A rolling window loses about one game a day to the calendar, "
                              f"not a quarter of its coverage - the source is serving fewer "
                              f"events, and the horizon rule would otherwise record that as "
                              f"expected."))
+        elif dropped(ok_by_day[days[-2]], ok_by_day[days[-1]]):
+            findings.append(("warn",
+                             f"coverage fell from {ok_by_day[days[-2]]} to "
+                             f"{ok_by_day[days[-1]]} games between {days[-2]} and "
+                             f"{days[-1]}, but has not yet held for "
+                             f"{COVERAGE_DROP_PERSIST_DAYS} days. This source is known to "
+                             f"flap - fatal if it stays down tomorrow."))
+    elif rolling and len(days) >= 2 and dropped(ok_by_day[days[-2]], ok_by_day[days[-1]]):
+        # Not enough history to tell a flap from a step. Say so rather than guessing.
+        findings.append(("warn",
+                         f"coverage fell from {ok_by_day[days[-2]]} to "
+                         f"{ok_by_day[days[-1]]} games between {days[-2]} and {days[-1]}, "
+                         f"on too short a series to confirm it has persisted."))
 
     # Partial-failure detection: success rate dropping day over day.
     for prev, cur in zip(days, days[1:]):
@@ -260,7 +348,8 @@ def analyse(rows: list[dict], games: list[dict], today: date,
 
     return {"days": days, "findings": findings, "staleDays": stale,
             "okByDay": dict(ok_by_day), "totByDay": dict(tot_by_day),
-            "horizon": horizon, "beyondHorizon": [g["date"] for g in beyond]}
+            "horizon": horizon, "beyondHorizon": [g["date"] for g in beyond],
+            "acceptedGaps": seen_accepted}
 
 
 def run(strict: bool, today: date) -> int:
@@ -270,6 +359,8 @@ def run(strict: bool, today: date) -> int:
     any_data = False
 
     sched = scheduled_collectors(workflow_text())
+    accepted = load_accepted()
+    accepted_seen: set[str] = set()
 
     for name, path, required, rolling, script in STORES:
         rows = load(path)
@@ -292,11 +383,17 @@ def run(strict: bool, today: date) -> int:
                 print(f"{name}: not collected (not scheduled in any workflow yet)")
             continue
         any_data = True
-        a = analyse(rows, games, today, rolling)
+        a = analyse(rows, games, today, rolling, accepted)
         print(f"{name}: {len(rows)} rows across {len(a['days'])} day(s), "
               f"{a['days'][0]} .. {a['days'][-1]}, last {a['staleDays']} day(s) ago")
         for d in a["days"][-3:]:
             print(f"    {d}: {a['okByDay'].get(d, 0)}/{a['totByDay'].get(d, 0)} priced")
+        accepted_seen.update(a["acceptedGaps"])
+        if a["acceptedGaps"]:
+            # Printed on every run, never silently swallowed - the whole point of
+            # accepting a finding rather than deleting it.
+            print(f"    (accepted outage) {len(a['acceptedGaps'])} day(s) missing and "
+                  f"reviewed: {a['acceptedGaps']} - see .freshness-accepted")
         if a["beyondHorizon"]:
             print(f"    coverage horizon {a['horizon']}: "
                   f"{len(a['beyondHorizon'])} later game(s) not yet listed "
@@ -318,7 +415,14 @@ def run(strict: bool, today: date) -> int:
             print(f"  - {m}", file=sys.stderr)
         return 1 if strict else 0
 
-    print("\nfresh - no gaps detected")
+    # Not "no gaps detected" - that would contradict the accepted-outage lines printed
+    # above, and a check whose summary disagrees with its own body is one people stop
+    # trusting. Say what is actually true: nothing unexplained.
+    if accepted_seen:
+        print(f"\nfresh - no unexplained gaps "
+              f"({len(accepted_seen)} accepted outage day(s) still reported above)")
+    else:
+        print("\nfresh - no gaps detected")
     return 0
 
 
@@ -378,11 +482,80 @@ def self_test() -> int:
     # ---- coverage regression on a rolling source ----
     # Measured, not hypothetical: TicketNetwork gave 29/44 residential and 16/44 on its
     # first scheduled runner run, and the horizon rule recorded it as "expected".
+    # ASSERT THE LEVEL, not just the text. This check previously read
+    # `any("coverage fell" in m ...)`, which passes whether the finding is fatal or a
+    # warning - so when persistence was added it would have gone on passing while the
+    # behaviour it guards silently changed from fatal to warn. Same class of bug as the
+    # `grep -c` in ops#56: a plausible green on a question never actually asked.
+    def levels(a, needle):
+        return sorted({l for l, m in a["findings"] if needle in m})
+
+    # A drop that PERSISTS for two days against the level before it is fatal.
+    three = ["2026-09-08", "2026-09-09", "2026-09-10"]
+    r = (rows(three[:1], list(range(29)))
+         + rows(three[1:2], list(range(16)))
+         + rows(three[2:], list(range(16))))
+    a = analyse(r, games(30, "2026-09-20"), date(2026, 9, 10), rolling=True)
+    check("a sustained 45% coverage drop is fatal", levels(a, "coverage fell"), ["fatal"])
+
+    # THE FLAP, measured rather than imagined: TicketNetwork served 29, 29, then 16 from
+    # the same GitHub runner, and 29 again on days either side of earlier 16s. A
+    # day-over-day gate calls that fatal on roughly every other run. One dip is a warning.
+    r = (rows(three[:1], list(range(29)))
+         + rows(three[1:2], list(range(29)))
+         + rows(three[2:], list(range(16))))
+    a = analyse(r, games(30, "2026-09-20"), date(2026, 9, 10), rolling=True)
+    check("a one-day coverage dip is a warning, not fatal",
+          levels(a, "coverage fell"), ["warn"])
+
+    # ...and it must still be REPORTED. Silence here would be worse than the false red.
+    check("the dip is still reported",
+          any("coverage fell" in m for _, m in a["findings"]), True)
+
+    # Two days is too short to tell a flap from a step, so it warns rather than guessing.
     two = ["2026-09-09", "2026-09-10"]
     r = rows(two[:1], list(range(29))) + rows(two[1:], list(range(16)))
     a = analyse(r, games(30, "2026-09-20"), date(2026, 9, 10), rolling=True)
-    check("a 45% coverage drop is fatal",
-          any("coverage fell" in m for _, m in a["findings"]), True)
+    check("a drop on too short a series is a warning",
+          levels(a, "coverage fell"), ["warn"])
+
+    # ---- accepted outage days ----
+    # The real case: two consecutive days lost to the ops#135 outage. Unaccepted they are
+    # fatal forever, which is six red runs and counting; accepted they stay visible.
+    holed = ["2026-09-06", "2026-09-07", "2026-09-10"]
+    a = analyse(rows(holed, ids), gs, today)
+    check("an unaccepted multi-day gap is fatal",
+          levels(a, "missing inside the series"), ["fatal"])
+    check("unaccepted gap reports no accepted days", a["acceptedGaps"], [])
+
+    a = analyse(rows(holed, ids), gs, today, accepted={"2026-09-08", "2026-09-09"})
+    check("a fully accepted gap is no longer fatal",
+          any("missing inside the series" in m for _, m in a["findings"]), False)
+    check("accepted days stay visible in the output",
+          a["acceptedGaps"], ["2026-09-08", "2026-09-09"])
+
+    # PARTIAL acceptance must NOT excuse the rest. Accepting one of two missing days
+    # leaves a real, unexplained hole, and that stays a finding.
+    a = analyse(rows(holed, ids), gs, today, accepted={"2026-09-08"})
+    check("an unaccepted day beside an accepted one still fires",
+          any("missing inside the series" in m for _, m in a["findings"]), True)
+    check("...and the accepted one is still listed", a["acceptedGaps"], ["2026-09-08"])
+
+    # A date that is not missing at all must not be reported as an accepted gap.
+    a = analyse(rows(healthy, ids), gs, today, accepted={"2026-09-08"})
+    check("accepting a present day reports nothing", a["acceptedGaps"], [])
+
+    # ---- the accepted-gaps file parser ----
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        f = pathlib.Path(td) / ".freshness-accepted"
+        f.write_text("# a comment\n\n2026-09-09\n2026-09-10  # trailing reason\n"
+                     "not-a-date\n")
+        got = load_accepted(f)
+    check("parser reads dates, skips comments and junk", sorted(got),
+          ["2026-09-09", "2026-09-10"])
+    check("a missing accepted file is empty, not an error",
+          load_accepted(pathlib.Path("/nonexistent/.freshness-accepted")), set())
 
     # LATE SEASON, small base. One game leaving is 33% of a three-game window - over the
     # relative threshold, and pure calendar. Firing here would go red in the final week,

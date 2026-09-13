@@ -1,0 +1,33 @@
+# Accepted market-data outage days.
+#
+# ISO dates whose absence from the market series has been reviewed and consciously
+# accepted. One date per line; everything after `#` is a comment and is the place to
+# record WHY.
+#
+# The check still reports these - it just stops treating them as fatal. An accepted hole
+# stays visible rather than disappearing from the output, for the same reason
+# .privacy-accepted prints accepted findings: ops#8 must never fit a sell-timing curve
+# across a gap it cannot see.
+#
+# Committed on purpose, unlike .private-patterns. The run that needs this file is the
+# collector's own --strict run on the GitHub runner, which has no local state.
+#
+# Accept a day here only when the data is genuinely unrecoverable AND the cause is
+# understood. A gap whose cause is unknown is a broken collector, and belongs red.
+
+# 2026-09-09, 2026-09-10 - the agent loop stopped when a usage limit blocked a tick
+# (ops#135), and at that time the collector workflow ran `check_data_freshness.py
+# --strict` BEFORE committing aggregates, so a red gate discarded the day's observations
+# instead of keeping them. Both days are therefore absent from all four sources.
+#
+# Unrecoverable: no source here has a historical price endpoint, so these two days are
+# gone rather than pending.
+#
+# Fixed forward rather than papered over - the ordering bug that caused the loss is gone
+# (PR #6, "persist market observations before gap diagnostics"): aggregates now commit
+# before the diagnostic gate, so a future red run keeps its data. These two days are the
+# last that can be lost this way.
+#
+# Accepted 2026-09-13 by Wesley: "i guess outages are somewhat expected from time to time".
+2026-09-09
+2026-09-10

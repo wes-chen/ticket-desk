@@ -466,9 +466,11 @@ successes cannot be audited.
   under headless Chromium from the runner while fine over plain HTTP, so the browser row
   of the 2x2 still holds.
 
-  **TicketNetwork's coverage is IP-dependent, and that is now settled** (ops#56). The
-  runner is served a smaller page than a residential client, on the same URL, the same
-  day:
+  **TicketNetwork's coverage FLAPS between 29 and 16. It is not IP-dependent, and the
+  earlier "settled" conclusion here was wrong** (ops#56, corrected 2026-09-13).
+
+  What this file said until 2026-09-13 was that the runner is served a smaller page than a
+  residential client, drawn from three observations:
 
   |  | body | joined |
   | --- | --- | --- |
@@ -476,12 +478,29 @@ successes cannot be audited.
   | GitHub runner 2026-09-06 | 202KB | **16/44** |
   | residential 2026-09-07 | 288KB | 29/44 |
 
-  The residential window was 29 on *both sides* of the runner's 16, so TicketNetwork did
-  not narrow its window for everyone - the runner is simply served less. **Accepted, not
-  fixed**: TickPick and Gametime both cover 44/44, so this source is supplementary, and
-  the remedies (a residential proxy, or scheduling on Wesley's machine) cost more than the
-  13 extra games are worth. Do not "fix" it by comparing runner coverage against the
-  residential 29 - for scheduled runs the correct baseline is **16**.
+  That is one runner observation, and the full series refutes it. Every day from 2026-09-06
+  onward was collected by `github-actions[bot]` - the same runner, the same URL - and the
+  joined counts are:
+
+  | 09-06 | 09-07 | 09-08 | 09-11 | 09-12 | 09-13 |
+  | --- | --- | --- | --- | --- | --- |
+  | 16 | 16 | **29** | **29** | **29** | 16 |
+
+  The runner was served 29 on three separate days. So the variable is not the IP: the
+  source alternates, and the 2x2 above sampled the residential cells on 29-days and the
+  single runner cell on a 16-day. Verify with
+  `git log --format='%h %an' -- data/market/ticketnetwork.jsonl` - the author column is the
+  evidence, and it is bot all the way down.
+
+  **Consequences.** There is no "correct baseline" of 16 to compare runner coverage
+  against - that instruction would have made a future session dismiss a genuine regression
+  as expected. A day-over-day coverage gate fires on roughly every other run here, so
+  `check_data_freshness.py` requires a drop to PERSIST for `COVERAGE_DROP_PERSIST_DAYS`
+  (2) observation days before it is fatal, and reports a single-day dip as a warning.
+  **Accepted, not fixed** still holds for the coverage itself: TickPick and Gametime both
+  cover 44/44, so this source is supplementary and a residential proxy is not worth the 13
+  games. Eighth instance in this project of the conclusion being wrong rather than the
+  thing measured - and the first where the fault was sample size rather than the tool.
 
   **The check that nearly settled it backwards.** ops#56 shipped this one-liner for
   Wesley to run:
@@ -596,6 +615,22 @@ collector: one row per event per UTC day, UPSERTED so a same-day re-run corrects
 than appends; deterministic sort so a daily commit diffs cleanly; and a read that hits its
 size cap is an ERROR, never data - that last rule exists because this project has produced
 the same silent-truncation bug three times.
+
+`.freshness-accepted` records market-data outage days that have been reviewed and
+consciously accepted, one ISO date per line with the reason in a `#` comment. It is
+**committed**, unlike `.private-patterns`, because the run that needs it is the
+collector's own `--strict` run on the runner, which has no local state.
+
+It exists because an unbackfillable hole is permanent in both directions: no source here
+has a historical price endpoint, so a missed day is gone - and a gate that fails on it
+fails on **every** run afterwards, forever. Six consecutive red collector runs is what
+that looks like, and a permanently red gate cannot signal the next real break. Accepted
+days are still **printed** on every run, exactly as `.privacy-accepted` prints accepted
+findings: ops#8 must never fit a sell-timing curve across a gap it cannot see.
+
+Accept a day only when the data is genuinely unrecoverable **and** the cause is
+understood. A gap whose cause is unknown is a broken collector, and belongs red.
+
 
 `scripts/hypotheses.py` is the discovery register. It answers "can this question be asked
 yet" before it answers the question, and refuses the ones the data cannot support - see
