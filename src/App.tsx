@@ -18,6 +18,7 @@ import {
 import {
   EMPTY_PROFILE,
   consumeProfileFromHash,
+  hasRecordedData,
   isConfigured,
   recordListPrice,
   type Profile,
@@ -175,6 +176,36 @@ function Dashboard({
       if (!res.ok) {
         setRestoreNote(res.error);
         return;
+      }
+      // ops#141: localStorage has no undo, so replacing a POPULATED profile needs an
+      // explicit confirmation naming what goes away - worst in exactly the situation
+      // this feature is for, someone who just lost data and is clicking fast. A profile
+      // that is merely configured (seats/credits typed into Setup, nothing recorded
+      // yet) has nothing at stake, so it must not prompt - hence hasRecordedData rather
+      // than isConfigured.
+      if (hasRecordedData(profile)) {
+        // List every kind of recorded data actually present, not just prices and
+        // outcomes. Those two alone let a profile holding ONLY fee observations (a real
+        // path, via SellerObservations) prompt with "0 list prices and 0 recorded
+        // outcomes" - a warning that reads like it is protecting nothing, which invites
+        // exactly the fast click-through this dialog exists to stop.
+        const parts = [
+          [Object.keys(profile.listPrices ?? {}).length, "list price", "list prices"],
+          [Object.keys(profile.listPriceHistory ?? {}).length, "price history entry", "price history entries"],
+          [Object.keys(profile.outcomes ?? {}).length, "recorded outcome", "recorded outcomes"],
+          [(profile.feeObservations ?? []).length, "fee observation", "fee observations"],
+          [Object.keys(profile.instantOffers ?? {}).length, "instant offer", "instant offers"],
+        ]
+          .filter(([n]) => (n as number) > 0)
+          .map(([n, one, many]) => `${n} ${n === 1 ? one : many}`);
+        const proceed = window.confirm(
+          `This replaces your current profile - ${parts.join(", ")} - with the backup's ` +
+          `data. This cannot be undone. Continue?`,
+        );
+        if (!proceed) {
+          setRestoreNote("Restore cancelled. Your existing data was kept.");
+          return;
+        }
       }
       setProfile(res.profile);
       const n = Object.keys(res.profile.listPrices ?? {}).length;

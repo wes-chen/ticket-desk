@@ -175,6 +175,25 @@ export function isConfigured(p: Profile): boolean {
   return p.seats.section.trim() !== "" && Object.keys(p.credits).length > 0;
 }
 
+/**
+ * Whether a profile holds anything a restore-over-it could actually destroy. ops#141:
+ * restoring over a populated profile needs a confirmation, because localStorage has no
+ * undo and the previous value is simply gone - but a profile that is merely
+ * `isConfigured` (seats and credits typed into Setup, nothing recorded yet) has nothing
+ * at stake, and prompting there would just train people to click through the warning
+ * that matters. So this checks the data the feature exists to protect - prices, their
+ * history, outcomes, fee observations and instant offers - not the setup fields.
+ */
+export function hasRecordedData(p: Profile): boolean {
+  return (
+    Object.keys(p.listPrices).length > 0 ||
+    Object.keys(p.listPriceHistory ?? {}).length > 0 ||
+    Object.keys(p.outcomes ?? {}).length > 0 ||
+    (p.feeObservations ?? []).length > 0 ||
+    Object.keys(p.instantOffers ?? {}).length > 0
+  );
+}
+
 export function seatCount(p: Profile): number {
   return Math.max(p.seats.seats.length, 1);
 }
