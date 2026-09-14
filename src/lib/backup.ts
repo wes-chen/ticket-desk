@@ -76,6 +76,69 @@ function isObj(x: unknown): x is Record<string, unknown> {
 }
 
 /**
+ * One `listPriceHistory` entry, checked field by field.
+ *
+ * This is the narrower bug ops#141 exists to close: the top-level shape check let a
+ * well-formed ARRAY containing a malformed ENTRY through untouched. `listPriceHistory`
+ * is the field ops#48 added specifically so a price change does not destroy the
+ * previous value, which makes it the most load-bearing structure in the backup and -
+ * until now - the least validated. Precedent for why a wrong type here is dangerous
+ * rather than cosmetic: ScoreBig serving prices as strings reached
+ * `summarize_market.py`'s delta arithmetic, where `"9.00" > "15.20"` is true.
+ */
+/**
+ * An ISO-8601 date, either calendar-only or a full timestamp.
+ *
+ * `Date.parse` alone is NOT enough, and the difference is load-bearing rather than
+ * pedantic. It accepts "March 5, 2026", "2026/09/04" and "09/04/2026" - all of which
+ * would restore cleanly and then sort WRONG, because this codebase compares dates as
+ * strings (check_data_freshness.py does `g["date"] >= today.isoformat()`, and the market
+ * stores sort by `observedDate` lexically). A non-ISO `at` inside listPriceHistory would
+ * therefore order before every ISO date forever, silently, in the one field this whole
+ * backup feature exists to protect.
+ *
+ * Both shapes are accepted because both legitimately occur: `recordListPrice` writes
+ * `now.toISOString()` (a full timestamp), while hand-recorded entries in the private ops
+ * snapshots store are date-only.
+ *
+ * THE CALENDAR IS CHECKED ON THE DATE PART ALONE, deliberately. Two earlier versions of
+ * this function were wrong in opposite directions and both are worth remembering:
+ *
+ *   1. `!Number.isNaN(Date.parse(s))` does not reject an impossible day - V8 rolls
+ *      2026-02-31 over to March 3 and reports success.
+ *   2. Round-tripping through `new Date(ms).toISOString()` compares the string's LOCAL
+ *      calendar day against the parsed instant's UTC day. Those disagree whenever the
+ *      offset crosses UTC midnight, so "2026-09-13T23:00:00-07:00" was rejected while
+ *      "2026-09-14T06:00:00Z" - the very same instant - passed.
+ *
+ * Validating y/m/d as a calendar date is independent of any offset, which is what makes
+ * it correct for both shapes.
+ */
+function isIsoDate(s: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/.exec(s);
+  if (!m) return false;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  // Real calendar day? Date.UTC normalises out-of-range values, so a day that does not
+  // exist comes back as a different one. Compare the components, not the string.
+  const probe = new Date(Date.UTC(y, mo - 1, d));
+  if (probe.getUTCFullYear() !== y || probe.getUTCMonth() !== mo - 1 || probe.getUTCDate() !== d) {
+    return false;
+  }
+  // The time part, if present, must also be a real instant (rejects 25:00, +99:00).
+  return !Number.isNaN(Date.parse(s));
+}
+
+function isValidHistoryEntry(x: unknown): boolean {
+  if (!isObj(x)) return false;
+  if (typeof x.price !== "number" || !Number.isFinite(x.price) || x.price <= 0) return false;
+  if (typeof x.at !== "string" || !isIsoDate(x.at)) return false;
+  if ("backfilled" in x && x.backfilled !== undefined && typeof x.backfilled !== "boolean") {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Parse and validate a backup file. Returns a complete profile or an error - never a
  * partially applied one.
  *
@@ -128,6 +191,31 @@ export function restoreBackup(text: string): RestoreResult {
   if ("feeObservations" in p && p.feeObservations !== undefined
       && !Array.isArray(p.feeObservations)) {
     return { ok: false, error: "The backup's feeObservations is malformed. Nothing was changed." };
+  }
+
+  // The shape check above only confirms listPriceHistory is an OBJECT - it does not look
+  // inside. Walk every game's array and every entry in it, naming the game id and the
+  // index in the error so a corrupted file is fixable rather than merely "malformed".
+  if (isObj(p.listPriceHistory)) {
+    for (const [gameId, entries] of Object.entries(p.listPriceHistory)) {
+      if (!Array.isArray(entries)) {
+        return {
+          ok: false,
+          error: `The backup's price history for game ${gameId} is malformed. Nothing was changed.`,
+        };
+      }
+      for (let i = 0; i < entries.length; i++) {
+        if (!isValidHistoryEntry(entries[i])) {
+          return {
+            ok: false,
+            error:
+              `The backup's price history for game ${gameId}, entry ${i}, is malformed - ` +
+              `price must be a positive number, "at" an ISO date, and "backfilled" (if ` +
+              `present) a boolean. Nothing was changed.`,
+          };
+        }
+      }
+    }
   }
 
   // Defaults for absent optional fields, so the restored object is a complete Profile.

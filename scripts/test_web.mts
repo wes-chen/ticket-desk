@@ -32,7 +32,7 @@ import {
   pending, selectableOutcomes, sellRate, tally, withOutcomeDate,
 } from "../src/lib/outcomes.ts";
 import {
-  EMPTY_PROFILE, decodeProfile, encodeProfile, invoicePerSeat, isConfigured,
+  EMPTY_PROFILE, decodeProfile, encodeProfile, hasRecordedData, invoicePerSeat, isConfigured,
   recordListPrice, seatCount, type Profile,
 } from "../src/lib/profile.ts";
 
@@ -968,6 +968,143 @@ check("subscribe url is absolute, never relative",
 // the last path segment and silently produces a 404.
 check("published base ends in a slash", PUBLISHED_BASE.endsWith("/"), true);
 check("feed file has no leading slash", CALENDAR_FEED_FILE.startsWith("/"), false);
+
+/* ---- ops#141: validate INSIDE listPriceHistory, and gate overwrite on real data --- */
+// The narrower bug ops#61's own review found: restoreBackup shape-checked the top of
+// listPriceHistory (is it an object?) but never looked inside the arrays, so a
+// well-formed array containing one malformed entry restored silently. Precedent for
+// why this matters: ScoreBig serving prices as strings reached summarize_market.py's
+// delta arithmetic, where "9.00" > "15.20" is true.
+{
+  const goodBackup = (extra: Record<string, unknown>) => JSON.stringify({
+    _schema: BACKUP_SCHEMA,
+    profile: {
+      v: 1,
+      seats: { section: "", row: "", seats: [] },
+      credits: {},
+      listPrices: {},
+      listPriceHistory: { "11111111": [{ price: 11111, at: "2026-09-04" }, extra] },
+    },
+  });
+
+  // A bad entry SECOND in an otherwise well-formed array - the array shape alone would
+  // pass, so this only fails if entries are actually walked.
+  let bad = restoreBackup(goodBackup({ price: "not a number", at: "2026-09-05" }));
+  check("a non-numeric price inside a well-formed array is REJECTED", bad.ok, false);
+  check("and the error names the game id",
+    !bad.ok && bad.error.includes("11111111"), true);
+  check("and the error names the index",
+    !bad.ok && bad.error.includes("entry 1"), true);
+
+  bad = restoreBackup(goodBackup({ price: -5, at: "2026-09-05" }));
+  check("a non-positive price is rejected", bad.ok, false);
+  check("zero is rejected too",
+    restoreBackup(goodBackup({ price: 0, at: "2026-09-05" })).ok, false);
+
+  bad = restoreBackup(goodBackup({ price: 22222, at: "not a date" }));
+  check("a non-ISO 'at' is rejected", bad.ok, false);
+
+  bad = restoreBackup(goodBackup({ price: 22222, at: "2026-09-05", backfilled: "true" }));
+  check("a non-boolean backfilled is rejected", bad.ok, false);
+
+  bad = restoreBackup(goodBackup({ at: "2026-09-05" }));
+  check("a missing price is rejected", bad.ok, false);
+
+  // A valid history INCLUDING a backfilled marker must still round-trip - the two
+  // directions the issue asks for, both asserted.
+  const ok = restoreBackup(goodBackup({ price: 22222, at: "2026-09-05", backfilled: true }));
+  check("a well-formed array with a backfilled marker round-trips", ok.ok, true);
+  check("...with both entries intact",
+    ok.ok && ok.profile.listPriceHistory?.["11111111"]?.map((e) => e.price), [11111, 22222]);
+  check("...and the marker preserved",
+    ok.ok && ok.profile.listPriceHistory?.["11111111"]?.[1]?.backfilled, true);
+
+  // A game whose value is not even an array - the case one level up from a bad entry.
+  const notArray = JSON.stringify({
+    _schema: BACKUP_SCHEMA,
+    profile: { v: 1, seats: {}, credits: {}, listPrices: {},
+      listPriceHistory: { "22222222": "not an array" } },
+  });
+  const naRes = restoreBackup(notArray);
+  check("a non-array history value is rejected", naRes.ok, false);
+  check("and names that game id", !naRes.ok && naRes.error.includes("22222222"), true);
+
+  /* ---- ops#141: `at` must be ISO, not merely Date.parse-able --------------------- */
+
+  // Date.parse alone accepts "March 5, 2026", "2026/09/04" and "09/04/2026". Any of those
+  // would restore cleanly and then sort WRONG, because this codebase compares dates as
+  // strings - check_data_freshness.py does `g["date"] >= today.isoformat()` and the market
+  // stores sort observedDate lexically. A non-ISO `at` would order before every ISO date
+  // forever, silently, inside the one field the backup feature exists to protect.
+  for (const bogus of ["March 5, 2026", "2026/09/04", "09/04/2026", "20260904", "garbage"]) {
+    const r = restoreBackup(goodBackup({ price: 11111, at: bogus }));
+    check(`a non-ISO "at" (${bogus}) is REJECTED`, r.ok, false);
+}
+
+// ---- hasRecordedData: the confirm-before-overwrite gate ----
+// Restoring over a profile with real data needs confirmation - localStorage has no
+// undo. Restoring into an EMPTY profile must not prompt, so the gate has to look at the
+// data the feature protects (prices, history, outcomes, ...), not at isConfigured,
+// which is true the moment Setup has seats and a credit and stays true forever after.
+{
+  const setupOnly: Profile = {
+    ...EMPTY_PROFILE,
+    seats: { section: "111", row: "1", seats: ["1"] },
+    credits: { A: 11111 },
+  };
+  check("a profile with only setup fields has nothing to protect",
+    hasRecordedData(setupOnly), false);
+  check("a genuinely empty profile has nothing to protect",
+    hasRecordedData(EMPTY_PROFILE), false);
+
+  check("a list price alone is protected data",
+    hasRecordedData({ ...EMPTY_PROFILE, listPrices: { "1": 70 } }), true);
+  check("price history alone is protected data",
+    hasRecordedData({ ...EMPTY_PROFILE,
+      listPriceHistory: { "1": [{ price: 70, at: "2026-09-05" }] } }), true);
+  check("a recorded outcome alone is protected data",
+    hasRecordedData({ ...EMPTY_PROFILE,
+      outcomes: { "1": { kind: "sold", on: "2026-09-05", atList: 70, netPerSeat: 63 } } }),
+    true);
+  check("a fee observation alone is protected data",
+    hasRecordedData({ ...EMPTY_PROFILE,
+      feeObservations: [{ list: 70, net: 63, on: "2026-09-05" }] }), true);
+  check("an instant offer alone is protected data",
+    hasRecordedData({ ...EMPTY_PROFILE,
+      instantOffers: { "1": [{ on: "2026-09-05", offerPerTicket: 24.3 }] } }), true);
+
+  }
+
+  // Both ISO shapes legitimately occur and must both pass: recordListPrice writes
+  // now.toISOString(), while hand-recorded entries in the ops snapshots store are date-only.
+  for (const good of ["2026-09-04", "2026-09-13T21:00:00.000Z", "2026-09-13T21:00:00Z"]) {
+    const r = restoreBackup(goodBackup({ price: 11111, at: good }));
+    check(`a valid ISO "at" (${good}) round-trips`, r.ok, true);
+  }
+
+  // OFFSET TIMESTAMPS. Found in review of this branch: an earlier round-trip check
+  // compared the string's LOCAL calendar day against the parsed instant's UTC day, so a
+  // timestamp whose offset crosses UTC midnight was rejected while the SAME INSTANT
+  // spelled in Z passed. Both spellings below denote 2026-09-14T06:00Z.
+  for (const offset of ["2026-09-13T23:00:00-07:00", "2026-09-14T06:00:00Z",
+                        "2026-09-13T10:00:00+02:00"]) {
+    const r = restoreBackup(goodBackup({ price: 11111, at: offset }));
+    check(`an ISO timestamp with an offset (${offset}) is accepted`, r.ok, true);
+  }
+
+  // ...and the time part must still be a real instant, offset or not.
+  for (const bad2 of ["2026-09-13T25:00:00Z", "2026-09-13T12:00:00+99:00"]) {
+    const r = restoreBackup(goodBackup({ price: 11111, at: bad2 }));
+    check(`an impossible time (${bad2}) is REJECTED`, r.ok, false);
+  }
+
+  // A day that does not exist. Date.parse does NOT reject this - V8 rolls 2026-02-31 over
+  // to March 3 and reports success - so this only passes if the calendar is round-tripped.
+  for (const impossible of ["2026-02-31", "2026-13-01", "2026-00-10"]) {
+    const r = restoreBackup(goodBackup({ price: 11111, at: impossible }));
+    check(`an impossible calendar date (${impossible}) is REJECTED`, r.ok, false);
+  }
+}
 
 // --- report ---------------------------------------------------------------------
 

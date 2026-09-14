@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Read section -> price band off the official Sharks365 chart, and REFUSE to emit a
-map it cannot verify. See ops#19, ops#31.
+map it cannot verify. See ops#19, ops#31, ops#53.
 
 WHY A TOOL RATHER THAN A HAND TRANSCRIPTION. ops#19 warns that reading the chart's
 colour coding by eye is easy to get wrong - the same failure mode as the hand-copied
@@ -19,9 +19,9 @@ carries UPPER ATTACK 1/2, the other UPPER GOAL 1/2. Scoring against a left-right
 gives 0/10; against the long axis, 18/24. An earlier version of check_price_bands.py
 assumed left-right and would have rejected correct data.
 
-CURRENT STATUS: 22/24 (92%) on the 300dpi chart at --centre 1274 1355, with the upper
-ring exact at 13/13. Coverage refuses: 21/23 legend bands placed, missing CLUB 1 and
-PROMENADE ROW 1 CENTER.
+THE SHARE GATE (default, no --coherent): 22/24 (92%) on the 300dpi chart at --centre
+1274 1355, upper ring exact at 13/13. Coverage refuses: 21/23 legend bands placed,
+missing CLUB 1 and PROMENADE ROW 1 CENTER.
 
 WHY IT IS NOT A RESOLUTION LIMIT. This block used to say the residue was a raster limit
 needing a vector chart, and that was WRONG - a fifth instance of the instrument being
@@ -50,9 +50,134 @@ its section are, so a genuinely one-row band can never score well no matter the
 resolution - which is why 2.5x the pixels did not help, and why a vector chart would not
 either. What separates a real thin band from an antialiasing artefact is not its size but
 its RADIAL COHERENCE: a real band occupies a contiguous run of radii at a consistent
-distance across the sector, while edge noise is scattered. Replacing the share gate with
-a coherence test is the fix, and it needs nothing from Wesley. Not done here because it
-changes what the tool admits, and this tool's output is a model constant.
+distance across the sector, while edge noise is scattered.
+
+THE COHERENCE GATE (--coherent, ops#53) - WHAT IT FIXED AND WHAT IT DID NOT.
+
+Verified again on 2026-09-13 against the same publicly-fetchable chart (`npm run
+fetch:chart`, the NHL's own PDF - `scripts/check_chart_asset.py` confirms it is a JPEG
+round-trip, 9 of 23 legend colours fail an exact-colour census). Both gates were re-run
+end to end against that file rather than assumed from the earlier session's notes.
+
+Result, unchanged in kind from the original finding, though not identical in the exact
+numbers (see the correction below): **coverage solved, mirror agreement not.** With
+radial segmentation all 23 legend bands are placed - the gap that had blocked ops#19 for
+days. At the default --tol 14: lower ring 7/11, upper ring 12/13, overall 19/24 = 79%.
+`min_share` was not moved in either direction and the 95% gate was not lowered. Default
+behaviour is unchanged: without --coherent this reproduces the 92% / 21-of-23 baseline
+exactly, byte-for-byte, because `coherent=None` takes the original code path in
+`sector_bands()` untouched.
+
+CORRECTION TO AN EARLIER CLAIM. The prior session's commit message (never merged) said
+"the UPPER ring reaches 13/13 exactly" as if that were true unconditionally. Re-measured
+2026-09-13 against the same publicly re-fetchable chart, it is NOT true at the default
+tolerance - upper is 12/13 there. It only reaches 13/13 once --tol is raised to 28 or
+above (see hypothesis 6 below), at which point lower also improves to 8/11 and the
+overall best measured is 21/24 = 88%. Stated here because an unconditional claim that
+only held at one undocumented parameter setting is exactly the kind of thing this
+project's "verify, don't assert" rule exists to catch, and it would have misled the next
+session into expecting 13/13 "for free."
+
+THE ONE-THRESHOLD CLAIM, CHECKED RATHER THAN ASSUMED. ops#53 opened by claiming "one
+threshold explains every remaining failure" - meaning min_share explains both the
+coverage gap AND the mirror mismatches. That part is TRUE and reproduces exactly: CLUB 1,
+PROMENADE ROW 1 CENTER, GLASS and TEAL are precisely the bands share excludes, and fixing
+admission with radial_runs makes all four appear and reach 23/23 coverage.
+
+But the ISSUE ALSO CLAIMED, at "medium confidence", that coherence alone would clear
+BOTH gates - coverage and the 95% mirror-agreement floor. That part DOES NOT HOLD. Coverage
+reaches 23/23 the moment admission stops being share-gated; mirror agreement does not
+move to 95% no matter how the coherence parameters are tuned. These are two independent
+defects that happened to share a name ("the gate") because both were expressed through
+min_share, and fixing the admission statistic only fixes the one that was actually an
+admission problem. The residual mismatches are NOT a threshold artefact - see below.
+
+Five hypotheses were tested and killed trying to close the residual. They are recorded
+because each looked right, and re-running them is the expensive way to find that out
+again:
+
+  1. PER-COLOUR coherence - score each colour's thickness and angular span on its own.
+     Reached 23/23 and then admitted CLUB 1 into upper-deck section 212 and LOWER 3 into
+     225. Those tails are real bands, just not that section's, and only the radial ORDER
+     exposes it. Per-colour scoring discards order. This is why radial_runs segments.
+  2. A KNIFE EDGE AT 4px - the assumption that MIN_BAND_PX had merely relocated the old
+     7%-share threshold. Falsified by measuring: the bands that differ across a mirror
+     pair are 16-34px thick, nowhere near the gate. They are absent from one side
+     entirely, not marginal on it.
+  3. RADIAL WINDOWS - 12 combinations of lower 0.30-0.36/0.88-0.92 and upper
+     0.95-0.98/1.18. Every one gives 23/23 coverage and agreement stays 71-79%. The
+     windows are not the constraint.
+  4. THE BOWL CENTRE - re-searched under this gate rather than reusing the share gate's
+     (1274,1355). Best 20/24 during the search, 19/24 on the final 1px pass, and coverage
+     REGRESSED to 22/23. Note the search samples at --search-step and the final pass at
+     --sample-step, so a search optimum does not transfer; that gap is real and unfixed.
+  5. SECTOR MARGIN - shrinking each wedge more should strictly reduce neighbour clipping
+     without losing an arc that spans the wedge. 0.30 -> 79%, 0.45 -> 75%, 0.60 -> 83%.
+     Non-monotonic, so this is noise rather than the mechanism.
+
+A SIXTH was added 2026-09-13, from ops#19's later finding that this chart is a JPEG
+round-trip and near-miss colours might fail `match(tol=14)` asymmetrically between
+mirror sections:
+
+  6. COLOUR TOLERANCE - swept --tol at 14 (default), 20, 28, 36 under --coherent,
+     measured 2026-09-13: 79% -> 83% -> 88% -> 88%. Rises with tolerance and then
+     PLATEAUS at 88% (21/24) from tol=28 up - it does not fall back down, so this is not
+     pure noise the way the sector-margin sweep was, and JPEG colour smear on this
+     particular chart IS costing some real agreement. But it stops eight points short of
+     the 95% floor and stops improving, so tolerance alone does not close the residual
+     either - there is a second, tolerance-independent defect underneath it, which is
+     what (a) and (b) below are about.
+
+THE RESIDUAL. The prior session characterised every failing lower pair as having the
+same signature - one side carries exactly ONE extra thick band, sequences otherwise
+matching in order. Re-measured at --tol 14, 2026-09-13, that description does NOT hold
+cleanly: three of the four lower mismatches do show one extra band on one side (128 vs
+116: extra CLUB 4; 126 vs 118: extra LOWER 3, on the OPPOSITE side from what the earlier
+session's notes described for that same pair; 123 vs 121: extra UPPER GOAL 2), but the
+fourth carries TWO extras (114 vs 102: 102 has both CLUB 5 and UPPER GOAL 1 that 114
+lacks). Saying so because "one threshold, one clean signature" is a stronger and more
+falsifiable claim than the data supports - the residual is messier than either the issue
+or the prior session's notes suggested.
+
+A NEW OBSERVATION not covered by either hypothesis below: three of the four lower
+mismatches (123/121, 114/102, and 126/118 to a lesser extent) contain UPPER-deck legend
+names (UPPER GOAL 1, UPPER GOAL 2, UPPER ATTACK 1) inside LOWER-ring sections, whose
+radial window (0.46-0.92) does not overlap the upper window (0.95-1.18) by construction.
+That means either the two windows are each admitting real pixels of the OTHER ring's
+colours somewhere inside their own bounds (a genuine colour collision, not a window
+overlap), or the ellipse/centre geometry is placing some lower sectors' outer edge into
+territory the model believes is purely lower. Not diagnosed further here - it is a
+concrete, reproducible data point for whoever investigates hypothesis (a) next, since it
+implicates radial geometry rather than purely angular clipping.
+
+Two hypotheses remain live for the part of the residual that fits the original
+description:
+
+  (a) Sector clipping - a label disc is not at the angular centre of its wedge, so the
+      sector reaches into a neighbour. Supported by the extra being a band its neighbour
+      genuinely has (101's extra CLUB 3 is 102/114's largest band). Weakened by the
+      margin sweep being non-monotonic, and now also by the cross-ring bleed above, which
+      an angular-only explanation does not cover.
+  (b) The lower bowl is GENUINELY not mirror-symmetric, and the 95% gate's premise is
+      wrong for it. The chart shows why it might be: the long axis has the PENALTY BOX on
+      the 115 side and AWAY/HOME BENCH on the 101 side, which really does displace
+      seating near centre ice. The upper ring scoring far better than the lower ring at
+      every tolerance measured fits this. If (b) is right, the fix is a different oracle
+      for the lower ring, NOT a lower gate.
+
+Distinguishing them needs one thing neither this tool nor the chart can supply: an
+independent statement of which bands section 101 actually contains. ops#19 later found
+that statement exists for SOME sections, in Ticketmaster's per-seat `Description` field
+(scripts/primary_store.py) - but coverage there depends on what happens to be for sale,
+so it is a partial, not a replacement oracle. ops#66 also confirmed the original
+higher-fidelity chart images pasted 2026-09-05 cannot be recovered; only this lossy
+JPEG-in-PDF export is reproducible. So this residual is NOT resolvable by more pixel
+tuning on the input this tool has - it needs either the Ticketmaster description data
+(partial) or a non-lossy chart export (ops#66, asked and declined).
+
+CONSEQUENTLY: --coherent stays OPT-IN and the tool still refuses to write a map either
+way. It is documented and tested because it is a real, verified improvement to admission
+(fixes coverage, the thing the issue diagnosed correctly), not because it closes ops#19.
 
 Widening the lower radial window was tested and is NOT the answer: inner bounds of 0.46,
 0.38, 0.30 and 0.24 all leave coverage at 21/23. Worth knowing because over half of
@@ -62,7 +187,7 @@ culprit and is not.
 Usage:
     python3 scripts/extract_price_bands.py --image CHART.png [--out FILE]
     python3 scripts/extract_price_bands.py --image CHART.png --min-agreement 0.95
-    python3 scripts/extract_price_bands.py --image CHART.png --sample-step 1
+    python3 scripts/extract_price_bands.py --image CHART.png --coherent
     python3 scripts/extract_price_bands.py --image CHART.png --lower-window 0.30 0.92
     python3 scripts/extract_price_bands.py --self-test
 
@@ -221,7 +346,7 @@ def anchor(ring, order, anchor_section, at_deg=90.0):
 
 
 def sector_bands(im, pairs, cx, cy, a, b, r_lo, r_hi, palette, margin=0.30,
-                 min_share=0.07, tol=14, step=None):
+                 min_share=0.07, tol=14, step=None, coherent=None):
     """Histogram band colours inside each section's angular sector.
 
     Sectors, not rays. The first version walked a single radial line and its samples
@@ -239,10 +364,14 @@ def sector_bands(im, pairs, cx, cy, a, b, r_lo, r_hi, palette, margin=0.30,
     chart would fix the thin-band misses; it cannot while the sampler is resolution-blind,
     which is why the first hi-res run scored WORSE (75%) than the low-res one (92%).
 
-    Note this is not a tunable that can buy agreement: raising density can only add
-    samples inside the same sector, so it makes thin bands MORE detectable on both sides
-    of a mirror pair. The parameter that can buy agreement by discarding bands is
-    `min_share`, which is what coverage() guards.
+    Note this is not a tunable that can buy agreement under the share gate: raising
+    density can only add samples inside the same sector, so it makes thin bands MORE
+    detectable on both sides of a mirror pair. The parameter that can buy agreement by
+    discarding bands is `min_share`, which is what coverage() guards.
+
+    `coherent`, when given, replaces the whole share-based admission with radial
+    segmentation (see radial_runs) - a real fix for the admission statistic rather than a
+    tunable that can be gamed the same way. See the module docstring, ops#53.
     """
     n = len(pairs)
     angs = [p[1]["a"] for p in pairs]
@@ -265,6 +394,11 @@ def sector_bands(im, pairs, cx, cy, a, b, r_lo, r_hi, palette, margin=0.30,
             n_r = max(90, math.ceil((r_hi - r_lo) * span / step))
             arc = math.radians(a1 - a0) * span * r_hi
             n_a = max(6, math.ceil(arc / step))
+        # Per-RADIUS colour votes across the angular sweep, needed only by the coherence
+        # path below - the sweep is replication, not extra area: a band is an arc, so at
+        # a radius inside it most angular samples agree, while an antialiased edge wins
+        # no radius outright.
+        votes = [Counter() for _ in range(n_r + 1)] if coherent is not None else None
         for ia in range(n_a + 1):
             th = math.radians(a0 + (a1 - a0) * ia / n_a)
             for ir in range(n_r + 1):
@@ -276,12 +410,112 @@ def sector_bands(im, pairs, cx, cy, a, b, r_lo, r_hi, palette, margin=0.30,
                 if m:
                     cnt[m] += 1
                     radii.setdefault(m, []).append(r)
+                    if votes is not None:
+                        votes[ir][m] += 1
         total = sum(cnt.values()) or 1
-        keep = sorted((sum(radii[k]) / len(radii[k]), k, cnt[k] / total)
-                      for k in cnt if cnt[k] / total >= min_share)
-        res[sec] = [{"band": k, "share": round(s, 3), "meanRadius": round(r, 3)}
-                    for r, k, s in keep]
+
+        if coherent is None:
+            keep = sorted((sum(radii[k]) / len(radii[k]), k, cnt[k] / total)
+                          for k in cnt if cnt[k] / total >= min_share)
+            res[sec] = [{"band": k, "share": round(sh, 3), "meanRadius": round(r, 3)}
+                        for r, k, sh in keep]
+            continue
+
+        px_per_step = (r_hi - r_lo) * max(a, b) / max(1, n_r)
+        res[sec] = [{"band": rr["band"], "share": round(cnt[rr["band"]] / total, 3),
+                     "meanRadius": round(rr["meanRadius"], 3),
+                     "thicknessPx": round(rr["thicknessPx"], 1)}
+                    for rr in radial_runs(votes, r_lo, r_hi, n_r, px_per_step, coherent)]
     return res
+
+
+# Minimum radial thickness, in PIXELS, for a run of one colour to count as a band.
+#
+# THIS IS THE NUMBER THAT REPLACES min_share, and it is read off the image rather than
+# fitted to the score. Antialiasing along a band boundary is 1-2px either side of the edge;
+# a genuine single seating row on the 300dpi chart is ~10px. 4px sits clearly above the
+# first and clearly below the second.
+#
+# Unlike a share threshold it is resolution-HONEST: on a bigger chart a real thin band gets
+# thicker while an antialiased edge does not, so the separation improves. Share moves the
+# other way, which is exactly why 2.5x the pixels made the old gate score WORSE.
+MIN_BAND_PX = 4.0
+
+# Share of a radius's angular samples the winning colour must hold to own that radius.
+#
+# Not a share-of-sector test in disguise - it is per-RADIUS, so a one-row band competes
+# only against the handful of radii it occupies, never against how thick its neighbours are.
+# That is the whole defect being fixed. A radius inside a real arc scores near 1.0.
+MIN_RADIUS_VOTE = 0.5
+
+
+def radial_runs(votes, r_lo, r_hi, n_r, px_per_step, cfg):
+    """Segment a sector's radial profile into bands. -> ordered list, inner to outer.
+
+    RADIAL COHERENCE INSTEAD OF SHARE, and segmentation instead of per-colour scoring.
+    See ops#53.
+
+    The bug this replaces: a band's share of a sector depends on how thick the OTHER bands
+    in that section are, so a genuine one-row band can never score well at any resolution.
+    CLUB 1 peaked at 5.6% against a 7% gate; PROMENADE ROW 1 CENTER hit 7.2% in section 115
+    and 5.0% in its mirror 101 - so the "mirror disagreement" was two sections straddling a
+    threshold, not two sections seeing different charts.
+
+    Why segmentation rather than testing each colour on its own. A first attempt scored each
+    colour's thickness and angular span independently. It reached 23/23 coverage and then
+    admitted LOWER 3 and CLUB 1 inside UPPER-ring sections - lower-bowl bands whose tails
+    genuinely reach past the upper window's inner edge. Judged alone they look like real
+    bands, because they ARE real bands; they are just not this section's. Only the radial
+    ORDER exposes that, and order is precisely what per-colour scoring throws away.
+
+    So: bands in a section are concentric and non-overlapping, and scanning outward crosses
+    them in sequence. Take the winning colour at each radius, merge equal neighbours into
+    runs, and keep the runs thick enough to be seats rather than an edge. Order comes free,
+    and one colour cannot appear twice - which is right, since the legend maps colour to
+    band one-to-one.
+
+    WHAT THIS DOES NOT FIX: mirror agreement. It admits every real band (23/23 coverage)
+    but does not correct sector-boundary clipping or a genuinely asymmetric lower bowl -
+    see the module docstring's "residual" section. Coverage and admission-accuracy are
+    different problems that happened to share one gameable statistic.
+    """
+    min_px, min_vote = cfg
+    seq = []
+    for ir in range(n_r + 1):
+        v = votes[ir]
+        tot = sum(v.values())
+        if not tot:
+            seq.append(None)
+            continue
+        band, n = v.most_common(1)[0]
+        # A radius where no colour holds a majority is a boundary, not a band. STRICTLY
+        # greater: an exact 50/50 tie is the definition of a boundary pixel, and a >=
+        # test let it own the radius by Counter tie-break order - i.e. by insertion
+        # order, which is not a measurement of anything. Caught by the self-test.
+        seq.append(band if n / tot > min_vote else None)
+
+    runs, i = [], 0
+    while i <= n_r:
+        if seq[i] is None:
+            i += 1
+            continue
+        j = i
+        while j + 1 <= n_r and seq[j + 1] == seq[i]:
+            j += 1
+        thickness = (j - i + 1) * px_per_step
+        if thickness >= min_px:
+            mid = r_lo + (r_hi - r_lo) * ((i + j) / 2) / max(1, n_r)
+            runs.append({"band": seq[i], "meanRadius": mid, "thicknessPx": thickness,
+                         "from": i, "to": j})
+        i = j + 1
+
+    # One colour, one band. If a colour wins two separated runs, the thicker is the band and
+    # the thinner is bleed from an adjacent ring or a repeated hue elsewhere in the sector.
+    best = {}
+    for run in runs:
+        if run["band"] not in best or run["thicknessPx"] > best[run["band"]]["thicknessPx"]:
+            best[run["band"]] = run
+    return sorted(best.values(), key=lambda run: run["meanRadius"])
 
 
 def mirror_pairs(order, a, b):
@@ -344,6 +578,122 @@ def self_test() -> int:
     def check(label, got, want):
         if got != want:
             fails.append(f"{label}: got {got!r}, want {want!r}")
+
+    # ---- radial_runs: the coherence gate (ops#53) ----
+    # THE WHOLE CONTRACT IS THESE TWO CASES, verbatim from ops#53's acceptance criteria:
+    # a gate that admits a genuine one-row band but not scattered edge noise AT THE SAME
+    # SAMPLE COUNT is measuring shape; one that cannot tell them apart is measuring size,
+    # which is the min_share defect being fixed.
+    def votes_from(seq, unanimous=8):
+        """Build per-radius vote Counters from a list of band names (None = boundary)."""
+        out = []
+        for b in seq:
+            c = Counter()
+            if b is not None:
+                c[b] = unanimous
+            out.append(c)
+        return out
+
+    cfg = (4.0, 0.5)
+
+    # A one-row band between two thick neighbours: 10px of THIN. 10 >= MIN_BAND_PX.
+    # Bands are concentric row ranges, so each colour owns ONE contiguous run - hence
+    # INNER/THIN/OUTER rather than BIG/THIN/BIG, which would be a colour appearing twice
+    # and is tested separately below as bleed.
+    seq = ["INNER"] * 40 + ["THIN"] * 10 + ["OUTER"] * 51
+    runs = radial_runs(votes_from(seq), 0.0, 1.0, 100, 1.0, cfg)
+    check("a one-row band is admitted on thickness",
+          [r["band"] for r in runs], ["INNER", "THIN", "OUTER"])
+    check("and its thickness is reported in px",
+          [r["thicknessPx"] for r in runs if r["band"] == "THIN"], [10.0])
+
+    # Scattered noise with the SAME number of samples - 10 of them - never contiguous.
+    seq = ["BIG"] * 101
+    for i in range(5, 100, 10):
+        seq[i] = "NOISE"
+    runs = radial_runs(votes_from(seq), 0.0, 1.0, 100, 1.0, cfg)
+    check("scattered noise at the same sample count is rejected",
+          [r["band"] for r in runs], ["BIG"])
+
+    # A radius where no colour holds a majority is a boundary, not a band. Two colours
+    # split 4/4 must own nothing - this is what keeps an antialiased edge from voting.
+    tied = [Counter({"A": 4, "B": 4}) for _ in range(20)]
+    check("a tied radius owns nothing", radial_runs(tied, 0.0, 1.0, 19, 1.0, cfg), [])
+
+    # One colour, one band: the legend maps colour to band one-to-one, so a colour winning
+    # two separated runs is bleed from an adjacent ring. Keep the thicker, not both.
+    seq = ["X"] * 20 + ["Y"] * 40 + ["X"] * 6 + [None] * 35
+    runs = radial_runs(votes_from(seq), 0.0, 1.0, 100, 1.0, cfg)
+    check("a colour appearing twice is kept once", [r["band"] for r in runs], ["X", "Y"])
+    check("and the thicker run is the one kept",
+          [r["thicknessPx"] for r in runs if r["band"] == "X"], [20.0])
+
+    # Order is inner-to-outer, because the radial ORDER is what distinguishes a section's
+    # own band from a neighbouring ring's tail - the defect that sank per-colour scoring.
+    seq = ["A"] * 10 + ["B"] * 10 + ["C"] * 10 + [None] * 71
+    runs = radial_runs(votes_from(seq), 0.0, 1.0, 100, 1.0, cfg)
+    check("runs come back inner to outer", [r["band"] for r in runs], ["A", "B", "C"])
+
+    # Sub-threshold thickness is rejected even when unanimous - 3px < 4px.
+    seq = ["BIG"] * 40 + ["EDGE"] * 3 + ["BIG"] * 58
+    runs = radial_runs(votes_from(seq), 0.0, 1.0, 100, 1.0, cfg)
+    check("a 3px unanimous run is still too thin", [r["band"] for r in runs], ["BIG"])
+
+    # ---- sector_bands end to end: the exact CLUB 1 shape measured on the real chart ----
+    # Not a shape copied from documentation - the thicknesses below are the module
+    # docstring's OWN measured numbers (2026-09-06, 300dpi chart): CLUB 1 sits between
+    # two thick neighbours and never reaches 7% share in any section it appears in. This
+    # fixture reproduces that geometry at a scale small enough to run instantly, through
+    # the REAL sector_bands() and its REAL trig sampling - not a bypass of it - so a
+    # regression in the angle/radius math would be caught here too, not just in
+    # radial_runs' unit tests above.
+    class FakeImg:
+        """A minimal stand-in for minipng.Img: colour is a pure function of radius.
+
+        Real minipng.Img exposes .w, .h and .px(x, y). This fixture ignores x (the
+        sector below is narrow enough that x stays inside a 1px-wide column for every
+        sample) and returns a colour by which ring `y` falls in, so sector_bands's own
+        trig - not a bypassed version of it - produces the radial profile.
+        """
+
+        def __init__(self, rings_):
+            self.rings = rings_  # [(colour, y_from, y_to_inclusive), ...]
+            self.w, self.h = 1, 1 + max(hi for _, _, hi in rings_)
+
+        def px(self, x, y):
+            for colour, lo, hi in self.rings:
+                if lo <= y <= hi:
+                    return colour
+            return (255, 255, 255)
+
+    a_rgb, b_rgb, c_rgb = (200, 30, 30), (30, 200, 30), (30, 30, 200)
+    # A: 0-39 (40px, a thick neighbour). B: 40-41 (2px - CLUB 1's measured thinness
+    # class). C: 42-99 (58px, the other thick neighbour).
+    fake = FakeImg([(a_rgb, 0, 39), (b_rgb, 40, 41), (c_rgb, 42, 99)])
+    fake_palette = {"A": a_rgb, "B": b_rgb, "C": c_rgb}
+
+    # Three sections at 89.9/90/90.1 degrees keep "100"'s sector under 0.2 degrees wide,
+    # so every sample's angle is within 0.06% of due-90 and y == r to sub-pixel accuracy
+    # - narrow enough to isolate the radial profile without needing real disc geometry.
+    pairs = [("099", {"a": 89.9, "x": 0, "y": 0}),
+             ("100", {"a": 90.0, "x": 0, "y": 0}),
+             ("101", {"a": 90.1, "x": 0, "y": 0})]
+
+    # Under the SHARE gate, B is 2 of ~100 radial samples - 2%, under the 7% default -
+    # so it is dropped even though every sample that reaches it is unanimous. This is
+    # the exact CLUB 1 failure mode from the module docstring, reproduced through the
+    # real function rather than asserted.
+    share_ex = sector_bands(fake, pairs, 0, 0, 1, 1, 0, 99, fake_palette,
+                             margin=0.0, min_share=0.07, tol=5, step=None)
+    check("share gate misses the 2px band (the CLUB 1 failure mode)",
+          sorted(e["band"] for e in share_ex["100"]), ["A", "C"])
+
+    # Under COHERENCE, the same 2px run clears a 1px floor and is admitted in the
+    # correct inner-to-outer order - the fix, run against the same pixels.
+    coh_ex = sector_bands(fake, pairs, 0, 0, 1, 1, 0, 99, fake_palette,
+                           margin=0.0, tol=5, step=1, coherent=(1.0, 0.5))
+    check("coherence admits the same band the share gate dropped, in order",
+          [e["band"] for e in coh_ex["100"]], ["A", "B", "C"])
 
     pal = {"RED": (200, 30, 30), "BLUE": (30, 30, 200)}
     check("exact colour matches", match((200, 30, 30), pal), "RED")
@@ -446,7 +796,7 @@ def main() -> int:
                          "0 (the default) keeps the historical fixed grid and so "
                          "reproduces the measured 92%% baseline exactly. 1.0 uses every "
                          "pixel, which finds MORE real bands but currently scores worse "
-                         "- see the share-gate finding in sector_bands.")
+                         "under the share gate - see the module docstring.")
     ap.add_argument("--search-step", type=float, default=4.0, metavar="PX",
                     help="sample spacing during the bowl-centre search, which evaluates "
                          "hundreds of candidates and cannot afford 1px (default 4.0)")
@@ -457,12 +807,38 @@ def main() -> int:
     ap.add_argument("--upper-window", nargs=2, type=float, default=(0.95, 1.18),
                     metavar=("LO", "HI"),
                     help="radial window for the upper ring (default 0.95 1.18)")
+    ap.add_argument("--coherent", action="store_true",
+                    help="gate bands on RADIAL COHERENCE (thickness in px, contiguity, "
+                         "one-colour-one-band segmentation) instead of share of the "
+                         "sector. See radial_runs, ops#53. Fixes coverage (23/23); does "
+                         "NOT by itself reach 95%% mirror agreement - see the module "
+                         "docstring. Implies --sample-step 1 unless one is given, "
+                         "because coherence is measured in pixels and the fixed grid "
+                         "throws pixels away.")
+    ap.add_argument("--min-band-px", type=float, default=MIN_BAND_PX, metavar="PX",
+                    help=f"radial thickness a band must reach under --coherent "
+                         f"(default {MIN_BAND_PX})")
+    ap.add_argument("--min-radius-vote", type=float, default=MIN_RADIUS_VOTE,
+                    metavar="FRAC",
+                    help=f"share of a radius's angular samples the winning colour must "
+                         f"hold to own that radius (default {MIN_RADIUS_VOTE})")
+    ap.add_argument("--sector-margin", type=float, default=0.30, metavar="FRAC",
+                    help="shrink each section's angular sector by this fraction of the "
+                         "half-angle to each neighbour (default 0.30). Bands are arcs "
+                         "spanning the whole wedge, so shrinking MORE cannot lose a real "
+                         "band - it only stops a sector clipping its neighbour.")
     ap.add_argument("--centre", nargs=2, type=int, metavar=("X", "Y"))
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
 
     if args.self_test:
         return self_test()
+    # Coherence is measured in PIXELS, and the historical fixed grid takes 91 radial
+    # samples whatever the image size - so leaving step at 0 would hand the gate a
+    # resolution it cannot see. Opt in to one without the other and it would silently
+    # measure thickness against a grid instead of the chart.
+    if args.coherent and not args.sample_step:
+        args.sample_step = 1.0
     if not args.image:
         print("--image is required", file=sys.stderr)
         return 2
@@ -515,6 +891,8 @@ def main() -> int:
 
     pal = legend()
 
+    coh = (args.min_band_px, args.min_radius_vote) if args.coherent else None
+
     def evaluate(ccx, ccy, verbose=False, sample_step=None):
         """Extract at a given bowl centre and score it. Returns (ok, total, extraction)."""
         inner, outer, a, b = split_rings(pts, ccx, ccy)
@@ -530,7 +908,8 @@ def main() -> int:
             best = None
             for dname, seq in (("as-listed", order), ("reversed", list(reversed(order)))):
                 ex = sector_bands(im, anchor(ring, seq, axis[0]), ccx, ccy, a, b,
-                                  lo, hi, pal, tol=args.tol, step=sample_step)
+                                  lo, hi, pal, margin=args.sector_margin,
+                                  tol=args.tol, step=sample_step, coherent=coh)
                 _, o, n, bad = agreement(ex, mirror_pairs(seq, *axis))
                 if best is None or o > best[0]:
                     best = (o, n, ex, dname, bad)
@@ -567,7 +946,6 @@ def main() -> int:
               f"- started from ({cx}, {cy})")
         cx, cy = best[2], best[3]
 
-    lo_ok, lo_tot, _ = 0, 0, None
     ok, tot, ex = evaluate(cx, cy, verbose=True, sample_step=args.sample_step)
     frac = ok / tot if tot else 0.0
     print(f"mirror agreement overall: {ok}/{tot} -> {frac:.0%} "
@@ -592,8 +970,9 @@ def main() -> int:
         print(f"\nREFUSING to write a map at {frac:.0%} agreement. The arena is "
               f"mirror-symmetric, so disagreeing pairs mean the extraction is wrong "
               f"somewhere - and a section map that is mostly right would misprice comps "
-              f"silently forever. Get a higher-resolution chart (ops#31) or raise the "
-              f"resolution of this one.", file=sys.stderr)
+              f"silently forever. See the module docstring's 'residual' section for the "
+              f"two live hypotheses (sector clipping vs genuine asymmetry) and why more "
+              f"tuning here has not closed it.", file=sys.stderr)
         return 1
 
     out = args.out or (ROOT / "data" / "price_band_sections.json")
