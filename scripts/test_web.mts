@@ -32,7 +32,7 @@ import {
   pending, selectableOutcomes, sellRate, tally, withOutcomeDate,
 } from "../src/lib/outcomes.ts";
 import {
-  EMPTY_PROFILE, decodeProfile, encodeProfile, invoicePerSeat, isConfigured,
+  EMPTY_PROFILE, decodeProfile, encodeProfile, hasRecordedData, invoicePerSeat, isConfigured,
   recordListPrice, seatCount, type Profile,
 } from "../src/lib/profile.ts";
 
@@ -968,6 +968,100 @@ check("subscribe url is absolute, never relative",
 // the last path segment and silently produces a 404.
 check("published base ends in a slash", PUBLISHED_BASE.endsWith("/"), true);
 check("feed file has no leading slash", CALENDAR_FEED_FILE.startsWith("/"), false);
+
+/* ---- ops#141: validate INSIDE listPriceHistory, and gate overwrite on real data --- */
+// The narrower bug ops#61's own review found: restoreBackup shape-checked the top of
+// listPriceHistory (is it an object?) but never looked inside the arrays, so a
+// well-formed array containing one malformed entry restored silently. Precedent for
+// why this matters: ScoreBig serving prices as strings reached summarize_market.py's
+// delta arithmetic, where "9.00" > "15.20" is true.
+{
+  const goodBackup = (extra: Record<string, unknown>) => JSON.stringify({
+    _schema: BACKUP_SCHEMA,
+    profile: {
+      v: 1,
+      seats: { section: "", row: "", seats: [] },
+      credits: {},
+      listPrices: {},
+      listPriceHistory: { "11111111": [{ price: 11111, at: "2026-09-04" }, extra] },
+    },
+  });
+
+  // A bad entry SECOND in an otherwise well-formed array - the array shape alone would
+  // pass, so this only fails if entries are actually walked.
+  let bad = restoreBackup(goodBackup({ price: "not a number", at: "2026-09-05" }));
+  check("a non-numeric price inside a well-formed array is REJECTED", bad.ok, false);
+  check("and the error names the game id",
+    !bad.ok && bad.error.includes("11111111"), true);
+  check("and the error names the index",
+    !bad.ok && bad.error.includes("entry 1"), true);
+
+  bad = restoreBackup(goodBackup({ price: -5, at: "2026-09-05" }));
+  check("a non-positive price is rejected", bad.ok, false);
+  check("zero is rejected too",
+    restoreBackup(goodBackup({ price: 0, at: "2026-09-05" })).ok, false);
+
+  bad = restoreBackup(goodBackup({ price: 22222, at: "not a date" }));
+  check("a non-ISO 'at' is rejected", bad.ok, false);
+
+  bad = restoreBackup(goodBackup({ price: 22222, at: "2026-09-05", backfilled: "true" }));
+  check("a non-boolean backfilled is rejected", bad.ok, false);
+
+  bad = restoreBackup(goodBackup({ at: "2026-09-05" }));
+  check("a missing price is rejected", bad.ok, false);
+
+  // A valid history INCLUDING a backfilled marker must still round-trip - the two
+  // directions the issue asks for, both asserted.
+  const ok = restoreBackup(goodBackup({ price: 22222, at: "2026-09-05", backfilled: true }));
+  check("a well-formed array with a backfilled marker round-trips", ok.ok, true);
+  check("...with both entries intact",
+    ok.ok && ok.profile.listPriceHistory?.["11111111"]?.map((e) => e.price), [11111, 22222]);
+  check("...and the marker preserved",
+    ok.ok && ok.profile.listPriceHistory?.["11111111"]?.[1]?.backfilled, true);
+
+  // A game whose value is not even an array - the case one level up from a bad entry.
+  const notArray = JSON.stringify({
+    _schema: BACKUP_SCHEMA,
+    profile: { v: 1, seats: {}, credits: {}, listPrices: {},
+      listPriceHistory: { "22222222": "not an array" } },
+  });
+  const naRes = restoreBackup(notArray);
+  check("a non-array history value is rejected", naRes.ok, false);
+  check("and names that game id", !naRes.ok && naRes.error.includes("22222222"), true);
+}
+
+// ---- hasRecordedData: the confirm-before-overwrite gate ----
+// Restoring over a profile with real data needs confirmation - localStorage has no
+// undo. Restoring into an EMPTY profile must not prompt, so the gate has to look at the
+// data the feature protects (prices, history, outcomes, ...), not at isConfigured,
+// which is true the moment Setup has seats and a credit and stays true forever after.
+{
+  const setupOnly: Profile = {
+    ...EMPTY_PROFILE,
+    seats: { section: "111", row: "1", seats: ["1"] },
+    credits: { A: 11111 },
+  };
+  check("a profile with only setup fields has nothing to protect",
+    hasRecordedData(setupOnly), false);
+  check("a genuinely empty profile has nothing to protect",
+    hasRecordedData(EMPTY_PROFILE), false);
+
+  check("a list price alone is protected data",
+    hasRecordedData({ ...EMPTY_PROFILE, listPrices: { "1": 70 } }), true);
+  check("price history alone is protected data",
+    hasRecordedData({ ...EMPTY_PROFILE,
+      listPriceHistory: { "1": [{ price: 70, at: "2026-09-05" }] } }), true);
+  check("a recorded outcome alone is protected data",
+    hasRecordedData({ ...EMPTY_PROFILE,
+      outcomes: { "1": { kind: "sold", on: "2026-09-05", atList: 70, netPerSeat: 63 } } }),
+    true);
+  check("a fee observation alone is protected data",
+    hasRecordedData({ ...EMPTY_PROFILE,
+      feeObservations: [{ list: 70, net: 63, on: "2026-09-05" }] }), true);
+  check("an instant offer alone is protected data",
+    hasRecordedData({ ...EMPTY_PROFILE,
+      instantOffers: { "1": [{ on: "2026-09-05", offerPerTicket: 24.3 }] } }), true);
+}
 
 // --- report ---------------------------------------------------------------------
 

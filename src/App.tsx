@@ -18,6 +18,7 @@ import {
 import {
   EMPTY_PROFILE,
   consumeProfileFromHash,
+  hasRecordedData,
   isConfigured,
   recordListPrice,
   type Profile,
@@ -175,6 +176,25 @@ function Dashboard({
       if (!res.ok) {
         setRestoreNote(res.error);
         return;
+      }
+      // ops#141: localStorage has no undo, so replacing a POPULATED profile needs an
+      // explicit confirmation naming what goes away - worst in exactly the situation
+      // this feature is for, someone who just lost data and is clicking fast. A profile
+      // that is merely configured (seats/credits typed into Setup, nothing recorded
+      // yet) has nothing at stake, so it must not prompt - hence hasRecordedData rather
+      // than isConfigured.
+      if (hasRecordedData(profile)) {
+        const nPrices = Object.keys(profile.listPrices ?? {}).length;
+        const nOutcomes = Object.keys(profile.outcomes ?? {}).length;
+        const proceed = window.confirm(
+          `This replaces your current profile - ${nPrices} list price${nPrices === 1 ? "" : "s"} ` +
+          `and ${nOutcomes} recorded outcome${nOutcomes === 1 ? "" : "s"}, plus their price ` +
+          `history - with the backup's data. This cannot be undone. Continue?`,
+        );
+        if (!proceed) {
+          setRestoreNote("Restore cancelled. Your existing data was kept.");
+          return;
+        }
       }
       setProfile(res.profile);
       const n = Object.keys(res.profile.listPrices ?? {}).length;

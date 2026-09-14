@@ -76,6 +76,27 @@ function isObj(x: unknown): x is Record<string, unknown> {
 }
 
 /**
+ * One `listPriceHistory` entry, checked field by field.
+ *
+ * This is the narrower bug ops#141 exists to close: the top-level shape check let a
+ * well-formed ARRAY containing a malformed ENTRY through untouched. `listPriceHistory`
+ * is the field ops#48 added specifically so a price change does not destroy the
+ * previous value, which makes it the most load-bearing structure in the backup and -
+ * until now - the least validated. Precedent for why a wrong type here is dangerous
+ * rather than cosmetic: ScoreBig serving prices as strings reached
+ * `summarize_market.py`'s delta arithmetic, where `"9.00" > "15.20"` is true.
+ */
+function isValidHistoryEntry(x: unknown): boolean {
+  if (!isObj(x)) return false;
+  if (typeof x.price !== "number" || !Number.isFinite(x.price) || x.price <= 0) return false;
+  if (typeof x.at !== "string" || Number.isNaN(Date.parse(x.at))) return false;
+  if ("backfilled" in x && x.backfilled !== undefined && typeof x.backfilled !== "boolean") {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Parse and validate a backup file. Returns a complete profile or an error - never a
  * partially applied one.
  *
@@ -128,6 +149,31 @@ export function restoreBackup(text: string): RestoreResult {
   if ("feeObservations" in p && p.feeObservations !== undefined
       && !Array.isArray(p.feeObservations)) {
     return { ok: false, error: "The backup's feeObservations is malformed. Nothing was changed." };
+  }
+
+  // The shape check above only confirms listPriceHistory is an OBJECT - it does not look
+  // inside. Walk every game's array and every entry in it, naming the game id and the
+  // index in the error so a corrupted file is fixable rather than merely "malformed".
+  if (isObj(p.listPriceHistory)) {
+    for (const [gameId, entries] of Object.entries(p.listPriceHistory)) {
+      if (!Array.isArray(entries)) {
+        return {
+          ok: false,
+          error: `The backup's price history for game ${gameId} is malformed. Nothing was changed.`,
+        };
+      }
+      for (let i = 0; i < entries.length; i++) {
+        if (!isValidHistoryEntry(entries[i])) {
+          return {
+            ok: false,
+            error:
+              `The backup's price history for game ${gameId}, entry ${i}, is malformed - ` +
+              `price must be a positive number, "at" an ISO date, and "backfilled" (if ` +
+              `present) a boolean. Nothing was changed.`,
+          };
+        }
+      }
+    }
   }
 
   // Defaults for absent optional fields, so the restored object is a complete Profile.
