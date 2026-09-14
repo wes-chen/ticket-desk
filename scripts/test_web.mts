@@ -1082,6 +1082,22 @@ check("feed file has no leading slash", CALENDAR_FEED_FILE.startsWith("/"), fals
     check(`a valid ISO "at" (${good}) round-trips`, r.ok, true);
   }
 
+  // OFFSET TIMESTAMPS. Found in review of this branch: an earlier round-trip check
+  // compared the string's LOCAL calendar day against the parsed instant's UTC day, so a
+  // timestamp whose offset crosses UTC midnight was rejected while the SAME INSTANT
+  // spelled in Z passed. Both spellings below denote 2026-09-14T06:00Z.
+  for (const offset of ["2026-09-13T23:00:00-07:00", "2026-09-14T06:00:00Z",
+                        "2026-09-13T10:00:00+02:00"]) {
+    const r = restoreBackup(goodBackup({ price: 11111, at: offset }));
+    check(`an ISO timestamp with an offset (${offset}) is accepted`, r.ok, true);
+  }
+
+  // ...and the time part must still be a real instant, offset or not.
+  for (const bad2 of ["2026-09-13T25:00:00Z", "2026-09-13T12:00:00+99:00"]) {
+    const r = restoreBackup(goodBackup({ price: 11111, at: bad2 }));
+    check(`an impossible time (${bad2}) is REJECTED`, r.ok, false);
+  }
+
   // A day that does not exist. Date.parse does NOT reject this - V8 rolls 2026-02-31 over
   // to March 3 and reports success - so this only passes if the calendar is round-tripped.
   for (const impossible of ["2026-02-31", "2026-13-01", "2026-00-10"]) {

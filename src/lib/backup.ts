@@ -89,7 +89,7 @@ function isObj(x: unknown): x is Record<string, unknown> {
 /**
  * An ISO-8601 date, either calendar-only or a full timestamp.
  *
- * `Date.parse` alone is NOT enough here, and the difference is load-bearing rather than
+ * `Date.parse` alone is NOT enough, and the difference is load-bearing rather than
  * pedantic. It accepts "March 5, 2026", "2026/09/04" and "09/04/2026" - all of which
  * would restore cleanly and then sort WRONG, because this codebase compares dates as
  * strings (check_data_freshness.py does `g["date"] >= today.isoformat()`, and the market
@@ -98,23 +98,34 @@ function isObj(x: unknown): x is Record<string, unknown> {
  * backup feature exists to protect.
  *
  * Both shapes are accepted because both legitimately occur: `recordListPrice` writes
- * `now.toISOString()` (a full timestamp), while hand-recorded entries in the ops
+ * `now.toISOString()` (a full timestamp), while hand-recorded entries in the private ops
  * snapshots store are date-only.
  *
- * The calendar is then checked by ROUND-TRIP rather than by Date.parse, because
- * `Date.parse("2026-02-31")` does NOT return NaN here - V8 rolls it over to March 3 and
- * reports success. Reformatting the parsed date and comparing it back to the input is
- * what actually rejects a day that does not exist.
+ * THE CALENDAR IS CHECKED ON THE DATE PART ALONE, deliberately. Two earlier versions of
+ * this function were wrong in opposite directions and both are worth remembering:
+ *
+ *   1. `!Number.isNaN(Date.parse(s))` does not reject an impossible day - V8 rolls
+ *      2026-02-31 over to March 3 and reports success.
+ *   2. Round-tripping through `new Date(ms).toISOString()` compares the string's LOCAL
+ *      calendar day against the parsed instant's UTC day. Those disagree whenever the
+ *      offset crosses UTC midnight, so "2026-09-13T23:00:00-07:00" was rejected while
+ *      "2026-09-14T06:00:00Z" - the very same instant - passed.
+ *
+ * Validating y/m/d as a calendar date is independent of any offset, which is what makes
+ * it correct for both shapes.
  */
 function isIsoDate(s: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/.test(s)) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/.exec(s);
+  if (!m) return false;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  // Real calendar day? Date.UTC normalises out-of-range values, so a day that does not
+  // exist comes back as a different one. Compare the components, not the string.
+  const probe = new Date(Date.UTC(y, mo - 1, d));
+  if (probe.getUTCFullYear() !== y || probe.getUTCMonth() !== mo - 1 || probe.getUTCDate() !== d) {
     return false;
   }
-  const ms = Date.parse(s);
-  if (Number.isNaN(ms)) return false;
-  // Round-trip the calendar part. Parsed as UTC either way: a date-only ISO string is UTC
-  // by spec, and toISOString() emits UTC, so the two are directly comparable.
-  return new Date(ms).toISOString().slice(0, 10) === s.slice(0, 10);
+  // The time part, if present, must also be a real instant (rejects 25:00, +99:00).
+  return !Number.isNaN(Date.parse(s));
 }
 
 function isValidHistoryEntry(x: unknown): boolean {
