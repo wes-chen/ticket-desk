@@ -229,9 +229,23 @@ def monotone_warnings(rows: dict[str, dict]) -> list[str]:
     return out
 
 
+DEFAULT_PROVENANCE = (
+    "Manual paste by Wesley into ops#139, graded by "
+    "scripts/validate_tier_credits.py (ops#140). Values read off the app profile "
+    "screen, which reads browser localStorage."
+)
+
+
 def store_line(rows: dict[str, dict], captured_by: str,
-               captured_at: str | None = None) -> dict:
-    """The exact snapshots.jsonl line to append. A value in an issue is not a record."""
+               captured_at: str | None = None,
+               provenance: str = DEFAULT_PROVENANCE) -> dict:
+    """The exact snapshots.jsonl line to append. A value in an issue is not a record.
+
+    `provenance` is overridable because the paste is not the only way these values can
+    arrive. They were in fact RECOVERED from git history rather than pasted, and a line
+    claiming Wesley typed them would be a false record of where a load-bearing number
+    came from - the precise class of confident-looking wrongness rule 4 exists to stop.
+    """
     at = captured_at or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     # The line carries the WEAKEST confidence of its five rows, not the strongest:
     # a snapshot is only as trustworthy as the shakiest number in it, and rule 4
@@ -239,18 +253,19 @@ def store_line(rows: dict[str, dict], captured_by: str,
     weakest = max((r["confidence"] for r in rows.values()),
                   key=lambda c: ["measured", "measured_single_point", "assumed"].index(c))
     return {
-        "_what": "The five regular-season tier credits, per seat, read off the app's "
-                 "profile screen. PRIVATE: this repo only, never ticket-desk.",
-        "_why": "They existed only in browser localStorage, so no session could compute "
+        # Deliberately says nothing about WHERE the values came from. `provenance` is
+        # the single field that answers that, and duplicating it here is how a line ends
+        # up asserting two different origins once one of them is overridden.
+        "_what": "The five regular-season tier credits, per seat. PRIVATE: this repo "
+                 "only, never ticket-desk. See `provenance` for where they came from.",
+        "_why": "They were in no structured store, so no session could compute "
                 "a break-even for any of the 42 regular-season games "
                 "(break-even = credit / (1 - feeRate)). Recorded in a STORE rather than "
                 "in the issue, because nothing polls a closed issue.",
         "_supersedes": "The tierCredits._missing note in the 2026-09-07T05:00Z line.",
         "capturedAt": at,
         "capturedBy": captured_by,
-        "provenance": "Manual paste by Wesley into ops#139, graded by "
-                      "scripts/validate_tier_credits.py (ops#140). Values read off the "
-                      "app profile screen, which reads browser localStorage.",
+        "provenance": provenance,
         "confidence": weakest,
         "tierCredits": {t: dict(rows[t]) for t in LADDER},
     }
@@ -285,7 +300,7 @@ def run(args) -> int:
               file=sys.stderr)
         return 1
 
-    line = store_line(rows, args.captured_by)
+    line = store_line(rows, args.captured_by, provenance=args.provenance)
     if args.append:
         dest = pathlib.Path(args.append).resolve()
         if dest == ROOT or ROOT in dest.parents:
@@ -396,6 +411,11 @@ def self_test() -> int:
 
     line = store_line(good_rows, "self-test", captured_at="2026-01-01T00:00:00Z")
     check("store line carries provenance", "ops#139" in line["provenance"])
+    custom = store_line(good_rows, "self-test", captured_at="2026-01-01T00:00:00Z",
+                        provenance="recovered from commit deadbeef")
+    check("provenance is overridable",
+          custom["provenance"] == "recovered from commit deadbeef",
+          custom["provenance"])
     check("store line worst-cases confidence", line["confidence"] == "assumed",
           line["confidence"])
     check("store line is JSON-serialisable", json.dumps(line).startswith("{"))
@@ -416,6 +436,9 @@ def main() -> int:
     ap.add_argument("--append", help="append the emitted line to this path; refused if "
                                      "it is inside this public repo")
     ap.add_argument("--captured-by", default="manual", help="who ran the paste")
+    ap.add_argument("--provenance", default=DEFAULT_PROVENANCE,
+                    help="where the values actually came from; override when they were "
+                         "not typed by Wesley (e.g. recovered from git history)")
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
     return self_test() if args.self_test else run(args)
