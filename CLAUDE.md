@@ -514,9 +514,9 @@ successes cannot be audited.
   onward was collected by `github-actions[bot]` - the same runner, the same URL - and the
   joined counts are:
 
-  | 09-06 | 09-07 | 09-08 | 09-11 | 09-12 | 09-13 |
-  | --- | --- | --- | --- | --- | --- |
-  | 16 | 16 | **29** | **29** | **29** | 16 |
+  | 09-06 | 09-07 | 09-08 | 09-11 | 09-12 | 09-13 | 09-14 |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | 16 | 16 | **29** | **29** | **29** | 16 | 16 |
 
   The runner was served 29 on three separate days. So the variable is not the IP: the
   source alternates, and the 2x2 above sampled the residential cells on 29-days and the
@@ -527,12 +527,30 @@ successes cannot be audited.
   **Consequences.** There is no "correct baseline" of 16 to compare runner coverage
   against - that instruction would have made a future session dismiss a genuine regression
   as expected. A day-over-day coverage gate fires on roughly every other run here, so
-  `check_data_freshness.py` requires a drop to PERSIST for `COVERAGE_DROP_PERSIST_DAYS`
-  (2) observation days before it is fatal, and reports a single-day dip as a warning.
-  **Accepted, not fixed** still holds for the coverage itself: TickPick and Gametime both
-  cover 44/44, so this source is supplementary and a residential proxy is not worth the 13
-  games. Eighth instance in this project of the conclusion being wrong rather than the
-  thing measured - and the first where the fault was sample size rather than the tool.
+  `check_data_freshness.py` requires a drop to PERSIST before it is fatal, and reports a
+  single-day dip as a warning. **Accepted, not fixed** still holds for the coverage
+  itself: TickPick and Gametime both cover 44/44, so this source is supplementary and a
+  residential proxy is not worth the 13 games. Eighth instance in this project of the
+  conclusion being wrong rather than the thing measured - and the first where the fault
+  was sample size rather than the tool.
+
+  **Do not tune `COVERAGE_DROP_PERSIST_DAYS` against this series - it cannot carry the
+  weight.** That constant was set to 2 on 2026-09-13 as "the smallest window that
+  distinguishes a flap from a step", and the series in hand at that moment already refuted
+  it: the 09-06..09-07 low run is two days long and recovered. The collector went red on
+  2026-09-14 on exactly that shape (09-13, 09-14 both 16) - the false red was delayed by
+  one run, not removed. Both observed low runs are length 2, so **run length has been
+  measured twice and the level many times**; a duration threshold fitted to eight
+  observation days is a guess wearing a number.
+
+  The fix is a reviewed **coverage floor**, recorded per source in `.freshness-accepted`
+  as `coverage ticketnetwork 16`. A sustained drop that lands at or above the floor is a
+  warning however long it holds; **below the floor the persistence rule is unchanged and
+  still fatal**, so the collapse the check was built for is not exempted. Accepted floors
+  print on every run like accepted outage days. The honest cost, stated in that file: this
+  check can no longer distinguish the flap from a permanent step down to 16. Adding a
+  floor for another source is a judgement about that source - review it on its own series,
+  do not generalise from this one.
 
   **The check that nearly settled it backwards.** ops#56 shipped this one-liner for
   Wesley to run:
@@ -660,10 +678,11 @@ than appends; deterministic sort so a daily commit diffs cleanly; and a read tha
 size cap is an ERROR, never data - that last rule exists because this project has produced
 the same silent-truncation bug three times.
 
-`.freshness-accepted` records market-data outage days that have been reviewed and
-consciously accepted, one ISO date per line with the reason in a `#` comment. It is
-**committed**, unlike `.private-patterns`, because the run that needs it is the
-collector's own `--strict` run on the runner, which has no local state.
+`.freshness-accepted` records reviewed findings in two line forms - an outage day as a
+bare ISO date, and a flapping rolling source's accepted low coverage mode as `coverage
+<source> <n>` - with the reason in a `#` comment. It is **committed**, unlike
+`.private-patterns`, because the run that needs it is the collector's own `--strict` run
+on the runner, which has no local state.
 
 It exists because an unbackfillable hole is permanent in both directions: no source here
 has a historical price endpoint, so a missed day is gone - and a gate that fails on it

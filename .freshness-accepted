@@ -1,8 +1,11 @@
 # Accepted market-data outage days.
 #
-# ISO dates whose absence from the market series has been reviewed and consciously
-# accepted. One date per line; everything after `#` is a comment and is the place to
-# record WHY.
+# Two line forms, both reviewed findings that have been consciously accepted:
+#
+#   2026-09-09                  an outage day whose data is unrecoverable
+#   coverage ticketnetwork 16   a low coverage mode a flapping rolling source returns to
+#
+# Everything after `#` is a comment and is the place to record WHY.
 #
 # The check still reports these - it just stops treating them as fatal. An accepted hole
 # stays visible rather than disappearing from the output, for the same reason
@@ -31,3 +34,38 @@
 # Accepted 2026-09-13 by Wesley: "i guess outages are somewhat expected from time to time".
 2026-09-09
 2026-09-10
+
+# ---------------------------------------------------------------------------
+# Accepted coverage floor: TicketNetwork, 16 games.
+#
+# WHAT IS ACCEPTED. This source alternates between serving 29 of 44 home games and 16,
+# on the same GitHub runner, for the same URL. The full series:
+#
+#   09-05: 29 (residential)  09-06: 16  09-07: 16  09-08: 29
+#   09-11: 29  09-12: 29  09-13: 16  09-14: 16
+#
+# Both low runs are two days long. That matters: COVERAGE_DROP_PERSIST_DAYS was set to 2
+# on 2026-09-13 as "the smallest window that distinguishes a flap from a step", against a
+# series that ALREADY contained the two-day 09-06..09-07 run. The threshold was refuted by
+# the data in hand when it was written, and it went red on 2026-09-14 on the flap it was
+# built to tolerate.
+#
+# WHY A LEVEL RATHER THAN A LONGER DURATION. Raising the constant to 3 is the same
+# mistake with a bigger number - eight observation days cannot support a run-length
+# threshold, and a four-day flap would go red again. The level is the part that has been
+# measured repeatedly; the run length has been measured twice, both times as 2.
+#
+# WHY IT IS ACCEPTABLE AT ALL. TickPick and Gametime both cover 44/44, so TicketNetwork is
+# supplementary - CLAUDE.md already records the coverage itself as accepted, not fixed. A
+# residential proxy is not worth the 13 games.
+#
+# WHAT IS STILL FATAL. Anything below 16. The collapse this check was built for - a source
+# quietly dropping most of its events - is unchanged, and a sustained drop to 15 is fatal
+# on the same schedule it always was.
+#
+# WHAT THIS DOES NOT ESTABLISH. Why the source flaps. One run cannot separate a cache
+# behind TicketNetwork's CDN from a genuine window change, and nothing here is evidence
+# either way. If 16 ever becomes permanent this file will record it as accepted rather
+# than flag it, which is the honest cost of accepting the level: the flap and a permanent
+# step to 16 are indistinguishable to this check by construction.
+coverage ticketnetwork 16
