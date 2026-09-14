@@ -1028,6 +1028,17 @@ check("feed file has no leading slash", CALENDAR_FEED_FILE.startsWith("/"), fals
   const naRes = restoreBackup(notArray);
   check("a non-array history value is rejected", naRes.ok, false);
   check("and names that game id", !naRes.ok && naRes.error.includes("22222222"), true);
+
+  /* ---- ops#141: `at` must be ISO, not merely Date.parse-able --------------------- */
+
+  // Date.parse alone accepts "March 5, 2026", "2026/09/04" and "09/04/2026". Any of those
+  // would restore cleanly and then sort WRONG, because this codebase compares dates as
+  // strings - check_data_freshness.py does `g["date"] >= today.isoformat()` and the market
+  // stores sort observedDate lexically. A non-ISO `at` would order before every ISO date
+  // forever, silently, inside the one field the backup feature exists to protect.
+  for (const bogus of ["March 5, 2026", "2026/09/04", "09/04/2026", "20260904", "garbage"]) {
+    const r = restoreBackup(goodBackup({ price: 11111, at: bogus }));
+    check(`a non-ISO "at" (${bogus}) is REJECTED`, r.ok, false);
 }
 
 // ---- hasRecordedData: the confirm-before-overwrite gate ----
@@ -1061,6 +1072,22 @@ check("feed file has no leading slash", CALENDAR_FEED_FILE.startsWith("/"), fals
   check("an instant offer alone is protected data",
     hasRecordedData({ ...EMPTY_PROFILE,
       instantOffers: { "1": [{ on: "2026-09-05", offerPerTicket: 24.3 }] } }), true);
+
+  }
+
+  // Both ISO shapes legitimately occur and must both pass: recordListPrice writes
+  // now.toISOString(), while hand-recorded entries in the ops snapshots store are date-only.
+  for (const good of ["2026-09-04", "2026-09-13T21:00:00.000Z", "2026-09-13T21:00:00Z"]) {
+    const r = restoreBackup(goodBackup({ price: 11111, at: good }));
+    check(`a valid ISO "at" (${good}) round-trips`, r.ok, true);
+  }
+
+  // A day that does not exist. Date.parse does NOT reject this - V8 rolls 2026-02-31 over
+  // to March 3 and reports success - so this only passes if the calendar is round-tripped.
+  for (const impossible of ["2026-02-31", "2026-13-01", "2026-00-10"]) {
+    const r = restoreBackup(goodBackup({ price: 11111, at: impossible }));
+    check(`an impossible calendar date (${impossible}) is REJECTED`, r.ok, false);
+  }
 }
 
 // --- report ---------------------------------------------------------------------

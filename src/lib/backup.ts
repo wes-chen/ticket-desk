@@ -86,10 +86,41 @@ function isObj(x: unknown): x is Record<string, unknown> {
  * rather than cosmetic: ScoreBig serving prices as strings reached
  * `summarize_market.py`'s delta arithmetic, where `"9.00" > "15.20"` is true.
  */
+/**
+ * An ISO-8601 date, either calendar-only or a full timestamp.
+ *
+ * `Date.parse` alone is NOT enough here, and the difference is load-bearing rather than
+ * pedantic. It accepts "March 5, 2026", "2026/09/04" and "09/04/2026" - all of which
+ * would restore cleanly and then sort WRONG, because this codebase compares dates as
+ * strings (check_data_freshness.py does `g["date"] >= today.isoformat()`, and the market
+ * stores sort by `observedDate` lexically). A non-ISO `at` inside listPriceHistory would
+ * therefore order before every ISO date forever, silently, in the one field this whole
+ * backup feature exists to protect.
+ *
+ * Both shapes are accepted because both legitimately occur: `recordListPrice` writes
+ * `now.toISOString()` (a full timestamp), while hand-recorded entries in the ops
+ * snapshots store are date-only.
+ *
+ * The calendar is then checked by ROUND-TRIP rather than by Date.parse, because
+ * `Date.parse("2026-02-31")` does NOT return NaN here - V8 rolls it over to March 3 and
+ * reports success. Reformatting the parsed date and comparing it back to the input is
+ * what actually rejects a day that does not exist.
+ */
+function isIsoDate(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/.test(s)) {
+    return false;
+  }
+  const ms = Date.parse(s);
+  if (Number.isNaN(ms)) return false;
+  // Round-trip the calendar part. Parsed as UTC either way: a date-only ISO string is UTC
+  // by spec, and toISOString() emits UTC, so the two are directly comparable.
+  return new Date(ms).toISOString().slice(0, 10) === s.slice(0, 10);
+}
+
 function isValidHistoryEntry(x: unknown): boolean {
   if (!isObj(x)) return false;
   if (typeof x.price !== "number" || !Number.isFinite(x.price) || x.price <= 0) return false;
-  if (typeof x.at !== "string" || Number.isNaN(Date.parse(x.at))) return false;
+  if (typeof x.at !== "string" || !isIsoDate(x.at)) return false;
   if ("backfilled" in x && x.backfilled !== undefined && typeof x.backfilled !== "boolean") {
     return false;
   }
