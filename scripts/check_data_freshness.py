@@ -331,7 +331,16 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     # actually being distinguished: thirteen games leaving at once is a window move, one
     # game leaving alone is a hole - at any coverage level, early or late in the season.
     served_by_day: dict[str, set] = {d: set() for d in days}
+    # Every game the collector ATTEMPTED that day, successful or not. A row that exists but
+    # failed is evidence the game is still in the source's window - the collector knew to
+    # ask for it - so it is NOT a departure. Without this a bloc of failed fetches would
+    # read as the window moving and be excused, which is precisely the collector failure
+    # the per-game check exists to surface. No store has produced an ok=False row yet
+    # (0 of 352/352/180/152 across the four), so this is the shape being defined before it
+    # occurs rather than after.
+    attempted_by_day: dict[str, set] = {d: set() for d in days}
     for r in rows:
+        attempted_by_day[r["observedDate"]].add(r["gameId"])
         if r.get("ok") and r.get("low") is not None:
             served_by_day[r["observedDate"]].add(r["gameId"])
 
@@ -354,11 +363,20 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         # Filtering here rather than when building served_by_day, because a game already
         # played is still legitimately present in the PREVIOUS day's served set - it is
         # the departure that is uninteresting, not the observation.
+        #
+        # An id in the store but NOT in the schedule is excluded too, and the default
+        # matters: `game_day.get(g, cur) >= cur` is True for an unknown id, so orphans
+        # COUNTED TOWARD A BLOC. Orphans appear whenever schedule.json changes under an
+        # append-only store - a rescheduled or cancelled game, a re-resolve. Measured: five
+        # orphans leaving together excused a real game dying in the same interval, hiding a
+        # finding the unfloored check reported. Excluding them is safe in the other
+        # direction too, since the per-game loop iterates the SCHEDULE - an orphan could
+        # never be reported as a hole anyway, so this only ever shrinks a bloc.
         game_day = {g["gameId"]: g["date"] for g in games}
         gone_together: set = set()
         for prev, cur in zip(days, days[1:]):
-            left = {g for g in served_by_day[prev] - served_by_day[cur]
-                    if game_day.get(g, cur) >= cur}
+            left = {g for g in served_by_day[prev] - attempted_by_day[cur]
+                    if g in game_day and game_day[g] >= cur}
             back = served_by_day[cur] - served_by_day[prev]
             if len(back) >= COVERAGE_DROP_MIN_GAMES:
                 # THE WINDOW MOVED BACK. Whatever is still missing after a bloc returns is
@@ -976,20 +994,62 @@ def self_test() -> int:
     check(f"a returning bloc of exactly {n_edge} clears the excuse", holes(a), 1)
 
     # Rows with ok=False are a supported shape in market_store.py that no real store has
-    # produced yet. They must count as NOT SERVED - reading them as served would let a
-    # source that starts failing every fetch look like a bloc departure and then like
-    # nothing at all.
+    # produced yet. They must count as NOT SERVED by the DEPARTURE rule - a source that
+    # starts failing every fetch must not read as a bloc departure and then as nothing.
+    #
+    # ASSERT DOWNSTREAM OF served_by_day. The first version of this checked okByDay, which
+    # comes from a different accumulator that already filters on `ok` - so it passed
+    # whatever served_by_day did, and the mutant it was written to kill survived. A test
+    # asserting a plausible but unasked question, which is this project's signature bug in
+    # miniature. flapExemptGames is fed by served_by_day and nothing else.
     r = (rows(d8[:1], hi)
          + sum([rows([x], hi, ok=False) for x in d8[1:]], []))
     a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d8[-1]),
                 rolling=True, coverage_floor=16)
-    check("failed rows are not served rows", a["okByDay"].get(d8[-1], 0), 0)
+    check("a bloc of failed fetches is not a departure", a["flapExemptGames"], 0)
+
+    # The case that actually pins it: a MIXED day, where the bloc is present as failed rows
+    # rather than absent. Excusing those would hide a collector failure behind the floor.
+    r = (rows(d8[:1], hi)
+         + sum([rows([x], lo) + rows([x], hi[len(lo):], ok=False) for x in d8[1:]], []))
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d8[-1]),
+                rolling=True, coverage_floor=16)
+    check("failed rows are not a bloc departure", a["flapExemptGames"], 0)
+    check("...and those games surface as holes instead", holes(a) > 0, True)
+
+    # ORPHAN STORE IDS MUST NOT MAKE UP A BLOC. An id in the store with no schedule entry
+    # arises whenever schedule.json changes under an append-only store. Asserted against
+    # the unfloored control AND against the same series without the orphans, so neither the
+    # floor nor the orphans may change the answer.
+    orph_games = [{"gameId": i,
+                   "date": (date(2026, 11, 1) + timedelta(days=i * 2)).isoformat(),
+                   "opponent": {"abbrev": "XXX"}} for i in range(12)]
+    od = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(6)]
+
+    def with_orphans(orphans, floor):
+        rr = []
+        for i, day in enumerate(od):
+            live = [g for g in range(12) if not (i >= 2 and g == 7)]
+            rr += rows([day], live + ([900, 901, 902, 903, 904] if orphans and i < 2 else []))
+        return holes(analyse(rr, orph_games, date.fromisoformat(od[-1]),
+                             rolling=True, coverage_floor=floor))
+
+    check("orphan ids do not excuse a dead game",
+          with_orphans(True, 10), with_orphans(True, None))
+    check("...and the orphans change nothing either way",
+          with_orphans(True, 10), with_orphans(False, 10))
+    check("...and the dead game is found at all", with_orphans(False, None) > 0, True)
 
     # THE SAFETY PROPERTY, and the strongest statement this design has: a floor can only
     # ever RELAX the per-game check, never tighten it. So a floor cannot manufacture a
     # finding that would not exist without it, whatever the series. Checked here on a
     # handful of shapes and separately by brute force over 60,000 random series (0
     # violations); kept cheap here because the suite is meant to stay offline and fast.
+    #
+    # Only the flapping shape is killed by any mutant in the sweep - the others document
+    # the property rather than test it, which is worth saying out loud so they are not
+    # mistaken for coverage. Labels carry the full shape because two of them previously
+    # collided and a failure could not say which one broke.
     for shape in ([29] * 3 + [16] * 4, [29, 28, 27, 26, 25], [29] * 2 + [16] * 2 + [29] * 2,
                   [20, 20, 19, 5, 5, 5], [29, 16, 29, 16, 29, 16]):
         sd = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(len(shape))]
@@ -998,7 +1058,7 @@ def self_test() -> int:
         with_floor = analyse(sr, sgs, date.fromisoformat(sd[-1]), rolling=True,
                              coverage_floor=16)
         without = analyse(sr, sgs, date.fromisoformat(sd[-1]), rolling=True)
-        check(f"a floor never adds a hole finding ({shape[0]}..{shape[-1]})",
+        check(f"a floor never adds a hole finding ({'-'.join(map(str, shape))})",
               holes(with_floor) <= holes(without), True)
 
     # TWO MUTANTS SURVIVE THIS SUITE ON PURPOSE, recorded so the next session does not
@@ -1007,16 +1067,21 @@ def self_test() -> int:
     #   flap_exempt[cur] -> flap_exempt[prev]  shifts the exemption one day earlier. It can
     #     only lose an exemption on the final day, which adds at most 1 to a run and cannot
     #     alone reach GAME_GAP_DAYS, so it is near-equivalent in the STRICTER direction.
-    #   served_by_day ignoring the `ok` flag    no store has ever produced an ok=False row
-    #     (0 of 352/352/180/152 across the four), so no fixture built from real data can
-    #     distinguish it. The row above pins the shape that matters - a failed fetch is not
-    #     a served game - without inventing a series that has never occurred.
+    #   served_by_day ignoring the `ok` flag    much narrower than it was. The departure
+    #     diff now reads attempted_by_day, so the mutant cannot change which games form a
+    #     bloc on the day they fail. It still differs on one shape - a game that FAILED on
+    #     the previous day and has no row at all on the next - and no store has produced an
+    #     ok=False row (0 of 352/352/180/152 across the four), so there is no real series
+    #     to build that fixture from. Left uncovered deliberately rather than invented.
     #
     # `continue` vs `run = 0` on an excused day is a third, and it is a true equivalence
     # rather than a gap - see the comment at the per-game loop.
 
     # A sustained drop BELOW the floor must stay live past day two as well - that is the
     # collapse the whole check exists for, and it is the mirror of the bug above.
+    # NOTE: reuses `run_days` from the fixture ~230 lines above. That long-distance
+    # dependency is the same hazard that let an added block shadow `gs` and silently break
+    # three horizon assertions; rebind it here if you add anything in between.
     r = (sum([rows([d], hi) for d in run_days[:3]], [])
          + sum([rows([d], list(range(11))) for d in run_days[3:]], []))
     a = analyse(r, games(30, "2026-09-20"), date.fromisoformat(run_days[-1]),
