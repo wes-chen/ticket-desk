@@ -155,7 +155,16 @@ def load_accepted(path: pathlib.Path | None = None) -> tuple[set[str], dict[str,
             continue
         m = FLOOR_RE.match(ln)
         if m:
-            floors[m.group(1)] = int(m.group(2))
+            n = int(m.group(2))
+            if n <= 0:
+                # A floor of 0 exempts every level there is, which does not read as
+                # "disable this check" to anyone skimming the file - it reads as a
+                # reviewed value. Refuse it rather than accept the most dangerous input
+                # the format allows.
+                print(f"  ignoring non-positive coverage floor in {path.name}: {ln!r}",
+                      file=sys.stderr)
+                continue
+            floors[m.group(1)] = n
             continue
         # Loud rather than silent: a typo here would quietly un-accept a gap and turn
         # the gate red again for a reason nobody could find.
@@ -288,6 +297,40 @@ def analyse(rows: list[dict], games: list[dict], today: date,
                                   f"{[g['date'] for g in never][:5]}. The event map may be "
                                   f"stale - re-run --resolve."))
 
+    # How far a rolling source's coverage may fall before it is a fault rather than the
+    # calendar. Defined here rather than at the coverage block below because the accepted
+    # low mode is expressed in terms of it - one predicate, so the two cannot drift apart.
+    def dropped(base: int, n: int) -> bool:
+        lost = base - n
+        return bool(base) and lost >= COVERAGE_DROP_MIN_GAMES and lost / base > COVERAGE_DROP
+
+    # ACCEPTED LOW MODE, and which days it covers. See the COVERAGE FLOOR block below for
+    # what a floor is and why it is a level rather than a duration.
+    #
+    # A day is in the source's accepted low mode when its coverage BOTH falls far enough
+    # from this source's best day to clear dropped() AND lands at or above the reviewed
+    # floor. Both halves matter, and the first one is not decoration:
+    #
+    #   clears dropped()    - otherwise every day below the series peak qualifies, and a
+    #                         source quietly dropping ONE game would have every day after
+    #                         its best one treated as an accepted flap. That is not
+    #                         hypothetical - it was the first version of this band, and
+    #                         the split-hole test below is what caught it.
+    #   at or above floor   - below it is the collapse the check exists for, and those
+    #                         days must keep counting normally
+    #
+    # Against the series peak rather than a second recorded constant: the high level
+    # decays with the calendar as games are played, and a pinned number would silently
+    # stop matching within a week. Late season, when real coverage falls under the floor,
+    # the second clause stops matching and every day counts normally again - which is the
+    # pre-floor behaviour, and correct.
+    low_mode_days: set[str] = set()
+    if rolling and coverage_floor is not None and ok_by_day:
+        peak = max(ok_by_day.values())
+        low_mode_days = {d for d in days
+                         if ok_by_day[d] >= coverage_floor and dropped(peak, ok_by_day[d])}
+    floor_applied = coverage_floor if low_mode_days else None
+
     for g in future:
         got = seen_per_game.get(g["gameId"])
         if not got:
@@ -296,8 +339,22 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         # series as a whole has data. Deliberately not trailing-only: a hole in the
         # middle is just as damaging to ops#8, and a trailing-only check on a short
         # series is indistinguishable from "never priced", which is reported separately.
+        #
+        # A day in the source's accepted low mode is NEUTRAL here - it neither extends a
+        # run nor resets one. THIS IS THE HALF THE FIRST VERSION OF THE FLOOR MISSED, and
+        # it made the floor cosmetic: the coverage-drop gate below only fires on day two
+        # of a low run, because its baseline is a fixed three-day lookback that slides.
+        # From day three the coverage finding vanishes on its own - and these thirteen
+        # absent games trip GAME_GAP_DAYS instead, so a three-day flap went red HARDER
+        # than a two-day one, through a check the floor never touched. Verified against
+        # the real store: a 2-day low run gave 0 fatal findings, a 3-day run gave 13.
+        #
+        # Neutral rather than reset, so a genuine per-game hole still accumulates ACROSS
+        # a flap instead of being laundered by it.
         run = worst = 0
         for d in days:
+            if d in low_mode_days:
+                continue
             if d in got:
                 run = 0
             else:
@@ -346,19 +403,23 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     # it holds; below the floor, the persistence rule applies unchanged.
     #
     # What this does NOT exempt, deliberately:
-    #   - any level below the floor - the collapse the check was built for stays fatal
+    #   - any level below the floor - there the gate is unchanged, though "unchanged" is
+    #     weaker than it sounds and is spelled out in .freshness-accepted rather than
+    #     asserted here: dropped() still needs BOTH >= COVERAGE_DROP_MIN_GAMES games lost
+    #     AND more than COVERAGE_DROP of the base, so 16 -> 12 was never fatal and is not
+    #     fatal now. The floor did not create that hole; claiming it closed one would.
     #   - any other source - floors are per-source and must be reviewed one at a time
     #   - visibility - an exempted drop is still printed on every run, like an accepted
     #     outage day, for the reason .privacy-accepted prints accepted findings
     #
+    # It exempts any sustained level AT OR ABOVE the floor, not only the level observed.
+    # That is wider than "this source's known low mode" and is deliberate - the flap level
+    # itself decays with the calendar, so a check pinned to 16 exactly would stop matching
+    # within a week. The cost is that a novel intermediate level is exempted too.
+    #
     # Late-season calendar attrition eventually takes coverage below any floor legitimately,
     # but it does so at about one game a day, which never clears dropped() - the floor
     # changes which drops are fatal, not whether the calendar can trigger one.
-    floor_applied = None
-
-    def dropped(base: int, n: int) -> bool:
-        lost = base - n
-        return bool(base) and lost >= COVERAGE_DROP_MIN_GAMES and lost / base > COVERAGE_DROP
 
     if rolling and len(days) >= COVERAGE_DROP_PERSIST_DAYS + 1:
         base_day = days[-(COVERAGE_DROP_PERSIST_DAYS + 1)]
@@ -367,7 +428,6 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         now_n = ok_by_day[run[-1]]
         if all(dropped(base_n, ok_by_day[d]) for d in run):
             if coverage_floor is not None and now_n >= coverage_floor:
-                floor_applied = coverage_floor
                 findings.append(("warn",
                                  f"coverage fell from {base_n} to {now_n} games after "
                                  f"{base_day} and has stayed down for {len(run)} "
@@ -428,6 +488,12 @@ def run(strict: bool, today: date) -> int:
     for unknown in sorted(set(floors) - {n for n, *_ in STORES}):
         print(f"  ignoring coverage floor for unknown source {unknown!r} in "
               f"{ACCEPTED_GAPS_FILE.name}", file=sys.stderr)
+    # A floor is only consulted for a ROLLING source. On any other it is inert - and an
+    # inert line in a reviewed-accept file is worse than a missing one, because it reads
+    # as protection that was considered and granted.
+    for inert in sorted({n for n, _, _, rolling, _ in STORES if not rolling} & set(floors)):
+        print(f"  coverage floor for {inert!r} is INERT - floors apply only to rolling "
+              f"sources, and this one is not marked rolling in STORES", file=sys.stderr)
 
     for name, path, required, rolling, script in STORES:
         rows = load(path)
@@ -494,9 +560,11 @@ def run(strict: bool, today: date) -> int:
     if accepted_seen or floors_seen:
         bits = []
         if accepted_seen:
-            bits.append(f"{len(accepted_seen)} accepted outage day(s)")
+            bits.append(f"{len(accepted_seen)} accepted outage day"
+                        f"{'s' if len(accepted_seen) != 1 else ''}")
         if floors_seen:
-            bits.append(f"{len(floors_seen)} accepted coverage floor(s)")
+            bits.append(f"{len(floors_seen)} accepted coverage floor"
+                        f"{'s' if len(floors_seen) != 1 else ''}")
         print(f"\nfresh - no unexplained gaps "
               f"({' and '.join(bits)} still reported above)")
     else:
@@ -626,6 +694,70 @@ def self_test() -> int:
           levels(a, "coverage fell"), ["fatal"])
     check("a fatal drop reports no applied floor", a["acceptedFloor"], None)
 
+    # THE DEFECT THE FIRST VERSION SHIPPED, and the reason these cases exist at all. The
+    # floor was tested only at a 2-day low run - the exact length at which it worked. The
+    # coverage-drop gate fires only on day TWO of a run (its baseline is a sliding 3-day
+    # lookback), so from day three the coverage finding vanishes by itself and the 13
+    # absent games trip GAME_GAP_DAYS instead. A 3-day flap therefore went red HARDER than
+    # a 2-day one, through a check the floor never touched. Measured against the real
+    # store before the fix: 2-day run -> 0 fatal, 3-day run -> 13 fatal.
+    #
+    # ASSERT NO FATAL AT ALL, not merely the absence of a "coverage fell" finding. Naming
+    # the string would pass against precisely the bug being fixed, since the finding that
+    # fired was a per-game hole and never mentioned coverage.
+    def fatals(a):
+        return [m for l, m in a["findings"] if l == "fatal"]
+
+    for n_low in (2, 3, 5, 9):
+        run_days = [(date(2026, 9, 8) + timedelta(days=i)).isoformat()
+                    for i in range(3 + n_low)]
+        r = (sum([rows([d], hi) for d in run_days[:3]], [])
+             + sum([rows([d], lo) for d in run_days[3:]], []))
+        a = analyse(r, games(30, "2026-09-20"), date.fromisoformat(run_days[-1]),
+                    rolling=True, coverage_floor=16)
+        check(f"a {n_low}-day low run at the floor is not fatal", fatals(a), [])
+        check(f"the floor is reported on a {n_low}-day low run", a["acceptedFloor"], 16)
+
+    # ...and the neutrality must not launder a REAL per-game hole. Game 0 is absent on the
+    # full-coverage days too, which is the source dropping one game rather than flapping.
+    run_days = [(date(2026, 9, 8) + timedelta(days=i)).isoformat() for i in range(8)]
+    r = (sum([rows([d], list(range(1, 29))) for d in run_days[:3]], [])
+         + sum([rows([d], lo) for d in run_days[3:]], []))
+    a = analyse(r, games(30, "2026-09-20"), date.fromisoformat(run_days[-1]),
+                rolling=True, coverage_floor=16)
+    check("a game absent on FULL-coverage days is still a per-game hole",
+          any("per-game hole" in m for l, m in a["findings"] if l == "fatal"), True)
+
+    # NEUTRAL, NOT RESET - and this is the case that proves the difference. A per-game
+    # hole SPLIT by a flap must still accumulate across it: two absences, a flap, two more
+    # absences is a four-day hole, not two two-day ones. Resetting the run on low-mode
+    # days passes every other test here and launders exactly this, which is how it
+    # survived the first mutation pass.
+    split = [(date(2026, 9, 8) + timedelta(days=i)).isoformat() for i in range(7)]
+    r = (rows(split[:1], hi)                      # game 0 present
+         + sum([rows([d], list(range(1, 29))) for d in split[1:3]], [])   # absent, full
+         + sum([rows([d], list(range(1, 17))) for d in split[3:5]], [])   # absent, low mode
+         + sum([rows([d], list(range(1, 29))) for d in split[5:]], []))   # absent, full
+    a = analyse(r, games(30, "2026-09-20"), date.fromisoformat(split[-1]),
+                rolling=True, coverage_floor=16)
+    check("a per-game hole split by a flap still accumulates across it",
+          any("per-game hole" in m for l, m in a["findings"] if l == "fatal"), True)
+
+    # A sustained drop BELOW the floor must stay live past day two as well - that is the
+    # collapse the whole check exists for, and it is the mirror of the bug above.
+    r = (sum([rows([d], hi) for d in run_days[:3]], [])
+         + sum([rows([d], list(range(11))) for d in run_days[3:]], []))
+    a = analyse(r, games(30, "2026-09-20"), date.fromisoformat(run_days[-1]),
+                rolling=True, coverage_floor=16)
+    check("a sustained drop below the floor is still fatal on day five",
+          bool(fatals(a)), True)
+    # No in-band day anywhere in THIS fixture, so nothing was exempted and the printed
+    # line must not claim otherwise. Not a general property: a real series that flapped
+    # before collapsing has in-band days in its history and reports the floor as in
+    # effect, which is the honest reading of that line.
+    check("a series with no in-band day reports no applied floor",
+          a["acceptedFloor"], None)
+
     # A floor must not resurrect a finding that was never there. A healthy source with a
     # floor set reports neither a drop nor an applied floor.
     r = sum([rows([d], hi) for d in real], [])
@@ -687,6 +819,19 @@ def self_test() -> int:
     real_days, real_floors = load_accepted()
     check("the committed accept file names only real sources",
           sorted(set(real_floors) - {n for n, *_ in STORES}), [])
+
+    # PIN THE VALUE, not just the key. A floor is a reviewed number, and the dangerous
+    # edit is not a typo'd source name - it is a floor quietly lowered, which disables the
+    # coverage check for that source while printing a line that reads like protection.
+    # Changing this pin is then a deliberate act with a diff, which is the whole point.
+    check("the committed floors are exactly the reviewed ones",
+          real_floors, {"ticketnetwork": 16})
+
+    # A floor of 0 exempts every level there is. It must not parse.
+    with tempfile.TemporaryDirectory() as td:
+        f = pathlib.Path(td) / ".freshness-accepted"
+        f.write_text("coverage ticketnetwork 0\n")
+        check("a zero floor is refused, not accepted", load_accepted(f)[1], {})
 
     # LATE SEASON, small base. One game leaving is 33% of a three-game window - over the
     # relative threshold, and pure calendar. Firing here would go red in the final week,

@@ -44,28 +44,66 @@
 #   09-05: 29 (residential)  09-06: 16  09-07: 16  09-08: 29
 #   09-11: 29  09-12: 29  09-13: 16  09-14: 16
 #
-# Both low runs are two days long. That matters: COVERAGE_DROP_PERSIST_DAYS was set to 2
-# on 2026-09-13 as "the smallest window that distinguishes a flap from a step", against a
-# series that ALREADY contained the two-day 09-06..09-07 run. The threshold was refuted by
-# the data in hand when it was written, and it went red on 2026-09-14 on the flap it was
-# built to tolerate.
+# The first low run is two days and CLOSED - 29 on both sides of it. The second is
+# 09-13..09-14, which is still OPEN at the time of writing, so it is at least two days and
+# its true length is unknown. Run length has therefore been measured ONCE at 2 and once at
+# >= 2; the level has been measured on all eight observation days. That asymmetry is the
+# whole argument below, so it is stated rather than rounded to "twice, both times 2".
+#
+# What it establishes is enough: COVERAGE_DROP_PERSIST_DAYS was set to 2 on 2026-09-13 as
+# "the smallest window that distinguishes a flap from a step", against a series that
+# ALREADY contained the closed two-day 09-06..09-07 run. The threshold was refuted by the
+# data in hand when it was written, and it went red on 2026-09-14 on the flap it was built
+# to tolerate.
 #
 # WHY A LEVEL RATHER THAN A LONGER DURATION. Raising the constant to 3 is the same
 # mistake with a bigger number - eight observation days cannot support a run-length
-# threshold, and a four-day flap would go red again. The level is the part that has been
-# measured repeatedly; the run length has been measured twice, both times as 2.
+# threshold, and a four-day flap would go red again.
 #
 # WHY IT IS ACCEPTABLE AT ALL. TickPick and Gametime both cover 44/44, so TicketNetwork is
 # supplementary - CLAUDE.md already records the coverage itself as accepted, not fixed. A
 # residential proxy is not worth the 13 games.
 #
-# WHAT IS STILL FATAL. Anything below 16. The collapse this check was built for - a source
-# quietly dropping most of its events - is unchanged, and a sustained drop to 15 is fatal
-# on the same schedule it always was.
+# WHAT A FLOOR ACTUALLY EXEMPTS, stated precisely because the first version of this entry
+# overstated it and a reviewer had to measure the difference.
+#
+# A floor marks days whose coverage BOTH lands at or above it AND falls far enough from
+# this source's best day to clear the ordinary drop gate. On those days:
+#
+#   - a sustained coverage drop is a warning rather than fatal, however long it holds
+#   - absent games do not accumulate toward a per-game hole. THIS HALF IS LOAD-BEARING.
+#     Without it the floor lasted exactly one observation day: the coverage gate fires
+#     only on day two of a low run - its baseline is a sliding three-day lookback - and
+#     from day three the thirteen absent games tripped GAME_GAP_DAYS instead. Measured
+#     against this store before the fix: a 2-day low run gave 0 fatal findings and a
+#     3-day run gave 13, so a longer flap went red HARDER than a short one.
+#
+# It exempts any sustained level at or above 16, not only 16 itself. That is wider than
+# "this source's observed low mode" and is deliberate - the flap level decays with the
+# calendar as games are played, so a rule pinned to 16 exactly would stop matching within
+# a week. The cost is that a novel intermediate level, say a sustained 20, is exempted
+# too.
+#
+# WHAT IS STILL FATAL. Coverage below 16, and it is worth being exact about which check
+# catches it, because the coverage gate alone would not. A sustained 15 does NOT trip the
+# coverage gate from a base of 16 - that needs both three games lost and more than a
+# quarter, so 16 -> 12 was never fatal and is not fatal now. What catches it is the
+# per-game-hole check, which is live again below the floor. Measured on this store with
+# three sustained days: 15 -> 14 fatal findings, 12 -> 17, 11 -> 18, 5 -> 24.
 #
 # WHAT THIS DOES NOT ESTABLISH. Why the source flaps. One run cannot separate a cache
 # behind TicketNetwork's CDN from a genuine window change, and nothing here is evidence
 # either way. If 16 ever becomes permanent this file will record it as accepted rather
 # than flag it, which is the honest cost of accepting the level: the flap and a permanent
 # step to 16 are indistinguishable to this check by construction.
+#
+# CONFIDENCE: measured, on 8 observation days for the level and 2 runs for the duration.
+# The level is what this entry rests on; the duration is explicitly NOT relied upon.
+#
+# THE ALTERNATIVE NOT TAKEN, so the next session does not have to rediscover it. A
+# high-water-mark rule - "has this source returned to 29 within the last N days?" - would
+# distinguish a flap from a permanent step, which is the one capability accepting the
+# level gives up. It was rejected because N is a duration threshold wearing different
+# clothes, and the duration is the quantity this series cannot support. Revisit it once
+# there are enough closed runs to fit N against; that needs weeks, not days.
 coverage ticketnetwork 16
