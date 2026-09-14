@@ -24,6 +24,22 @@ So `allIn` is REQUIRED and never defaulted. A row that does not say which unit i
 refused, not assumed - a default would be silently wrong on exactly the rows someone
 forgot to think about.
 
+## The fee-regime trap (ops#76)
+
+**`listingType: primary` and `listingType: resale` do not carry the same buyer fee.**
+Measured 2026-09-07 on the three rows this store already holds for game 2026010032:
+the two resale rows (71.39, 64.13 all-in) both invert to a whole-dollar list price at
+exactly 21.00% buyer fee, while the primary row (82.35 all-in, "Standard Ticket") does
+not - it needs 21.10% to reach a whole $68.00. See `buyerFeeRate` vs
+`primaryBuyerFeeRate` in `config/economics.json`.
+
+So: **never compare `price` across `listingType` and read the gap as a market
+signal without first converting through the fee that actually applies to each row.**
+A primary-vs-resale delta is partly measuring two different fee structures, not
+only demand. Nothing in this codebase does that comparison today (grepped
+2026-09-13); the risk is that something will, since both listing types now live in
+one file with one `price` column that invites exactly this diff.
+
 ## What must never be written here
 
 This is the PUBLIC repo. A row keyed `(gameId, section, row)` carrying a price is a market
@@ -49,6 +65,7 @@ from primary_store import SECTIONS, known_game_ids  # noqa: E402  - one source o
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEFAULT_STORE = ROOT / "data" / "resale" / "listings.jsonl"
+ECONOMICS = ROOT / "config" / "economics.json"
 
 LISTING_TYPES = {"resale", "primary"}
 
@@ -206,6 +223,44 @@ def ingest(new_rows, path=DEFAULT_STORE, game_ids=None):
     return merged
 
 
+def buyer_fee_problems(econ):
+    """ops#76: every cited (list-ish, all-in) observation must round-trip to the rate
+    it supposedly measured, to the cent.
+
+    This is what makes 'measured' honest. `buyerFeeRate` and `primaryBuyerFeeRate` in
+    config/economics.json each carry a `value` and a `buyerFeeObservations` list that is
+    the evidence for it. If someone edits the rate without touching the observations (or
+    vice versa), the pairs stop inverting and this catches it - the acceptance criterion
+    ops#76 asked for: "a test fails if buyerFeeRate is changed without the observations
+    being updated." Resale observations key off `list`; the primary observation keys off
+    `impliedFaceValue` since a primary row has no seller-chosen list price - see
+    primaryBuyerFeeRate's own docstring in economics.json for why.
+    """
+    problems = []
+    tm = econ["resale"]["platforms"]["ticketmaster"]
+
+    def check_block(rate, observations, list_key, label):
+        for obs in observations:
+            base = obs[list_key]
+            expected = round(base * (1 + rate), 2)
+            got = obs["allInBuyerPrice"]
+            if abs(expected - got) > 0.005:
+                problems.append(
+                    f"{label}: {list_key}={base} at rate {rate} implies all-in "
+                    f"{expected}, but the stored observation says {got}"
+                )
+
+    # `buyerFeeObservations` for the RESALE rate is a sibling of buyerFeeRate (matches
+    # the pre-existing shape); the PRIMARY rate nests its own observations under itself,
+    # since it was added later and there is only ever one platform's worth of it.
+    check_block(tm["buyerFeeRate"]["value"], tm["buyerFeeObservations"], "list",
+                "buyerFeeRate")
+    check_block(tm["primaryBuyerFeeRate"]["value"],
+                tm["primaryBuyerFeeRate"]["buyerFeeObservations"], "impliedFaceValue",
+                "primaryBuyerFeeRate")
+    return problems
+
+
 def main(argv):
     path = DEFAULT_STORE
     rows = read_store(path)
@@ -324,6 +379,28 @@ def self_test():
         fails.append("a corrupt line should raise")
     except Invalid:
         pass
+
+    # ops#76: the REAL config/economics.json, as committed, must round-trip. This is
+    # against the actual captured observations (85.00->102.85 our own listing;
+    # 59.00->71.39 and 53.00->64.13 the two OTHER-seller resale rows; 68.00->82.35 the
+    # primary row), not invented fixtures.
+    real_econ = json.loads(ECONOMICS.read_text())
+    check("the real economics.json buyer-fee observations all round-trip",
+          buyer_fee_problems(real_econ), [])
+
+    # And a later edit to the rate WITHOUT updating the observations must fail loudly -
+    # the acceptance criterion ops#76 asked for. Mutate a deep copy so the real file on
+    # disk is untouched.
+    import copy
+    drifted = copy.deepcopy(real_econ)
+    drifted["resale"]["platforms"]["ticketmaster"]["buyerFeeRate"]["value"] = 0.25
+    check("a drifted resale rate is caught",
+          len(buyer_fee_problems(drifted)) > 0, True)
+
+    drifted2 = copy.deepcopy(real_econ)
+    drifted2["resale"]["platforms"]["ticketmaster"]["primaryBuyerFeeRate"]["value"] = 0.30
+    check("a drifted primary rate is caught",
+          len(buyer_fee_problems(drifted2)) > 0, True)
 
     for f in fails:
         print("FAIL", f)

@@ -58,19 +58,50 @@
         "_privacy": "Isolated (list, net) pairs ONLY. These previously carried a `game` field, which made them the exact statement CLAUDE.md rule 1 forbids - which games we have listed, at what price, with what net. The pair alone measures Ticketmaster's fee and says nothing about our seats; naming the game made it a statement about our listings. Deduped too, because repeated identical pairs disclosed how many seats we hold.",
         "buyerFeeRate": {
           "value": 0.21,
-          "confidence": "measured_single_point",
-          "source": "One isolated (list, all-in buyer price) pair observed 2026-09-07 on the public event page: 85.00 -> 102.85, which is exactly +21.00%. The page states 'We're All In: Prices include fees (before taxes).'",
+          "confidence": "measured",
+          "appliesTo": "RESALE listings on the public marketplace only. Primary (team-sold, face-value) inventory does NOT share this rate - see primaryBuyerFeeRate below, and do not apply this value to a data/resale/listings.jsonl row with listingType 'primary'.",
+          "source": "MEASURED 2026-09-07 (ops#76) at three independent (list, all-in) pairs, all inverting to an exact whole-dollar list price at 21.00%: 85.00 -> 102.85 (our own listing; list price directly known), 59.00 -> 71.39, and 53.00 -> 64.13 (the latter two are OTHER sellers' public resale rows in data/resale/listings.jsonl - we observe only their all-in price, so their list price is INFERRED as the value that inverts the observation to a whole dollar at the candidate rate). Sellers overwhelmingly type whole-dollar list prices, so a wrong candidate rate would leave the inferred list price fractional; solving for the rate that lands all three on a whole dollar returns exactly 0.2100 for all three. Upgraded from measured_single_point once the two independent resale rows agreed with the original point.",
           "_whyItMatters": "This is the number that decides whether a listing is COMPETITIVE, and the model did not have it. We reason in list prices; a buyer chooses on all-in prices. net = (1 - sellerFeeRate) / (1 + buyerFeeRate) x buyer price = 0.7438 x buyer price, so the platform takes 25.6% of what the buyer pays. Concretely: to net more than a tier credit C, a buyer must pay C / 0.7438 all-in - about 34% more than C. Comparing our list price against a primary or comp price, as this project did until now, understates how far above the market our ask really sits.",
-          "openQuestion": "One point, one price. Whether 21% is flat, tiered, or capped is unknown - the seller side looked flat across three points in a 21% band and still has an open question above $85. Needs a second (list, all-in) pair at a materially different price.",
-          "_privacy": "The isolated pair only, with no game, section, row or seat. Per CLAUDE.md rule 1 a (list, net) or (list, all-in) pair measures Ticketmaster's fee and says nothing about our seats; attaching the game would make it the forbidden statement about our listings. Same treatment as feeObservations, whose `game` field had to be stripped for exactly this reason."
+          "openQuestion": "Whether 21.00% is flat, tiered, or capped above $103 all-in - the top of the range measured so far - is unknown. The seller side looked flat across a 21% band before being confirmed flat across a much wider 2.14x range at $150; a similarly wider buyer-side band is worth getting. A fourth (list, all-in) pair at a materially higher price would close this.",
+          "validationPlan": "Falsifier stated before the next measurement (ops#76): if a fourth resale observation fails to invert to a whole dollar at 21.00%, the rate is not exactly 0.21 and the three-point agreement was sellers choosing round ALL-IN prices rather than round LIST prices. That is distinguishable - a round all-in price would already be a whole dollar BEFORE dividing, and none of the three observed all-in prices (102.85, 71.39, 64.13) are.",
+          "_privacy": "Isolated (list, all-in) pairs only, no game, section, row or seat. Per CLAUDE.md rule 1 a (list, net) or (list, all-in) pair measures Ticketmaster's fee and says nothing about our seats; attaching the game would make it the forbidden statement about our listings. Same treatment as feeObservations, whose `game` field had to be stripped for exactly this reason. The two non-ours pairs are additionally just OTHER sellers' public resale rows already committed in data/resale/listings.jsonl - citing their price here discloses nothing new."
         },
         "buyerFeeObservations": [
           {
             "list": 85.0,
             "allInBuyerPrice": 102.85,
-            "impliedRate": 0.21
+            "impliedRate": 0.21,
+            "listSource": "directly known - our own listing"
+          },
+          {
+            "list": 59.0,
+            "allInBuyerPrice": 71.39,
+            "impliedRate": 0.21,
+            "listSource": "inferred - other seller's list price is not visible to us; 59.00 is the value that inverts the observed 71.39 all-in price to a whole dollar at 21%"
+          },
+          {
+            "list": 53.0,
+            "allInBuyerPrice": 64.13,
+            "impliedRate": 0.21,
+            "listSource": "inferred - other seller's list price is not visible to us; 53.00 is the value that inverts the observed 64.13 all-in price to a whole dollar at 21%"
           }
-        ]
+        ],
+        "primaryBuyerFeeRate": {
+          "value": 0.211,
+          "confidence": "measured_single_point",
+          "appliesTo": "PRIMARY (team-sold, face-value) inventory only - a data/resale/listings.jsonl row with listingType 'primary'. Distinct from buyerFeeRate above, which is resale-only; do not blend the two into one rate.",
+          "source": "One observation, 2026-09-07 (ops#76), gameId 2026010032 (PRESEASON): TM's own 'Standard Ticket' primary row in data/resale/listings.jsonl, all-in price 82.35. This does NOT invert to a whole dollar at the resale rate of 21.00% (82.35 / 1.21 = 68.06). The rate that lands it on a whole $68.00 is 82.35/68.00 - 1 = 0.211029..., rounded here to 0.2110 (one basis point, matching the precision the resale rate is stated at).",
+          "_whyItMatters": "Settles the claim in ops#76's title: primary inventory does NOT share the resale buyer fee - the same all-in price implies a measurably different rate (21.10% vs 21.00%). Anything that compares a primary all-in price against a resale all-in price as if one fee applied - e.g. reading how competitive our resale ask is against team-sold inventory - would be partly measuring a different fee structure rather than a market gap. See the hazard note in resale_store.py's module docstring.",
+          "openQuestion": "Single point, and the inference assumes the underlying face value is a round dollar amount - the same method used to validate the resale rate. If TM's actual primary face value is NOT a round dollar (e.g. dynamic pricing to the cent), this implied rate is meaningless and the true reason primary fails to invert at 21% could instead be that primary pricing has no round-dollar face value to begin with, not that the rate differs. A second primary observation at a different price would distinguish these - and per CLAUDE.md rule 4, do not average this into buyerFeeRate to manufacture one blended number; keep them separate until it is resolved either way.",
+          "buyerFeeObservations": [
+            {
+              "impliedFaceValue": 68.0,
+              "allInBuyerPrice": 82.35,
+              "impliedRate": 0.211,
+              "listSource": "inferred - TM does not separately display a primary face value here; 68.00 is the value that inverts the observed 82.35 all-in price to a whole dollar"
+            }
+          ]
+        }
       },
       "stubhub": {
         "label": "StubHub",
