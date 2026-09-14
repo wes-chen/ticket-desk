@@ -96,7 +96,22 @@
 #                                off, at the end of the season.
 #
 # A departure test has no peak and no window. Attrition retires about one game at a time,
-# never forms a bloc, and so never excuses anything at any point in the season.
+# so it never forms a bloc and never excuses anything at any point in the season.
+#
+# That sentence was FALSE as first written, and the correction is the interesting part.
+# Attrition retires one game per CALENDAR day, but the rule compares adjacent OBSERVATION
+# days - and this project has observation gaps by design; this very file exists to accept
+# them. Across a six-day outage about three games retire together, which clears
+# COVERAGE_DROP_MIN_GAMES, and a genuinely dead game departing in the same interval rode
+# along excused. Measured: a dead game caught with no floor was HIDDEN with one. Games
+# already played are now filtered out of the departure diff, which makes the claim true as
+# written rather than true-if-you-never-miss-a-day.
+#
+# THE SAFETY PROPERTY. A floor can only RELAX the per-game check, never tighten it, so it
+# cannot manufacture a finding that would not exist without it. Brute-forced over 60,000
+# random series: zero violations. That is the strongest guarantee this design offers, and
+# it is what makes a floor safe to add for a source you have reviewed - the failure mode
+# of getting one wrong is a missed finding, never a false alarm.
 #
 # WHAT IS STILL FATAL. Everything the check caught before, plus cases the level framing
 # missed. Measured on this store with three sustained days:

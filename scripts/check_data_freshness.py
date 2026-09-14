@@ -339,9 +339,26 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     # ordinary per-game rule applies, which is the default for every unfloored source.
     flap_exempt: dict[str, set] = {d: set() for d in days}
     if rolling and coverage_floor is not None:
+        # A game that has been PLAYED by `cur` left for the calendar's reasons, not the
+        # window's, and must not help make up a bloc.
+        #
+        # The prose in .freshness-accepted said attrition "never forms a bloc", which is
+        # true between adjacent CALENDAR days and false between adjacent OBSERVATION days
+        # - the only kind this loop sees. This project has observation gaps by design;
+        # .freshness-accepted exists to accept them and the real store already carries
+        # one. Across a six-day outage about three games retire naturally, that clears
+        # COVERAGE_DROP_MIN_GAMES, and any genuinely dead game departing in the same
+        # interval rides along excused. Measured before this filter: a dead game caught
+        # with no floor was HIDDEN with one.
+        #
+        # Filtering here rather than when building served_by_day, because a game already
+        # played is still legitimately present in the PREVIOUS day's served set - it is
+        # the departure that is uninteresting, not the observation.
+        game_day = {g["gameId"]: g["date"] for g in games}
         gone_together: set = set()
         for prev, cur in zip(days, days[1:]):
-            left = served_by_day[prev] - served_by_day[cur]
+            left = {g for g in served_by_day[prev] - served_by_day[cur]
+                    if game_day.get(g, cur) >= cur}
             back = served_by_day[cur] - served_by_day[prev]
             if len(back) >= COVERAGE_DROP_MIN_GAMES:
                 # THE WINDOW MOVED BACK. Whatever is still missing after a bloc returns is
@@ -922,6 +939,81 @@ def self_test() -> int:
     a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d[-1]),
                 rolling=True, coverage_floor=16)
     check(f"a departure of {n_edge - 1} games is NOT a group", holes(a), n_edge - 1)
+
+    # R1: A COLLECTION OUTAGE MUST NOT LET ATTRITION FORM A BLOC. Between adjacent
+    # CALENDAR days attrition retires about one game; between adjacent OBSERVATION days it
+    # retires as many as the gap is long, and this project has gaps by design - the real
+    # store carries one. Across a six-day outage three games retire, that clears
+    # COVERAGE_DROP_MIN_GAMES, and a genuinely dead game departing in the same interval
+    # rode along excused. Asserted against the unfloored control, so the test cannot drift.
+    spread = [{"gameId": i, "date": (date(2026, 9, 20) + timedelta(days=i * 3)).isoformat(),
+               "opponent": {"abbrev": "XXX"}} for i in range(24)]
+    obs = ["2026-09-25", "2026-09-28", "2026-10-01",   # then a six-day observation gap
+           "2026-10-10", "2026-10-13", "2026-10-16", "2026-10-19"]
+    r = []
+    for d in obs:
+        alive = [g["gameId"] for g in spread if g["date"] >= d]
+        r += rows([d], [g for g in alive if not (d >= "2026-10-10" and g == 20)])
+    floored = analyse(r, spread, date.fromisoformat(obs[-1]), rolling=True, coverage_floor=10)
+    control = analyse(r, spread, date.fromisoformat(obs[-1]), rolling=True)
+    check("an outage does not let attrition excuse a dead game",
+          holes(floored), holes(control))
+    check("...and the dead game is actually found", holes(control) > 0, True)
+
+    # N2: THE BLOC-RETURN BOUNDARY, at exactly COVERAGE_DROP_MIN_GAMES. The return test
+    # above uses a 13-game bloc, so the 3-vs-4 boundary never showed and a mutant moved it
+    # freely. A returning bloc of exactly the minimum must clear the excuse, which means
+    # the game that did NOT come back with it is then a hole.
+    n_edge = COVERAGE_DROP_MIN_GAMES
+    d8 = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(8)]
+    small_lo = hi[:-(n_edge + 1)]                 # a bloc of n_edge+1 leaves
+    back_min = hi[:-1]                            # n_edge of them return; game 28 does not
+    r = (rows(d8[:1], hi)
+         + sum([rows([x], small_lo) for x in d8[1:3]], [])
+         + sum([rows([x], back_min) for x in d8[3:]], []))
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d8[-1]),
+                rolling=True, coverage_floor=16)
+    check(f"a returning bloc of exactly {n_edge} clears the excuse", holes(a), 1)
+
+    # Rows with ok=False are a supported shape in market_store.py that no real store has
+    # produced yet. They must count as NOT SERVED - reading them as served would let a
+    # source that starts failing every fetch look like a bloc departure and then like
+    # nothing at all.
+    r = (rows(d8[:1], hi)
+         + sum([rows([x], hi, ok=False) for x in d8[1:]], []))
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d8[-1]),
+                rolling=True, coverage_floor=16)
+    check("failed rows are not served rows", a["okByDay"].get(d8[-1], 0), 0)
+
+    # THE SAFETY PROPERTY, and the strongest statement this design has: a floor can only
+    # ever RELAX the per-game check, never tighten it. So a floor cannot manufacture a
+    # finding that would not exist without it, whatever the series. Checked here on a
+    # handful of shapes and separately by brute force over 60,000 random series (0
+    # violations); kept cheap here because the suite is meant to stay offline and fast.
+    for shape in ([29] * 3 + [16] * 4, [29, 28, 27, 26, 25], [29] * 2 + [16] * 2 + [29] * 2,
+                  [20, 20, 19, 5, 5, 5], [29, 16, 29, 16, 29, 16]):
+        sd = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(len(shape))]
+        sr = sum([rows([sd[i]], list(range(n))) for i, n in enumerate(shape)], [])
+        sgs = games(44, "2026-11-01")
+        with_floor = analyse(sr, sgs, date.fromisoformat(sd[-1]), rolling=True,
+                             coverage_floor=16)
+        without = analyse(sr, sgs, date.fromisoformat(sd[-1]), rolling=True)
+        check(f"a floor never adds a hole finding ({shape[0]}..{shape[-1]})",
+              holes(with_floor) <= holes(without), True)
+
+    # TWO MUTANTS SURVIVE THIS SUITE ON PURPOSE, recorded so the next session does not
+    # hunt them as gaps:
+    #
+    #   flap_exempt[cur] -> flap_exempt[prev]  shifts the exemption one day earlier. It can
+    #     only lose an exemption on the final day, which adds at most 1 to a run and cannot
+    #     alone reach GAME_GAP_DAYS, so it is near-equivalent in the STRICTER direction.
+    #   served_by_day ignoring the `ok` flag    no store has ever produced an ok=False row
+    #     (0 of 352/352/180/152 across the four), so no fixture built from real data can
+    #     distinguish it. The row above pins the shape that matters - a failed fetch is not
+    #     a served game - without inventing a series that has never occurred.
+    #
+    # `continue` vs `run = 0` on an excused day is a third, and it is a true equivalence
+    # rather than a gap - see the comment at the per-game loop.
 
     # A sustained drop BELOW the floor must stay live past day two as well - that is the
     # collapse the whole check exists for, and it is the mirror of the bug above.

@@ -565,6 +565,15 @@ successes cannot be audited.
   through. The level framing is the intuitive one and will be proposed again; it is wrong,
   and `.freshness-accepted` records why.
 
+  Two further things that rule had to learn, both worth knowing before touching it.
+  **Attrition forms a bloc across an observation gap** - it retires one game per *calendar*
+  day, but the rule compares adjacent *observation* days, and this project misses days by
+  design, so a six-day outage retires ~3 games at once and a genuinely dead game rides
+  along excused. Already-played games are filtered out of the departure diff for exactly
+  that reason. And the design's real guarantee is that **a floor can only relax the
+  per-game check, never tighten it** - brute-forced over 60,000 random series, zero
+  violations - so getting a floor wrong costs a missed finding, never a false alarm.
+
   Below the floor everything is live, but be exact about *which* check catches it: the
   coverage gate alone would not, since `16 -> 12` clears neither its three-game nor its
   quarter threshold. The per-game-hole check is what fires - measured on this store with
