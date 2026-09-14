@@ -67,29 +67,52 @@
 # WHAT A FLOOR ACTUALLY EXEMPTS, stated precisely because the first version of this entry
 # overstated it and a reviewer had to measure the difference.
 #
-# A floor marks days whose coverage BOTH lands at or above it AND falls far enough from
-# this source's best day to clear the ordinary drop gate. On those days:
+# A floor excuses GAMES, not days. A bloc of at least COVERAGE_DROP_MIN_GAMES games that
+# leaves between two adjacent observation days, on a day whose coverage is still at or
+# above the floor, is the source's window moving. Those specific games stay excused until
+# they are served again - or until a bloc returns without them, which ends the excuse for
+# everything still missing. Nothing else is excused. On an excused day:
 #
 #   - a sustained coverage drop is a warning rather than fatal, however long it holds
-#   - absent games do not accumulate toward a per-game hole. THIS HALF IS LOAD-BEARING.
+#   - those games do not accumulate toward a per-game hole. THIS HALF IS LOAD-BEARING.
 #     Without it the floor lasted exactly one observation day: the coverage gate fires
 #     only on day two of a low run - its baseline is a sliding three-day lookback - and
 #     from day three the thirteen absent games tripped GAME_GAP_DAYS instead. Measured
 #     against this store before the fix: a 2-day low run gave 0 fatal findings and a
 #     3-day run gave 13, so a longer flap went red HARDER than a short one.
 #
-# It exempts any sustained level at or above 16, not only 16 itself. That is wider than
-# "this source's observed low mode" and is deliberate - the flap level decays with the
-# calendar as games are played, so a rule pinned to 16 exactly would stop matching within
-# a week. The cost is that a novel intermediate level, say a sustained 20, is exempted
-# too.
+# TWO EARLIER SHAPES OF THIS RULE WERE WRONG, both green-when-broken, and both keyed on a
+# LEVEL rather than on the departure. Recorded because the level framing is the intuitive
+# one and will be proposed again:
 #
-# WHAT IS STILL FATAL. Coverage below 16, and it is worth being exact about which check
-# catches it, because the coverage gate alone would not. A sustained 15 does NOT trip the
-# coverage gate from a base of 16 - that needs both three games lost and more than a
-# quarter, so 16 -> 12 was never fatal and is not fatal now. What catches it is the
-# per-game-hole check, which is live again below the floor. Measured on this store with
-# three sustained days: 15 -> 14 fatal findings, 12 -> 17, 11 -> 18, 5 -> 24.
+#   "below the series peak"      made every day after a source's best day excused, so one
+#                                game quietly dropping was hidden.
+#   "clears the drop gate        looks tighter and is not. The peak is a max over the whole
+#    against the peak"           series and never decays, so a single 39-game day excused
+#                                every later 29-game day for the rest of the season. And
+#                                with peak 29 and floor 16 the excused levels are 16..21,
+#                                which late-season attrition MUST walk through - about
+#                                twelve consecutive days with per-game detection silently
+#                                off, at the end of the season.
+#
+# A departure test has no peak and no window. Attrition retires about one game at a time,
+# never forms a bloc, and so never excuses anything at any point in the season.
+#
+# WHAT IS STILL FATAL. Everything the check caught before, plus cases the level framing
+# missed. Measured on this store with three sustained days:
+#
+#   collapse straight from 29:   to 15 -> 14 fatal findings, 12 -> 17, 11 -> 18, 5 -> 24
+#   further collapse from the    to 15 ->  1 fatal finding,  12 ->  4, 11 ->  5, 5 -> 11
+#     already-excused 16:
+#
+# The second row is smaller ON PURPOSE and the asymmetry is the design, not a weakness:
+# the thirteen games that left at an accepted level stay explained, so what is reported is
+# what is NEWLY unexplained. Note the coverage gate alone would catch none of the second
+# row - 16 -> 12 clears neither its three-game nor its quarter threshold. The per-game
+# check is what fires.
+#
+# Also still fatal, and NOT caught by either level-keyed version: a game dropped while the
+# source sits inside its low mode, and a game that fails to return when its bloc does.
 #
 # WHAT THIS DOES NOT ESTABLISH. Why the source flaps. One run cannot separate a cache
 # behind TicketNetwork's CDN from a genuine window change, and nothing here is evidence
@@ -104,6 +127,15 @@
 # high-water-mark rule - "has this source returned to 29 within the last N days?" - would
 # distinguish a flap from a permanent step, which is the one capability accepting the
 # level gives up. It was rejected because N is a duration threshold wearing different
-# clothes, and the duration is the quantity this series cannot support. Revisit it once
-# there are enough closed runs to fit N against; that needs weeks, not days.
+# clothes, and the duration is the quantity this series cannot support.
+#
+# One qualification on that rejection, from review, because it softens the revisit bar:
+# the two N's are not equally fragile. COVERAGE_DROP_PERSIST_DAYS must EXCEED the longest
+# flap run, and its false positives are frequent and expensive - a red run on healthy data
+# roughly every other day. A high-water-mark N must exceed the longest gap between high
+# days, its false positives fall off as N grows, and the only cost of a generous N is
+# detection latency on something that is not urgent: a permanent step on a supplementary
+# source is not a data emergency. So N need only be BOUNDED generously, not fitted - three
+# weeks would do. Revisit when there are enough closed runs to bound it; that needs weeks,
+# not days, and do not re-reject it on the equivalence argument alone.
 coverage ticketnetwork 16

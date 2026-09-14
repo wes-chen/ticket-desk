@@ -545,24 +545,37 @@ successes cannot be audited.
 
   The fix is a reviewed **coverage floor**, recorded per source in `.freshness-accepted`
   as `coverage ticketnetwork 16`, and it has **two halves - the second is the load-bearing
-  one**. On a day inside the accepted band, a sustained coverage drop is a warning however
-  long it holds, *and* absent games do not accumulate toward a per-game hole. Shipping
-  only the first half made the floor last exactly one observation day: the coverage gate
-  fires only on day two of a low run, because its baseline is a sliding three-day lookback,
-  and from day three the thirteen absent games tripped `GAME_GAP_DAYS` instead. Measured
+  one**. A sustained coverage drop to at or above the floor is a warning however long it
+  holds, *and* the games that left do not accumulate toward a per-game hole. Shipping only
+  the first half made the floor last exactly one observation day: the coverage gate fires
+  only on day two of a low run, because its baseline is a sliding three-day lookback, and
+  from day three the thirteen absent games tripped `GAME_GAP_DAYS` instead. Measured
   before the fix - **a 2-day low run gave 0 fatal findings and a 3-day run gave 13**, so a
   longer flap went red harder than a short one. If you touch this, test at 3 and 5 days,
   not just 2.
 
-  Below the floor everything is live again, but be exact about *which* check catches it:
-  the coverage gate alone would not, since `16 -> 12` clears neither its three-game nor
-  its quarter threshold. The per-game-hole check is what fires - measured on this store,
-  a sustained 15 gives 14 fatal findings, 12 gives 17, 5 gives 24. The honest cost,
-  stated in that file: this check can no longer distinguish the flap from a permanent step
-  down to 16, and a high-water-mark rule that could was rejected because it reintroduces
-  the duration threshold this series cannot support. Adding a floor for another source is
-  a judgement about that source - review it on its own series, do not generalise from
-  this one.
+  **The floor excuses GAMES, not days, and that distinction is the whole fix.** A bloc of
+  at least `COVERAGE_DROP_MIN_GAMES` leaving between two adjacent observation days at a
+  level still above the floor is the window moving; those games stay excused until they
+  are served again, or until a bloc returns without them. Two earlier versions keyed on a
+  *level* instead and were both green-when-broken: "below the series peak" excused every
+  day after a source's best day, and "clears the drop gate against the peak" excused every
+  later 29-day after a single 39-day, because the peak is an all-time max that never
+  decays - and it put levels 16..21 in-band, which late-season attrition *must* walk
+  through. The level framing is the intuitive one and will be proposed again; it is wrong,
+  and `.freshness-accepted` records why.
+
+  Below the floor everything is live, but be exact about *which* check catches it: the
+  coverage gate alone would not, since `16 -> 12` clears neither its three-game nor its
+  quarter threshold. The per-game-hole check is what fires - measured on this store with
+  three sustained days, a collapse straight from 29 gives 14 fatal findings at 15, 17 at
+  12 and 24 at 5; a *further* collapse from the already-excused 16 gives 1, 4 and 11,
+  smaller on purpose because the thirteen games that left at an accepted level stay
+  explained. The honest cost, stated in that file: this check can no longer distinguish
+  the flap from a permanent step down to 16. A high-water-mark rule that could was
+  deferred rather than dismissed - see the file for why its N is a *bounding* problem
+  rather than a fitting one. Adding a floor for another source is a judgement about that
+  source - review it on its own series, do not generalise from this one.
 
   **The check that nearly settled it backwards.** ops#56 shipped this one-liner for
   Wesley to run:
