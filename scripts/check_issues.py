@@ -153,6 +153,81 @@ BODY_CONTRACTS: dict[str, list[tuple[str, str]]] = {
 # it - which in practice is an agent that died mid-run and left the ticket locked.
 CLAIM = re.compile(r"\*\*Claiming\b", re.I)
 
+# ops#144. A comment that EXISTS and CONTAINS A MARKER is not the same thing as a
+# comment that SAYS something - 15 comments were posted as the literal string `@19.md`
+# etc. (the difference between `gh --body @file`, which posts that string verbatim, and
+# `--body-file`, which reads the file) and every existing check here passed them clean,
+# because has_resolution(), CLAIM, and the CONTRACTS markers all ask "does the marker
+# appear", never "is there anything after it". Two `claimed` labels came off real issues
+# citing reconciliations that were never actually written.
+#
+# Three independent shapes, each measured against this tracker's live comments (374,
+# issues AND pull requests) before shipping - see trivial_comment()'s docstring for the
+# counts. Not keyword-sniffing: same reasoning as has_resolution() above, an exact,
+# checkable shape rather than a guess at whether prose "sounds" substantive.
+AT_FILE_BODY = re.compile(r"^@[\w./-]+$")
+
+# A bolded marker with nothing after it but whitespace or light punctuation - asserts a
+# fact while recording none of it. Deliberately excludes the case actually seen in the
+# wild (marker + a full sentence of real content, e.g. "**Claiming** - pm-session-01,
+# building the validator...") - only the bare marker itself is trivial.
+#
+# THE GAP BETWEEN THE MARKER WORD AND THE CLOSING `**` MUST BE PUNCTUATION-ONLY, not
+# "anything that isn't a literal asterisk". A first version used `[^*\n]*` there, which
+# is almost everything - it matched "**Closing - shipped in PR #3, reviewed and
+# merged**" and misread a complete, CLAUDE.md-format resolution as a bare marker. Found
+# in review before it ever fired live, but it was aimed squarely at the exact format
+# this file exists to enforce, so it would have eventually. Restricting that gap to the
+# same whitespace/punctuation class as the trailing tail is what makes "**Closing -**"
+# flag while "**Closing - superseded by #77**" does not: the moment a letter or digit
+# appears, the class can't consume it and the match fails.
+TRIVIAL_MARKER_ONLY = re.compile(
+    r"^[ \t>]*\*\*(?:Closing|Claiming|Finding|Decision|Input accepted|Cause|Guard|"
+    r"Recorded in)\b[ \t\-—:.,]*\*\*[ \t\-—:.,]*$", re.I)
+
+# Tuned DOWN from the obvious instinct (a real sentence should be at least N words),
+# specifically because the live tracker has a genuine, legitimate 10-character comment
+# ("installed!"). Any floor above 9 would have flagged it - the exact cry-wolf failure
+# this file's own module docstring warns about, and the reason ops#144 says a noisy rule
+# ships nothing but the `^@file$` shape. At 10, measured 0 false positives across all
+# 374 real comments on this tracker (issues and PRs) - see the PR description for the
+# count. Still catches a bare "ok", "done.", or a short `@x.md` stub.
+TRIVIAL_LENGTH_FLOOR = 10
+
+
+def trivial_comment(body: str | None) -> str | None:
+    """Return a short reason if a comment body says nothing, else None. Pure."""
+    b = (body or "").strip()
+    if AT_FILE_BODY.match(b):
+        return ("is the literal `@file` shape - `gh --body` posts that string "
+                "verbatim; `--body-file` was what was meant")
+    if TRIVIAL_MARKER_ONLY.match(b):
+        return "is a bare marker with nothing after it - asserts a fact, records none"
+    if len(b) < TRIVIAL_LENGTH_FLOOR:
+        return f"is under {TRIVIAL_LENGTH_FLOOR} characters - says essentially nothing"
+    return None
+
+
+def comment_findings(comments: list[dict], pr_numbers: set[int]) -> list[tuple[str, str]]:
+    """Flag trivial comments across BOTH issues and pull requests (ops#144).
+
+    Deliberately independent of classify(): that function collapses a whole issue's
+    comments into one blob and only ever sees non-PR issues, because fetch() filters
+    PRs out before classify() runs at all. A stub comment is a property of ONE comment
+    and must be catchable on a PR too - 3 of the 15 damaged comments in ops#144 were on
+    PRs, and an issues-only version of this check would have caught 12 of 15 and called
+    it clean.
+    """
+    out = []
+    for c in comments:
+        reason = trivial_comment(c.get("body"))
+        if reason:
+            kind = "PR" if c["number"] in pr_numbers else "issue"
+            out.append(("flag", f"{kind} #{c['number']} comment {c['id']} says "
+                                f"nothing - {reason}"))
+    return out
+
+
 # ops#68. An issue that ESTABLISHES a value must say where the value landed. The audit
 # measured 5.2% of numeric values in marker-carrying issues living in an issue and nowhere
 # else - invisible the moment it closes. Both known losses have this shape: ops#13's cost
@@ -359,6 +434,43 @@ def classify(issue: dict, bodies: list[str],
     return out
 
 
+def _project(it: dict) -> dict:
+    """Trim one raw REST issue/PR object to the fields classify() needs."""
+    return {
+        "number": it["number"],
+        "title": it.get("title"),
+        "state": it["state"],
+        "body": it.get("body"),
+        "labels": [l["name"] for l in it.get("labels", [])],
+        "comments": it.get("comments", 0),
+    }
+
+
+def parse_items(raw_items: list[dict]) -> list[dict]:
+    """Filter pull requests out of a full issues+PRs listing and project the rest.
+
+    Pure - fetch() does the network calls and the tracker-total assertion below; this is
+    what the self-test drives directly with a captured >100-item fixture, without
+    touching gh. See ops#138: the REST issues endpoint returns issues AND pull requests
+    together, and the bug this fixes was reading only one un-paginated page of that
+    combined list before ever getting to this filter.
+    """
+    return [_project(it) for it in raw_items if "pull_request" not in it]
+
+
+def check_total(read: int, real_total: int) -> None:
+    """Fail loudly if what fetch() read disagrees with an independent count of the
+    tracker's actual issue total (ops#138). A silent mismatch is exactly how the
+    original bug read as clean: `71 issues (19 open)` with no sign anything was cut off.
+    Kept separate from fetch() so the self-test can drive it without a network call.
+    """
+    if read != real_total:
+        raise RuntimeError(
+            f"read {read} issues but the tracker's search API reports {real_total} - "
+            f"refusing to audit a partial view (fetch may be truncating again, or the "
+            f"count changed mid-run)")
+
+
 def fetch(repo: str, limit: int) -> list[dict]:
     def gh(*args: str) -> str:
         r = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=120)
@@ -366,10 +478,24 @@ def fetch(repo: str, limit: int) -> list[dict]:
             raise RuntimeError(r.stderr.strip()[:300])
         return r.stdout
 
-    raw = gh("api", f"repos/{repo}/issues?state=all&per_page={limit}",
-             "--jq", '[.[] | select(has("pull_request")|not) | '
-                     '{number, title, state, body, labels: [.labels[].name], comments}]')
-    issues = json.loads(raw)
+    # --paginate with NO --jq: gh's documented behaviour is to concatenate successive
+    # JSON-array pages into one array before we ever see it, so json.loads() below gets
+    # everything regardless of tracker size. The original bug came from pairing --jq
+    # with a bare per_page=100 request and no --paginate at all, which reads exactly one
+    # page - applying --jq to a --paginate call instead prints one filtered array PER
+    # PAGE rather than merging them, which is a different footgun, so the PR/projection
+    # filtering happens here in Python on the already-merged raw list instead.
+    raw = gh("api", f"repos/{repo}/issues?state=all&per_page={limit}", "--paginate")
+    issues = parse_items(json.loads(raw))
+
+    # Independent cross-check: the search API's total_count for `is:issue` counts non-PR
+    # issues directly, without needing pagination itself, so it is not subject to the
+    # same failure mode as the listing call above.
+    real_total = int(gh("api", f"search/issues?q=repo:{repo}+is:issue",
+                        "--jq", ".total_count").strip())
+    check_total(len(issues), real_total)
+    print(f"read {len(issues)} issues (tracker's search API confirms {real_total})")
+
     out = []
     for it in issues:
         bodies: list[str] = []
@@ -381,11 +507,41 @@ def fetch(repo: str, limit: int) -> list[dict]:
     return out
 
 
+def fetch_pr_numbers(repo: str) -> set[int]:
+    """All pull request numbers, open or closed - so comment_findings() can tell a PR
+    comment from an issue comment. A dedicated endpoint, not the issues+PRs listing in
+    fetch(), so this stays correct even if that call's shape changes.
+    """
+    r = subprocess.run(["gh", "api", f"repos/{repo}/pulls?state=all&per_page=100",
+                        "--paginate"], capture_output=True, text=True, timeout=120)
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr.strip()[:300])
+    return {p["number"] for p in json.loads(r.stdout)}
+
+
+def fetch_all_comments(repo: str) -> list[dict]:
+    """Every comment in the repo, issues and pull requests alike (ops#144) - the REST
+    comments endpoint stores both under `issues/comments`. Trimmed to what
+    comment_findings() needs.
+    """
+    r = subprocess.run(["gh", "api", f"repos/{repo}/issues/comments?per_page=100",
+                        "--paginate"], capture_output=True, text=True, timeout=120)
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr.strip()[:300])
+    out = []
+    for c in json.loads(r.stdout):
+        out.append({"id": c["id"], "number": int(c["issue_url"].rsplit("/", 1)[-1]),
+                    "body": c.get("body")})
+    return out
+
+
 def run(strict: bool, limit: int) -> int:
     repo = tracker()
     print(f"auditing {repo}")
     try:
         pairs = fetch(repo, limit)
+        all_comments = fetch_all_comments(repo)
+        pr_numbers = fetch_pr_numbers(repo)
     except Exception as e:  # noqa: BLE001
         print(f"could not reach the tracker: {e}", file=sys.stderr)
         print("SKIPPED - this check needs network and gh auth.", file=sys.stderr)
@@ -395,6 +551,8 @@ def run(strict: bool, limit: int) -> int:
     for issue, bodies in pairs:
         for level, msg in classify(issue, bodies, now=dt.datetime.now(dt.timezone.utc)):
             (flags if level == "flag" else notes).append(msg)
+    for level, msg in comment_findings(all_comments, pr_numbers):
+        (flags if level == "flag" else notes).append(msg)
 
     n_open = sum(1 for i, _ in pairs if i["state"].lower() == "open")
     print(f"{len(pairs)} issues ({n_open} open)")
@@ -682,6 +840,97 @@ def self_test() -> int:
     # wrong repo, and this repo's issues are disabled.
     t = tracker()
     check("tracker is the ops repo", t.endswith("-ops"), True)
+
+    # ---- ops#138: the >100-item page must not get silently truncated ----
+    # A real captured shape (field names confirmed against a live tracker response on
+    # 2026-09-13) but synthetic, absurd content - the ops tracker is private and
+    # personal values are allowed THERE (CLAUDE.md), so copying real bodies into this
+    # public repo's fixtures would be exactly the leak CLAUDE.md section 1 forbids.
+    fixture = json.loads((ROOT / "tests" / "fixtures" / "ops_issues_page.json").read_text())
+    check("fixture actually exceeds one page", len(fixture) > 100, True)
+    n_prs = sum(1 for it in fixture if "pull_request" in it)
+    check("fixture mixes in real PRs", n_prs > 0, True)
+
+    parsed = parse_items(fixture)
+    want_issues = len(fixture) - n_prs
+    check("parse_items keeps every non-PR issue across a >100-item page",
+          len(parsed), want_issues)
+    check("parse_items drops every PR",
+          all("pull_request" not in p for p in parsed), True)
+    check("parse_items projects the fields classify() needs",
+          set(parsed[0]) if parsed else set(),
+          {"number", "title", "state", "body", "labels", "comments"})
+
+    # The independent-total assertion: agree -> silent; disagree -> loud, not a quiet
+    # truncation. This is the actual regression guard - a future change that reintroduces
+    # a single-page read would make `len(issues)` disagree with the real total and this
+    # must raise, never just print something plausible.
+    check_total(want_issues, want_issues)  # agrees: must not raise
+    threw = False
+    try:
+        check_total(want_issues - 23, want_issues)  # the ops#138 shape: 23 short
+    except RuntimeError:
+        threw = True
+    check("a truncated read against the real total raises loudly", threw, True)
+
+    # ---- ops#144: a comment that says nothing must not pass as a resolution ----
+    check("the exact @file shape flags",
+          trivial_comment("@19.md") is not None, True)
+    check("a longer @path shape still flags",
+          trivial_comment("@validation_report.md") is not None, True)
+    check("a bare marker with nothing after it flags",
+          trivial_comment("**Claiming**") is not None, True)
+    check("a bare marker with only a dash after it still flags",
+          trivial_comment("**Closing** -") is not None, True)
+    check("a bare marker with punctuation INSIDE the bold still flags",
+          trivial_comment("**Closing -**") is not None, True)
+    check("a bare Finding marker flags",
+          trivial_comment("**Finding**") is not None, True)
+    check("a marker WITH real content after it does not flag",
+          trivial_comment("**Claiming** - pm-session-01, building the validator, "
+                          "horizon 2026-09-09") is None, True)
+    # A regression found in review before it ever fired live: a first version of
+    # TRIVIAL_MARKER_ONLY let the gap between the marker word and the closing `**`
+    # swallow anything that wasn't a literal asterisk, so it misread a complete,
+    # CLAUDE.md-format closing comment as a bare marker. Both a short and a long `why`
+    # must survive - the rule must never cry wolf on the exact convention it enforces.
+    check("a SHORT why inside the bold does not flag",
+          trivial_comment("**Closing - superseded by #77**") is None, True)
+    check("a LONG why inside the bold does not flag",
+          trivial_comment("**Closing - shipped in PR #3, reviewed and merged**")
+          is None, True)
+    check("a short why outside the bold does not flag",
+          trivial_comment("**Closing** - superseded by #77") is None, True)
+    # The exact case CLAUDE.md calls out: a short but real comment must not flag.
+    check("a legitimate short comment does not flag",
+          trivial_comment("Superseded by #77.") is None, True)
+    # The shortest REAL comment measured on the live tracker (2026-09-13, 374 comments
+    # across issues and PRs) - the length floor is tuned to sit just below it, not above.
+    check("the tracker's own shortest real comment does not flag",
+          trivial_comment("installed!") is None, True)
+    check("a normal multi-sentence comment does not flag",
+          trivial_comment("Looked into this - the fee is exactly 10% on every "
+                          "observed listing, so the ratio holds.") is None, True)
+    check("an empty comment flags (falls through the length floor)",
+          trivial_comment("") is not None, True)
+    check("None body flags the same way",
+          trivial_comment(None) is not None, True)
+
+    # comment_findings() must cover PR comments, not just issue comments - the actual
+    # gap ops#144 names (3 of 15 damaged comments were on PRs).
+    stub_comments = [
+        {"id": 1, "number": 19, "body": "@19.md"},
+        {"id": 2, "number": 72, "body": "@72.md"},          # 72 is a PR below
+        {"id": 3, "number": 61, "body": "Superseded by #77."},
+    ]
+    findings = comment_findings(stub_comments, pr_numbers={72})
+    check("both the issue stub and the PR stub are flagged", len(findings), 2)
+    check("the PR comment is labelled as a PR, not an issue",
+          any(m.startswith("PR #72") for _, m in findings), True)
+    check("the issue comment is labelled as an issue",
+          any(m.startswith("issue #19") for _, m in findings), True)
+    check("the real comment is not flagged",
+          any("#61" in m for _, m in findings), False)
 
     for f in fails:
         print(f"  FAIL {f}", file=sys.stderr)
