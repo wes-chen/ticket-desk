@@ -514,9 +514,9 @@ successes cannot be audited.
   onward was collected by `github-actions[bot]` - the same runner, the same URL - and the
   joined counts are:
 
-  | 09-06 | 09-07 | 09-08 | 09-11 | 09-12 | 09-13 |
-  | --- | --- | --- | --- | --- | --- |
-  | 16 | 16 | **29** | **29** | **29** | 16 |
+  | 09-06 | 09-07 | 09-08 | 09-11 | 09-12 | 09-13 | 09-14 |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | 16 | 16 | **29** | **29** | **29** | 16 | 16 |
 
   The runner was served 29 on three separate days. So the variable is not the IP: the
   source alternates, and the 2x2 above sampled the residential cells on 29-days and the
@@ -527,12 +527,64 @@ successes cannot be audited.
   **Consequences.** There is no "correct baseline" of 16 to compare runner coverage
   against - that instruction would have made a future session dismiss a genuine regression
   as expected. A day-over-day coverage gate fires on roughly every other run here, so
-  `check_data_freshness.py` requires a drop to PERSIST for `COVERAGE_DROP_PERSIST_DAYS`
-  (2) observation days before it is fatal, and reports a single-day dip as a warning.
-  **Accepted, not fixed** still holds for the coverage itself: TickPick and Gametime both
-  cover 44/44, so this source is supplementary and a residential proxy is not worth the 13
-  games. Eighth instance in this project of the conclusion being wrong rather than the
-  thing measured - and the first where the fault was sample size rather than the tool.
+  `check_data_freshness.py` requires a drop to PERSIST before it is fatal, and reports a
+  single-day dip as a warning. **Accepted, not fixed** still holds for the coverage
+  itself: TickPick and Gametime both cover 44/44, so this source is supplementary and a
+  residential proxy is not worth the 13 games. Eighth instance in this project of the
+  conclusion being wrong rather than the thing measured - and the first where the fault
+  was sample size rather than the tool.
+
+  **Do not tune `COVERAGE_DROP_PERSIST_DAYS` against this series - it cannot carry the
+  weight.** That constant was set to 2 on 2026-09-13 as "the smallest window that
+  distinguishes a flap from a step", and the series in hand at that moment already refuted
+  it: the 09-06..09-07 low run is two days long and recovered. The collector went red on
+  2026-09-14 on exactly that shape (09-13, 09-14 both 16) - the false red was delayed by
+  one run, not removed. Note the run lengths are **one closed observation at 2 and one
+  still open at >= 2**, not two clean 2s; the level, by contrast, is measured on every
+  observation day. A duration threshold fitted to that is a guess wearing a number.
+
+  The fix is a reviewed **coverage floor**, recorded per source in `.freshness-accepted`
+  as `coverage ticketnetwork 16`, and it has **two halves - the second is the load-bearing
+  one**. A sustained coverage drop to at or above the floor is a warning however long it
+  holds, *and* the games that left do not accumulate toward a per-game hole. Shipping only
+  the first half made the floor last exactly one observation day: the coverage gate fires
+  only on day two of a low run, because its baseline is a sliding three-day lookback, and
+  from day three the thirteen absent games tripped `GAME_GAP_DAYS` instead. Measured
+  before the fix - **a 2-day low run gave 0 fatal findings and a 3-day run gave 13**, so a
+  longer flap went red harder than a short one. If you touch this, test at 3 and 5 days,
+  not just 2.
+
+  **The floor excuses GAMES, not days, and that distinction is the whole fix.** A bloc of
+  at least `COVERAGE_DROP_MIN_GAMES` leaving between two adjacent observation days at a
+  level still above the floor is the window moving; those games stay excused until they
+  are served again, or until a bloc returns without them. Two earlier versions keyed on a
+  *level* instead and were both green-when-broken: "below the series peak" excused every
+  day after a source's best day, and "clears the drop gate against the peak" excused every
+  later 29-day after a single 39-day, because the peak is an all-time max that never
+  decays - and it put levels 16..21 in-band, which late-season attrition *must* walk
+  through. The level framing is the intuitive one and will be proposed again; it is wrong,
+  and `.freshness-accepted` records why.
+
+  Two further things that rule had to learn, both worth knowing before touching it.
+  **Attrition forms a bloc across an observation gap** - it retires one game per *calendar*
+  day, but the rule compares adjacent *observation* days, and this project misses days by
+  design, so a six-day outage retires ~3 games at once and a genuinely dead game rides
+  along excused. Already-played games are filtered out of the departure diff for exactly
+  that reason. And the design's real guarantee is that **a floor can only relax the
+  per-game check, never tighten it** - brute-forced over 60,000 random series, zero
+  violations - so getting a floor wrong costs a missed finding, never a false alarm.
+
+  Below the floor everything is live, but be exact about *which* check catches it: the
+  coverage gate alone would not, since `16 -> 12` clears neither its three-game nor its
+  quarter threshold. The per-game-hole check is what fires - measured on this store with
+  three sustained days, a collapse straight from 29 gives 14 fatal findings at 15, 17 at
+  12 and 24 at 5; a *further* collapse from the already-excused 16 gives 1, 4 and 11,
+  smaller on purpose because the thirteen games that left at an accepted level stay
+  explained. The honest cost, stated in that file: this check can no longer distinguish
+  the flap from a permanent step down to 16. A high-water-mark rule that could was
+  deferred rather than dismissed - see the file for why its N is a *bounding* problem
+  rather than a fitting one. Adding a floor for another source is a judgement about that
+  source - review it on its own series, do not generalise from this one.
 
   **The check that nearly settled it backwards.** ops#56 shipped this one-liner for
   Wesley to run:
@@ -660,10 +712,11 @@ than appends; deterministic sort so a daily commit diffs cleanly; and a read tha
 size cap is an ERROR, never data - that last rule exists because this project has produced
 the same silent-truncation bug three times.
 
-`.freshness-accepted` records market-data outage days that have been reviewed and
-consciously accepted, one ISO date per line with the reason in a `#` comment. It is
-**committed**, unlike `.private-patterns`, because the run that needs it is the
-collector's own `--strict` run on the runner, which has no local state.
+`.freshness-accepted` records reviewed findings in two line forms - an outage day as a
+bare ISO date, and a flapping rolling source's accepted low coverage mode as `coverage
+<source> <n>` - with the reason in a `#` comment. It is **committed**, unlike
+`.private-patterns`, because the run that needs it is the collector's own `--strict` run
+on the runner, which has no local state.
 
 It exists because an unbackfillable hole is permanent in both directions: no source here
 has a historical price endpoint, so a missed day is gone - and a gate that fails on it

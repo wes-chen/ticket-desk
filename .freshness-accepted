@@ -1,8 +1,11 @@
 # Accepted market-data outage days.
 #
-# ISO dates whose absence from the market series has been reviewed and consciously
-# accepted. One date per line; everything after `#` is a comment and is the place to
-# record WHY.
+# Two line forms, both reviewed findings that have been consciously accepted:
+#
+#   2026-09-09                  an outage day whose data is unrecoverable
+#   coverage ticketnetwork 16   a low coverage mode a flapping rolling source returns to
+#
+# Everything after `#` is a comment and is the place to record WHY.
 #
 # The check still reports these - it just stops treating them as fatal. An accepted hole
 # stays visible rather than disappearing from the output, for the same reason
@@ -31,3 +34,123 @@
 # Accepted 2026-09-13 by Wesley: "i guess outages are somewhat expected from time to time".
 2026-09-09
 2026-09-10
+
+# ---------------------------------------------------------------------------
+# Accepted coverage floor: TicketNetwork, 16 games.
+#
+# WHAT IS ACCEPTED. This source alternates between serving 29 of 44 home games and 16,
+# on the same GitHub runner, for the same URL. The full series:
+#
+#   09-05: 29 (residential)  09-06: 16  09-07: 16  09-08: 29
+#   09-11: 29  09-12: 29  09-13: 16  09-14: 16
+#
+# The first low run is two days and CLOSED - 29 on both sides of it. The second is
+# 09-13..09-14, which is still OPEN at the time of writing, so it is at least two days and
+# its true length is unknown. Run length has therefore been measured ONCE at 2 and once at
+# >= 2; the level has been measured on all eight observation days. That asymmetry is the
+# whole argument below, so it is stated rather than rounded to "twice, both times 2".
+#
+# What it establishes is enough: COVERAGE_DROP_PERSIST_DAYS was set to 2 on 2026-09-13 as
+# "the smallest window that distinguishes a flap from a step", against a series that
+# ALREADY contained the closed two-day 09-06..09-07 run. The threshold was refuted by the
+# data in hand when it was written, and it went red on 2026-09-14 on the flap it was built
+# to tolerate.
+#
+# WHY A LEVEL RATHER THAN A LONGER DURATION. Raising the constant to 3 is the same
+# mistake with a bigger number - eight observation days cannot support a run-length
+# threshold, and a four-day flap would go red again.
+#
+# WHY IT IS ACCEPTABLE AT ALL. TickPick and Gametime both cover 44/44, so TicketNetwork is
+# supplementary - CLAUDE.md already records the coverage itself as accepted, not fixed. A
+# residential proxy is not worth the 13 games.
+#
+# WHAT A FLOOR ACTUALLY EXEMPTS, stated precisely because the first version of this entry
+# overstated it and a reviewer had to measure the difference.
+#
+# A floor excuses GAMES, not days. A bloc of at least COVERAGE_DROP_MIN_GAMES games that
+# leaves between two adjacent observation days, on a day whose coverage is still at or
+# above the floor, is the source's window moving. Those specific games stay excused until
+# they are served again - or until a bloc returns without them, which ends the excuse for
+# everything still missing. Nothing else is excused. On an excused day:
+#
+#   - a sustained coverage drop is a warning rather than fatal, however long it holds
+#   - those games do not accumulate toward a per-game hole. THIS HALF IS LOAD-BEARING.
+#     Without it the floor lasted exactly one observation day: the coverage gate fires
+#     only on day two of a low run - its baseline is a sliding three-day lookback - and
+#     from day three the thirteen absent games tripped GAME_GAP_DAYS instead. Measured
+#     against this store before the fix: a 2-day low run gave 0 fatal findings and a
+#     3-day run gave 13, so a longer flap went red HARDER than a short one.
+#
+# TWO EARLIER SHAPES OF THIS RULE WERE WRONG, both green-when-broken, and both keyed on a
+# LEVEL rather than on the departure. Recorded because the level framing is the intuitive
+# one and will be proposed again:
+#
+#   "below the series peak"      made every day after a source's best day excused, so one
+#                                game quietly dropping was hidden.
+#   "clears the drop gate        looks tighter and is not. The peak is a max over the whole
+#    against the peak"           series and never decays, so a single 39-game day excused
+#                                every later 29-game day for the rest of the season. And
+#                                with peak 29 and floor 16 the excused levels are 16..21,
+#                                which late-season attrition MUST walk through - about
+#                                twelve consecutive days with per-game detection silently
+#                                off, at the end of the season.
+#
+# A departure test has no peak and no window. Attrition retires about one game at a time,
+# so it never forms a bloc and never excuses anything at any point in the season.
+#
+# That sentence was FALSE as first written, and the correction is the interesting part.
+# Attrition retires one game per CALENDAR day, but the rule compares adjacent OBSERVATION
+# days - and this project has observation gaps by design; this very file exists to accept
+# them. Across a six-day outage about three games retire together, which clears
+# COVERAGE_DROP_MIN_GAMES, and a genuinely dead game departing in the same interval rode
+# along excused. Measured: a dead game caught with no floor was HIDDEN with one. Games
+# already played are now filtered out of the departure diff, which makes the claim true as
+# written rather than true-if-you-never-miss-a-day.
+#
+# THE SAFETY PROPERTY. A floor can only RELAX the per-game check, never tighten it, so it
+# cannot manufacture a finding that would not exist without it. Brute-forced over 60,000
+# random series: zero violations. That is the strongest guarantee this design offers, and
+# it is what makes a floor safe to add for a source you have reviewed - the failure mode
+# of getting one wrong is a missed finding, never a false alarm.
+#
+# WHAT IS STILL FATAL. Everything the check caught before, plus cases the level framing
+# missed. Measured on this store with three sustained days:
+#
+#   collapse straight from 29:   to 15 -> 14 fatal findings, 12 -> 17, 11 -> 18, 5 -> 24
+#   further collapse from the    to 15 ->  1 fatal finding,  12 ->  4, 11 ->  5, 5 -> 11
+#     already-excused 16:
+#
+# The second row is smaller ON PURPOSE and the asymmetry is the design, not a weakness:
+# the thirteen games that left at an accepted level stay explained, so what is reported is
+# what is NEWLY unexplained. Note the coverage gate alone would catch none of the second
+# row - 16 -> 12 clears neither its three-game nor its quarter threshold. The per-game
+# check is what fires.
+#
+# Also still fatal, and NOT caught by either level-keyed version: a game dropped while the
+# source sits inside its low mode, and a game that fails to return when its bloc does.
+#
+# WHAT THIS DOES NOT ESTABLISH. Why the source flaps. One run cannot separate a cache
+# behind TicketNetwork's CDN from a genuine window change, and nothing here is evidence
+# either way. If 16 ever becomes permanent this file will record it as accepted rather
+# than flag it, which is the honest cost of accepting the level: the flap and a permanent
+# step to 16 are indistinguishable to this check by construction.
+#
+# CONFIDENCE: measured, on 8 observation days for the level and 2 runs for the duration.
+# The level is what this entry rests on; the duration is explicitly NOT relied upon.
+#
+# THE ALTERNATIVE NOT TAKEN, so the next session does not have to rediscover it. A
+# high-water-mark rule - "has this source returned to 29 within the last N days?" - would
+# distinguish a flap from a permanent step, which is the one capability accepting the
+# level gives up. It was rejected because N is a duration threshold wearing different
+# clothes, and the duration is the quantity this series cannot support.
+#
+# One qualification on that rejection, from review, because it softens the revisit bar:
+# the two N's are not equally fragile. COVERAGE_DROP_PERSIST_DAYS must EXCEED the longest
+# flap run, and its false positives are frequent and expensive - a red run on healthy data
+# roughly every other day. A high-water-mark N must exceed the longest gap between high
+# days, its false positives fall off as N grows, and the only cost of a generous N is
+# detection latency on something that is not urgent: a permanent step on a supplementary
+# source is not a data emergency. So N need only be BOUNDED generously, not fitted - three
+# weeks would do. Revisit when there are enough closed runs to bound it; that needs weeks,
+# not days, and do not re-reject it on the equivalence argument alone.
+coverage ticketnetwork 16

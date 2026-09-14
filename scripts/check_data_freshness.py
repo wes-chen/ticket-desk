@@ -122,25 +122,54 @@ COVERAGE_DROP_PERSIST_DAYS = 2
 ACCEPTED_GAPS_FILE = ROOT / ".freshness-accepted"
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# `coverage <source> <n>` - a reviewed low mode for a FLAPPING rolling source. See
+# load_accepted() and the COVERAGE FLOOR block in analyse() for what it does and does not
+# exempt.
+FLOOR_RE = re.compile(r"^coverage\s+([a-z0-9_]+)\s+(\d+)$")
 
 
-def load_accepted(path: pathlib.Path | None = None) -> set[str]:
-    """Accepted outage dates, one ISO date per line; `#` comments carry the reason."""
+def load_accepted(path: pathlib.Path | None = None) -> tuple[set[str], dict[str, int]]:
+    """Reviewed findings: accepted outage dates, and accepted coverage floors.
+
+    Two line forms, because two different things get consciously accepted here and both
+    have the same failure mode if they cannot be - a gate that is red forever for a reason
+    no future run can fix:
+
+        2026-09-09                 an outage day whose data is unrecoverable
+        coverage ticketnetwork 16  a low mode this source is known to flap into
+
+    Everything after `#` is a comment and is the place to record WHY. Returns
+    (dates, floors) rather than a bare set; callers want them separately.
+    """
     path = path or ACCEPTED_GAPS_FILE
     if not path.exists():
-        return set()
-    out = set()
+        return set(), {}
+    days: set[str] = set()
+    floors: dict[str, int] = {}
     for ln in path.read_text().splitlines():
         ln = ln.split("#", 1)[0].strip()
         if not ln:
             continue
-        if not DATE_RE.match(ln):
-            # Loud rather than silent: a typo here would quietly un-accept a gap and turn
-            # the gate red again for a reason nobody could find.
-            print(f"  ignoring unparseable line in {path.name}: {ln!r}", file=sys.stderr)
+        if DATE_RE.match(ln):
+            days.add(ln)
             continue
-        out.add(ln)
-    return out
+        m = FLOOR_RE.match(ln)
+        if m:
+            n = int(m.group(2))
+            if n <= 0:
+                # A floor of 0 exempts every level there is, which does not read as
+                # "disable this check" to anyone skimming the file - it reads as a
+                # reviewed value. Refuse it rather than accept the most dangerous input
+                # the format allows.
+                print(f"  ignoring non-positive coverage floor in {path.name}: {ln!r}",
+                      file=sys.stderr)
+                continue
+            floors[m.group(1)] = n
+            continue
+        # Loud rather than silent: a typo here would quietly un-accept a gap and turn
+        # the gate red again for a reason nobody could find.
+        print(f"  ignoring unparseable line in {path.name}: {ln!r}", file=sys.stderr)
+    return days, floors
 
 
 def load(path: pathlib.Path) -> list[dict]:
@@ -181,7 +210,8 @@ def workflow_text() -> dict[str, str]:
 
 
 def analyse(rows: list[dict], games: list[dict], today: date,
-            rolling: bool = False, accepted: set[str] | None = None) -> dict:
+            rolling: bool = False, accepted: set[str] | None = None,
+            coverage_floor: int | None = None) -> dict:
     accepted = accepted or set()
     days = sorted({r["observedDate"] for r in rows})
     ok_by_day = collections.Counter()
@@ -199,7 +229,8 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         # newly added source - which is exactly when it would fire.
         return {"days": [], "findings": [("fatal", "the market store is empty")],
                 "staleDays": None, "okByDay": {}, "totByDay": {},
-                "horizon": None, "beyondHorizon": [], "acceptedGaps": []}
+                "horizon": None, "beyondHorizon": [], "acceptedGaps": [],
+                "acceptedFloor": None, "flapExemptGames": 0, "flapExemptDays": 0}
 
     last = date.fromisoformat(days[-1])
     stale = (today - last).days
@@ -266,6 +297,112 @@ def analyse(rows: list[dict], games: list[dict], today: date,
                                   f"{[g['date'] for g in never][:5]}. The event map may be "
                                   f"stale - re-run --resolve."))
 
+    # How far a rolling source's coverage may fall before it is a fault rather than the
+    # calendar. Defined here rather than at the coverage block below because the accepted
+    # low mode is expressed in terms of it - one predicate, so the two cannot drift apart.
+    def dropped(base: int, n: int) -> bool:
+        lost = base - n
+        return bool(base) and lost >= COVERAGE_DROP_MIN_GAMES and lost / base > COVERAGE_DROP
+
+    # ACCEPTED LOW MODE: which games are absent because this source's WINDOW MOVED, as
+    # opposed to because the source stopped serving them. See the COVERAGE FLOOR block
+    # below for what a floor is and why it is a level rather than a duration.
+    #
+    # Tracked per GAME and per DAY, by watching for GROUP DEPARTURES: games that leave
+    # together, between two adjacent observation days, in a bloc of at least
+    # COVERAGE_DROP_MIN_GAMES, on a day whose coverage is still at or above the reviewed
+    # floor. Those games stay exempt until they come back, and nothing else is exempt.
+    #
+    # TWO EARLIER VERSIONS OF THIS WERE WRONG IN THE SAME DIRECTION - green when broken -
+    # and both were anchored on a level rather than on the departure:
+    #
+    #   "below the series peak"        made every day after a source's best day count as
+    #                                  low mode, so one game quietly dropping was hidden
+    #   "clears dropped() vs the peak" looks tighter and is not. ok_by_day accumulates over
+    #                                  the WHOLE series, so max() never decays: one 39-game
+    #                                  day made every later 29-game day in-band for the rest
+    #                                  of the season. Worse, with peak 29 and floor 16 the
+    #                                  in-band levels are 16..21, and late-season attrition
+    #                                  MUST walk through them - roughly twelve consecutive
+    #                                  days with per-game detection silently off, at the end
+    #                                  of the season, which is the worst time to be wrong.
+    #
+    # A departure test has no peak, no window and no new constant, and it is the thing
+    # actually being distinguished: thirteen games leaving at once is a window move, one
+    # game leaving alone is a hole - at any coverage level, early or late in the season.
+    served_by_day: dict[str, set] = {d: set() for d in days}
+    # Every game the collector ATTEMPTED that day, successful or not. A row that exists but
+    # failed is evidence the game is still in the source's window - the collector knew to
+    # ask for it - so it is NOT a departure. Without this a bloc of failed fetches would
+    # read as the window moving and be excused, which is precisely the collector failure
+    # the per-game check exists to surface. No store has produced an ok=False row yet
+    # (0 of 352/352/180/152 across the four), so this is the shape being defined before it
+    # occurs rather than after.
+    attempted_by_day: dict[str, set] = {d: set() for d in days}
+    for r in rows:
+        attempted_by_day[r["observedDate"]].add(r["gameId"])
+        if r.get("ok") and r.get("low") is not None:
+            served_by_day[r["observedDate"]].add(r["gameId"])
+
+    # gameId -> the days on which its absence is excused. Absent from this map means the
+    # ordinary per-game rule applies, which is the default for every unfloored source.
+    flap_exempt: dict[str, set] = {d: set() for d in days}
+    if rolling and coverage_floor is not None:
+        # A game that has been PLAYED by `cur` left for the calendar's reasons, not the
+        # window's, and must not help make up a bloc.
+        #
+        # The prose in .freshness-accepted said attrition "never forms a bloc", which is
+        # true between adjacent CALENDAR days and false between adjacent OBSERVATION days
+        # - the only kind this loop sees. This project has observation gaps by design;
+        # .freshness-accepted exists to accept them and the real store already carries
+        # one. Across a six-day outage about three games retire naturally, that clears
+        # COVERAGE_DROP_MIN_GAMES, and any genuinely dead game departing in the same
+        # interval rides along excused. Measured before this filter: a dead game caught
+        # with no floor was HIDDEN with one.
+        #
+        # Filtering here rather than when building served_by_day, because a game already
+        # played is still legitimately present in the PREVIOUS day's served set - it is
+        # the departure that is uninteresting, not the observation.
+        #
+        # An id in the store but NOT in the schedule is excluded too, and the default
+        # matters: `game_day.get(g, cur) >= cur` is True for an unknown id, so orphans
+        # COUNTED TOWARD A BLOC. Orphans appear whenever schedule.json changes under an
+        # append-only store - a rescheduled or cancelled game, a re-resolve. Measured: five
+        # orphans leaving together excused a real game dying in the same interval, hiding a
+        # finding the unfloored check reported. Excluding them is safe in the other
+        # direction too, since the per-game loop iterates the SCHEDULE - an orphan could
+        # never be reported as a hole anyway, so this only ever shrinks a bloc.
+        game_day = {g["gameId"]: g["date"] for g in games}
+        gone_together: set = set()
+        for prev, cur in zip(days, days[1:]):
+            left = {g for g in served_by_day[prev] - attempted_by_day[cur]
+                    if g in game_day and game_day[g] >= cur}
+            back = served_by_day[cur] - served_by_day[prev]
+            if len(back) >= COVERAGE_DROP_MIN_GAMES:
+                # THE WINDOW MOVED BACK. Whatever is still missing after a bloc returns is
+                # no longer explained by the window - it is a game this source declined to
+                # bring back with its peers, which is exactly a per-game hole. Without
+                # this, a flap-dropped game that never returned stayed excused forever,
+                # even once the source was visibly serving its full set again.
+                gone_together = set()
+            if len(left) >= COVERAGE_DROP_MIN_GAMES and ok_by_day[cur] >= coverage_floor:
+                gone_together |= left
+            # A game being served again is no longer explained by the window, and its next
+            # absence starts accumulating from scratch.
+            #
+            # KNOWN ASYMMETRY, deliberate for now: this says `served`, while the departure
+            # diff above says `attempted`. By the semantics adopted there, a game that
+            # reappears as an ok=False row IS back in the window, so its excuse premise is
+            # void - but here it stays excused until a SUCCESSFUL fetch. A re-listed game
+            # that consistently fails to parse would stay hidden unless three others return
+            # successfully and clear the set. Unreachable today: no store has produced an
+            # ok=False row. Switching this to attempted_by_day would be consistent and
+            # strictly safer; it is left for whoever next touches this block rather than
+            # slipped in unreviewed. See the follow-up issue on the tracker.
+            gone_together -= served_by_day[cur]
+            flap_exempt[cur] = set(gone_together)
+    floor_applied = coverage_floor if any(flap_exempt.values()) else None
+
     for g in future:
         got = seen_per_game.get(g["gameId"])
         if not got:
@@ -274,8 +411,26 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         # series as a whole has data. Deliberately not trailing-only: a hole in the
         # middle is just as damaging to ops#8, and a trailing-only check on a short
         # series is indistinguishable from "never priced", which is reported separately.
+        #
+        # A day on which THIS GAME left as part of a group departure is NEUTRAL here - it
+        # neither extends a run nor resets one. THIS IS THE HALF THE FIRST VERSION OF THE
+        # FLOOR MISSED, and it made the floor cosmetic: the coverage-drop gate below fires
+        # only on day two of a low run, because its baseline is a fixed three-day lookback
+        # that slides. From day three the coverage finding vanishes on its own - and these
+        # thirteen absent games trip GAME_GAP_DAYS instead, so a three-day flap went red
+        # HARDER than a two-day one, through a check the floor never touched. Verified
+        # against the real store: a 2-day low run gave 0 fatal findings, a 3-day run 13.
+        #
+        # `continue` rather than `run = 0` is deliberate but NOT load-bearing, and saying
+        # so is the point: a game is only ever exempt on days following one where it WAS
+        # served, so the run entering an exempt block is always zero and the two spellings
+        # cannot diverge. An earlier day-based version of this exemption did depend on the
+        # difference. No test distinguishes them here because none can - a mutation that
+        # swaps them survives the suite, and that is correct rather than a gap.
         run = worst = 0
         for d in days:
+            if g["gameId"] in flap_exempt[d]:
+                continue
             if d in got:
                 run = 0
             else:
@@ -307,23 +462,72 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     # has held for COVERAGE_DROP_PERSIST_DAYS observation days against the level
     # immediately before it; a single-day dip is reported as a warning instead, which
     # keeps it visible without going red on a flap.
-    def dropped(base: int, n: int) -> bool:
-        lost = base - n
-        return bool(base) and lost >= COVERAGE_DROP_MIN_GAMES and lost / base > COVERAGE_DROP
+    # COVERAGE FLOOR, added 2026-09-14, after the persistence gate above went red on the
+    # behaviour it was built to tolerate.
+    #
+    # Persistence was set to 2 days on 2026-09-13 as "the smallest window that
+    # distinguishes a flap from a step". The series in hand at that moment already
+    # refuted it: 09-06 and 09-07 were BOTH 16, and 09-08 came back to 29. The longest
+    # observed low run was two days, so a two-day gate cannot separate this source's flap
+    # from a step - it just delays the false red by one run, which is what it did on
+    # 09-14 (09-13: 16, 09-14: 16, fatal).
+    #
+    # Raising the constant to 3 would be the same mistake with a bigger number: eight
+    # observation days cannot support a run-length threshold, and the next four-day flap
+    # would go red again. So the accepted LEVEL is recorded instead of a guessed duration.
+    # A drop that lands at or above a source's reviewed floor stays a warning however long
+    # it holds; below the floor, the persistence rule applies unchanged.
+    #
+    # What this does NOT exempt, deliberately:
+    #   - any level below the floor - there the gate is unchanged, though "unchanged" is
+    #     weaker than it sounds and is spelled out in .freshness-accepted rather than
+    #     asserted here: dropped() still needs BOTH >= COVERAGE_DROP_MIN_GAMES games lost
+    #     AND more than COVERAGE_DROP of the base, so 16 -> 12 was never fatal and is not
+    #     fatal now. The floor did not create that hole; claiming it closed one would.
+    #   - any other source - floors are per-source and must be reviewed one at a time
+    #   - visibility - an exempted drop is still printed on every run, like an accepted
+    #     outage day, for the reason .privacy-accepted prints accepted findings
+    #
+    # It exempts any sustained level AT OR ABOVE the floor, not only the level observed.
+    # That is wider than "this source's known low mode" and is deliberate - the flap level
+    # itself decays with the calendar, so a check pinned to 16 exactly would stop matching
+    # within a week. The cost is that a novel intermediate level is exempted too.
+    #
+    # Late-season calendar attrition eventually takes coverage below any floor. It does so
+    # about one game at a time, so it never forms a group departure and never excuses a
+    # per-game hole. It CAN trigger the day-over-day drop gate below on a small base, which
+    # is what COVERAGE_DROP_MIN_GAMES is for; the floor changes which drops are fatal, not
+    # whether the calendar can trigger one.
+    #
+    # An earlier version of this comment claimed attrition "never clears dropped()". That
+    # was true only while dropped() was evaluated day-over-day, and false for the
+    # all-time-peak band that briefly replaced it - cumulative attrition clears it
+    # trivially. The comment was the stated justification for the band, and it outlived
+    # the thing it justified.
 
     if rolling and len(days) >= COVERAGE_DROP_PERSIST_DAYS + 1:
         base_day = days[-(COVERAGE_DROP_PERSIST_DAYS + 1)]
         base_n = ok_by_day[base_day]
         run = days[-COVERAGE_DROP_PERSIST_DAYS:]
+        now_n = ok_by_day[run[-1]]
         if all(dropped(base_n, ok_by_day[d]) for d in run):
-            findings.append(("fatal",
-                             f"coverage fell from {base_n} to {ok_by_day[run[-1]]} games "
-                             f"after {base_day} and has stayed down for "
-                             f"{len(run)} observation day(s) ({run[0]}..{run[-1]}). "
-                             f"A rolling window loses about one game a day to the calendar, "
-                             f"not a quarter of its coverage - the source is serving fewer "
-                             f"events, and the horizon rule would otherwise record that as "
-                             f"expected."))
+            if coverage_floor is not None and now_n >= coverage_floor:
+                findings.append(("warn",
+                                 f"coverage fell from {base_n} to {now_n} games after "
+                                 f"{base_day} and has stayed down for {len(run)} "
+                                 f"observation day(s) ({run[0]}..{run[-1]}), but {now_n} is "
+                                 f"at or above the reviewed floor of {coverage_floor} - "
+                                 f"see .freshness-accepted, which records what this does "
+                                 f"and does not still catch below {coverage_floor}."))
+            else:
+                findings.append(("fatal",
+                                 f"coverage fell from {base_n} to {now_n} games "
+                                 f"after {base_day} and has stayed down for "
+                                 f"{len(run)} observation day(s) ({run[0]}..{run[-1]}). "
+                                 f"A rolling window loses about one game a day to the "
+                                 f"calendar, not a quarter of its coverage - the source is "
+                                 f"serving fewer events, and the horizon rule would "
+                                 f"otherwise record that as expected."))
         elif dropped(ok_by_day[days[-2]], ok_by_day[days[-1]]):
             findings.append(("warn",
                              f"coverage fell from {ok_by_day[days[-2]]} to "
@@ -349,7 +553,9 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     return {"days": days, "findings": findings, "staleDays": stale,
             "okByDay": dict(ok_by_day), "totByDay": dict(tot_by_day),
             "horizon": horizon, "beyondHorizon": [g["date"] for g in beyond],
-            "acceptedGaps": seen_accepted}
+            "acceptedGaps": seen_accepted, "acceptedFloor": floor_applied,
+            "flapExemptGames": len(set().union(*flap_exempt.values()) if flap_exempt else set()),
+            "flapExemptDays": len([d for d, gs in flap_exempt.items() if gs])}
 
 
 def run(strict: bool, today: date) -> int:
@@ -359,8 +565,21 @@ def run(strict: bool, today: date) -> int:
     any_data = False
 
     sched = scheduled_collectors(workflow_text())
-    accepted = load_accepted()
+    accepted, floors = load_accepted()
     accepted_seen: set[str] = set()
+    floors_seen: set[str] = set()
+
+    # A floor for a source that does not exist is a typo, and a silent one would leave a
+    # real source unprotected while the file reads as if it were reviewed.
+    for unknown in sorted(set(floors) - {n for n, *_ in STORES}):
+        print(f"  ignoring coverage floor for unknown source {unknown!r} in "
+              f"{ACCEPTED_GAPS_FILE.name}", file=sys.stderr)
+    # A floor is only consulted for a ROLLING source. On any other it is inert - and an
+    # inert line in a reviewed-accept file is worse than a missing one, because it reads
+    # as protection that was considered and granted.
+    for inert in sorted({n for n, _, _, rolling, _ in STORES if not rolling} & set(floors)):
+        print(f"  coverage floor for {inert!r} is INERT - floors apply only to rolling "
+              f"sources, and this one is not marked rolling in STORES", file=sys.stderr)
 
     for name, path, required, rolling, script in STORES:
         rows = load(path)
@@ -383,7 +602,7 @@ def run(strict: bool, today: date) -> int:
                 print(f"{name}: not collected (not scheduled in any workflow yet)")
             continue
         any_data = True
-        a = analyse(rows, games, today, rolling, accepted)
+        a = analyse(rows, games, today, rolling, accepted, floors.get(name))
         print(f"{name}: {len(rows)} rows across {len(a['days'])} day(s), "
               f"{a['days'][0]} .. {a['days'][-1]}, last {a['staleDays']} day(s) ago")
         for d in a["days"][-3:]:
@@ -394,6 +613,21 @@ def run(strict: bool, today: date) -> int:
             # accepting a finding rather than deleting it.
             print(f"    (accepted outage) {len(a['acceptedGaps'])} day(s) missing and "
                   f"reviewed: {a['acceptedGaps']} - see .freshness-accepted")
+        if a["acceptedFloor"] is not None:
+            # Printed on every run for the same reason accepted outage days are: an
+            # accepted finding stays visible rather than disappearing.
+            #
+            # NAME WHAT IS SUSPENDED, not just that a floor exists. The earlier wording
+            # mentioned only the coverage-drop exemption, while the floor's other half
+            # switches off PER-GAME HOLE detection for the exempted games - the more
+            # consequential of the two, and the one an operator would want to know is off.
+            # A reassuring line over a suppressed check is how a guard stops being one.
+            floors_seen.add(name)
+            print(f"    (accepted coverage floor) {a['acceptedFloor']} games - a sustained "
+                  f"drop to at least that level is reviewed, see .freshness-accepted")
+            print(f"      per-game hole detection suspended for "
+                  f"{a['flapExemptGames']} game(s) across {a['flapExemptDays']} day(s) "
+                  f"that left as a group; all other games still checked")
         if a["beyondHorizon"]:
             print(f"    coverage horizon {a['horizon']}: "
                   f"{len(a['beyondHorizon'])} later game(s) not yet listed "
@@ -418,9 +652,16 @@ def run(strict: bool, today: date) -> int:
     # Not "no gaps detected" - that would contradict the accepted-outage lines printed
     # above, and a check whose summary disagrees with its own body is one people stop
     # trusting. Say what is actually true: nothing unexplained.
-    if accepted_seen:
+    if accepted_seen or floors_seen:
+        bits = []
+        if accepted_seen:
+            bits.append(f"{len(accepted_seen)} accepted outage day"
+                        f"{'s' if len(accepted_seen) != 1 else ''}")
+        if floors_seen:
+            bits.append(f"{len(floors_seen)} accepted coverage floor"
+                        f"{'s' if len(floors_seen) != 1 else ''}")
         print(f"\nfresh - no unexplained gaps "
-              f"({len(accepted_seen)} accepted outage day(s) still reported above)")
+              f"({' and '.join(bits)} still reported above)")
     else:
         print("\nfresh - no gaps detected")
     return 0
@@ -512,6 +753,366 @@ def self_test() -> int:
     check("the dip is still reported",
           any("coverage fell" in m for _, m in a["findings"]), True)
 
+    # ---- the accepted coverage floor ----
+    # THE REAL SERIES, not a hypothetical. TicketNetwork on the same GitHub runner:
+    # 09-06:16 09-07:16 09-08:29 09-11:29 09-12:29 09-13:16 09-14:16. The two-day low run
+    # at the start is the one the persistence gate was tuned past on 09-13 without being
+    # checked against it, and the two-day low run at the end is what went red on 09-14.
+    real = ["2026-09-06", "2026-09-07", "2026-09-08", "2026-09-11",
+            "2026-09-12", "2026-09-13", "2026-09-14"]
+    hi, lo = list(range(29)), list(range(16))
+    r = sum([rows([d], lo if n == 16 else hi)
+             for d, n in zip(real, [16, 16, 29, 29, 29, 16, 16])], [])
+    gs29 = games(30, "2026-09-20")
+
+    # Unfloored, this is exactly the 2026-09-14 red run.
+    a = analyse(r, gs29, date(2026, 9, 14), rolling=True)
+    check("the real 09-14 series is fatal with no floor",
+          levels(a, "coverage fell"), ["fatal"])
+    check("no floor reports none", a["acceptedFloor"], None)
+
+    # Floored at the reviewed low mode, it is a warning - and still reported.
+    a = analyse(r, gs29, date(2026, 9, 14), rolling=True, coverage_floor=16)
+    check("a sustained drop to the reviewed floor is a warning",
+          levels(a, "coverage fell"), ["warn"])
+    check("the exempted drop stays visible",
+          any("coverage fell" in m for _, m in a["findings"]), True)
+    check("the applied floor is reported", a["acceptedFloor"], 16)
+
+    # ...and the floor exempts that level ONLY. One game below it and the gate is live
+    # again - otherwise accepting a flap would quietly accept the collapse underneath it.
+    r15 = (rows(real[:1], hi) + rows(real[1:2], hi) + rows(real[2:3], hi)
+           + rows(real[3:4], hi) + rows(real[4:5], hi)
+           + rows(real[5:6], list(range(15))) + rows(real[6:], list(range(15))))
+    a = analyse(r15, gs29, date(2026, 9, 14), rolling=True, coverage_floor=16)
+    check("a drop BELOW the floor is still fatal",
+          levels(a, "coverage fell"), ["fatal"])
+    check("a fatal drop reports no applied floor", a["acceptedFloor"], None)
+
+    # THE DEFECT THE FIRST VERSION SHIPPED, and the reason these cases exist at all. The
+    # floor was tested only at a 2-day low run - the exact length at which it worked. The
+    # coverage-drop gate fires only on day TWO of a run (its baseline is a sliding 3-day
+    # lookback), so from day three the coverage finding vanishes by itself and the 13
+    # absent games trip GAME_GAP_DAYS instead. A 3-day flap therefore went red HARDER than
+    # a 2-day one, through a check the floor never touched. Measured against the real
+    # store before the fix: 2-day run -> 0 fatal, 3-day run -> 13 fatal.
+    #
+    # ASSERT NO FATAL AT ALL, not merely the absence of a "coverage fell" finding. Naming
+    # the string would pass against precisely the bug being fixed, since the finding that
+    # fired was a per-game hole and never mentioned coverage.
+    def fatals(a):
+        return [m for l, m in a["findings"] if l == "fatal"]
+
+    for n_low in (2, 3, 5, 9):
+        run_days = [(date(2026, 9, 8) + timedelta(days=i)).isoformat()
+                    for i in range(3 + n_low)]
+        r = (sum([rows([d], hi) for d in run_days[:3]], [])
+             + sum([rows([d], lo) for d in run_days[3:]], []))
+        a = analyse(r, games(30, "2026-09-20"), date.fromisoformat(run_days[-1]),
+                    rolling=True, coverage_floor=16)
+        check(f"a {n_low}-day low run at the floor is not fatal", fatals(a), [])
+        check(f"the floor is reported on a {n_low}-day low run", a["acceptedFloor"], 16)
+
+    # ...and the neutrality must not launder a REAL per-game hole. Game 0 is absent on the
+    # full-coverage days too, which is the source dropping one game rather than flapping.
+    run_days = [(date(2026, 9, 8) + timedelta(days=i)).isoformat() for i in range(8)]
+    r = (sum([rows([d], list(range(1, 29))) for d in run_days[:3]], [])
+         + sum([rows([d], lo) for d in run_days[3:]], []))
+    a = analyse(r, games(30, "2026-09-20"), date.fromisoformat(run_days[-1]),
+                rolling=True, coverage_floor=16)
+    check("a game absent on FULL-coverage days is still a per-game hole",
+          any("per-game hole" in m for l, m in a["findings"] if l == "fatal"), True)
+
+    # NEUTRAL, NOT RESET - and this is the case that proves the difference. A per-game
+    # hole SPLIT by a flap must still accumulate across it: two absences, a flap, two more
+    # absences is a four-day hole, not two two-day ones. Resetting the run on low-mode
+    # days passes every other test here and launders exactly this, which is how it
+    # survived the first mutation pass.
+    split = [(date(2026, 9, 8) + timedelta(days=i)).isoformat() for i in range(7)]
+    r = (rows(split[:1], hi)                      # game 0 present
+         + sum([rows([d], list(range(1, 29))) for d in split[1:3]], [])   # absent, full
+         + sum([rows([d], list(range(1, 17))) for d in split[3:5]], [])   # absent, low mode
+         + sum([rows([d], list(range(1, 29))) for d in split[5:]], []))   # absent, full
+    a = analyse(r, games(30, "2026-09-20"), date.fromisoformat(split[-1]),
+                rolling=True, coverage_floor=16)
+    check("a per-game hole split by a flap still accumulates across it",
+          any("per-game hole" in m for l, m in a["findings"] if l == "fatal"), True)
+
+    # B1: AN ANOMALOUS HIGH DAY MUST NOT POISON THE REST OF THE SERIES. An earlier band
+    # was `dropped(series_peak, coverage)`, and ok_by_day accumulates over the whole
+    # series, so max() never decays - one 39-game day made every later 29-game day
+    # "accepted low mode" for the rest of the season, hiding a permanently dropped game
+    # behind a reassuring floor line. The answer must not depend on the anomaly at all.
+    def dying_game(cov, anomaly=False):
+        d = [(date(2026, 9, 1) + timedelta(days=i)).isoformat()
+             for i in range(len(cov) + (1 if anomaly else 0))]
+        r = rows(d[:1], list(range(39))) if anomaly else []
+        for i, n in enumerate(cov):
+            ids = list(range(n)) if n >= 29 else [x for x in range(n + 1) if x != 0]
+            r += rows([d[i + (1 if anomaly else 0)]], ids)
+        return analyse(r, games(44, "2026-11-01"), date.fromisoformat(d[-1]),
+                       rolling=True, coverage_floor=16)
+
+    def holes(a):
+        return len([m for l, m in a["findings"] if l == "fatal" and "per-game hole" in m])
+
+    cov = [29] * 3 + [28] * 9
+    check("a permanently dropped game is caught", holes(dying_game(cov)), 1)
+    check("...and one anomalous high day does not change that",
+          holes(dying_game(cov, anomaly=True)), holes(dying_game(cov)))
+
+    # B2: LATE-SEASON ATTRITION MUST NOT EXCUSE ANYTHING. A rolling window shrinking one
+    # game at a time walks coverage down through any floor. Under the peak band that put
+    # levels 16..21 in-band and switched per-game detection off for ~12 consecutive days
+    # at the end of the season. Attrition never forms a group departure, so the floored
+    # and unfloored answers must be IDENTICAL - asserted against the control, not against
+    # a number, so the test cannot drift with GAME_GAP_DAYS.
+    def attrition(floor):
+        d = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(12)]
+        r = []
+        for i in range(12):
+            n = 29 - i
+            r += rows([d[i]], [x for x in range(n + 1) if not (i >= 10 and x == 5)][:n])
+        return analyse(r, games(44, "2026-11-01"), date.fromisoformat(d[-1]),
+                       rolling=True, coverage_floor=floor)
+
+    check("attrition plus a real hole is unaffected by the floor",
+          holes(attrition(16)), holes(attrition(None)))
+    check("...and the real hole is actually found", holes(attrition(None)) > 0, True)
+
+    # A game dropped WHILE the source sits in its low mode leaves ALONE, so it is not a
+    # group departure and is still caught. The peak band missed this one.
+    d = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(10)]
+    r = rows(d[:2], hi)
+    for i in range(2, 10):
+        r += rows([d[i]], lo if i < 4 else [x for x in range(17) if x != 3])
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d[-1]),
+                rolling=True, coverage_floor=16)
+    check("a game dropped from inside the low mode is still caught", holes(a) > 0, True)
+
+    # The band is gated on `rolling`. run() passes floors.get(name) for EVERY source, so
+    # this guard inside analyse() is the only thing stopping a stray floor line from
+    # switching off TickPick's per-game detection - and the INERT report in run() is a
+    # different surface that would not catch it.
+    d = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(6)]
+    r = sum([rows([x], hi) for x in d[:2]], []) + sum([rows([x], lo) for x in d[2:]], [])
+    gs44 = games(44, "2026-11-01")
+    check("a floor on a NON-rolling source exempts nothing",
+          holes(analyse(r, gs44, date.fromisoformat(d[-1]), rolling=False, coverage_floor=16)),
+          holes(analyse(r, gs44, date.fromisoformat(d[-1]), rolling=False)))
+
+    # THE EXEMPTION MUST END WHEN THE WINDOW COMES BACK. A game that left with the bloc
+    # and then did not return with it is a hole, not a flap - and it is invisible unless
+    # a group RETURN clears the excuse. Found by mutation: leaving the exempt set uncleared
+    # survived every other test here.
+    d = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(9)]
+    r = (sum([rows([x], hi) for x in d[:2]], [])              # full
+         + sum([rows([x], lo) for x in d[2:4]], [])           # bloc leaves
+         + sum([rows([x], [g for g in hi if g != 25]) for x in d[4:]], []))  # bloc back, 25 not
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d[-1]),
+                rolling=True, coverage_floor=16)
+    check("a game that does not return with its bloc is caught", holes(a) > 0, True)
+
+    # ...but a game that DOES return, and later dies alone, must also be caught - the
+    # exemption must not survive the game itself coming back.
+    r = (sum([rows([x], hi) for x in d[:2]], [])
+         + sum([rows([x], lo) for x in d[2:4]], [])
+         + sum([rows([x], hi) for x in d[4:5]], [])
+         + sum([rows([x], [g for g in hi if g != 3]) for x in d[5:]], []))
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d[-1]),
+                rolling=True, coverage_floor=16)
+    check("a returned game dying later is caught", holes(a) > 0, True)
+
+    # A SINGLE game returning ends ITS OWN excuse, without a bloc return. It comes back,
+    # so the window plainly covers it; if it then vanishes alone and stays gone, that is a
+    # hole. Distinct from the bloc-return case above, and the only thing that catches a
+    # stale per-game excuse when the source never visibly recovers.
+    d10 = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(10)]
+    back_one = lo + [20]
+    r = (rows(d10[:1], hi)
+         + sum([rows([x], lo) for x in d10[1:3]], [])        # bloc leaves, 20 among them
+         + sum([rows([x], back_one) for x in d10[3:4]], [])  # 20 alone returns
+         + sum([rows([x], lo) for x in d10[4:]], []))        # 20 alone vanishes again
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d10[-1]),
+                rolling=True, coverage_floor=16)
+    check("a game that returned alone is no longer excused", holes(a), 1)
+
+    # ...and the mirror: ONE game returning must NOT un-excuse the bloc that is still away.
+    # Clearing on any return at all would turn the whole flap red the moment a single game
+    # came back early.
+    check("one game returning does not un-excuse the rest",
+          holes(analyse(r, games(44, "2026-11-01"), date.fromisoformat(d10[-1]),
+                        rolling=True, coverage_floor=16)), 1)
+
+    # TWO SUCCESSIVE DEPARTURES. The exempt set must ACCUMULATE, not be replaced: a second
+    # bloc leaving does not un-excuse the first, which is still absent for the same reason.
+    r = (rows(d[:1], hi)
+         + sum([rows([x], list(range(23))) for x in d[1:2]], [])
+         + sum([rows([x], lo) for x in d[2:]], []))
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d[-1]),
+                rolling=True, coverage_floor=16)
+    check("a second departure does not un-excuse the first", holes(a), 0)
+
+    # THE GROUP-SIZE BOUNDARY, at exactly COVERAGE_DROP_MIN_GAMES. Written against the
+    # constant rather than a literal 3, so it keeps testing the boundary if the constant
+    # moves - a hard-coded 3 would silently become an interior point instead.
+    n_edge = COVERAGE_DROP_MIN_GAMES
+    r = (rows(d[:1], hi)
+         + sum([rows([x], hi[:-n_edge]) for x in d[1:]], []))
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d[-1]),
+                rolling=True, coverage_floor=16)
+    check(f"a departure of exactly {n_edge} games is a group", holes(a), 0)
+    r = (rows(d[:1], hi)
+         + sum([rows([x], hi[:-(n_edge - 1)]) for x in d[1:]], []))
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d[-1]),
+                rolling=True, coverage_floor=16)
+    check(f"a departure of {n_edge - 1} games is NOT a group", holes(a), n_edge - 1)
+
+    # R1: A COLLECTION OUTAGE MUST NOT LET ATTRITION FORM A BLOC. Between adjacent
+    # CALENDAR days attrition retires about one game; between adjacent OBSERVATION days it
+    # retires as many as the gap is long, and this project has gaps by design - the real
+    # store carries one. Across a six-day outage three games retire, that clears
+    # COVERAGE_DROP_MIN_GAMES, and a genuinely dead game departing in the same interval
+    # rode along excused. Asserted against the unfloored control, so the test cannot drift.
+    spread = [{"gameId": i, "date": (date(2026, 9, 20) + timedelta(days=i * 3)).isoformat(),
+               "opponent": {"abbrev": "XXX"}} for i in range(24)]
+    obs = ["2026-09-25", "2026-09-28", "2026-10-01",   # then a six-day observation gap
+           "2026-10-10", "2026-10-13", "2026-10-16", "2026-10-19"]
+    r = []
+    for d in obs:
+        alive = [g["gameId"] for g in spread if g["date"] >= d]
+        r += rows([d], [g for g in alive if not (d >= "2026-10-10" and g == 20)])
+    floored = analyse(r, spread, date.fromisoformat(obs[-1]), rolling=True, coverage_floor=10)
+    control = analyse(r, spread, date.fromisoformat(obs[-1]), rolling=True)
+    check("an outage does not let attrition excuse a dead game",
+          holes(floored), holes(control))
+    check("...and the dead game is actually found", holes(control) > 0, True)
+
+    # N2: THE BLOC-RETURN BOUNDARY, at exactly COVERAGE_DROP_MIN_GAMES. The return test
+    # above uses a 13-game bloc, so the 3-vs-4 boundary never showed and a mutant moved it
+    # freely. A returning bloc of exactly the minimum must clear the excuse, which means
+    # the game that did NOT come back with it is then a hole.
+    n_edge = COVERAGE_DROP_MIN_GAMES
+    d8 = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(8)]
+    small_lo = hi[:-(n_edge + 1)]                 # a bloc of n_edge+1 leaves
+    back_min = hi[:-1]                            # n_edge of them return; game 28 does not
+    r = (rows(d8[:1], hi)
+         + sum([rows([x], small_lo) for x in d8[1:3]], [])
+         + sum([rows([x], back_min) for x in d8[3:]], []))
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d8[-1]),
+                rolling=True, coverage_floor=16)
+    check(f"a returning bloc of exactly {n_edge} clears the excuse", holes(a), 1)
+
+    # Rows with ok=False are a supported shape in market_store.py that no real store has
+    # produced yet. They must count as NOT SERVED by the DEPARTURE rule - a source that
+    # starts failing every fetch must not read as a bloc departure and then as nothing.
+    #
+    # ASSERT DOWNSTREAM OF served_by_day. The first version of this checked okByDay, which
+    # comes from a different accumulator that already filters on `ok` - so it passed
+    # whatever served_by_day did, and the mutant it was written to kill survived. A test
+    # asserting a plausible but unasked question, which is this project's signature bug in
+    # miniature. flapExemptGames is fed by served_by_day and nothing else.
+    r = (rows(d8[:1], hi)
+         + sum([rows([x], hi, ok=False) for x in d8[1:]], []))
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d8[-1]),
+                rolling=True, coverage_floor=16)
+    check("a bloc of failed fetches is not a departure", a["flapExemptGames"], 0)
+
+    # The case that actually pins it: a MIXED day, where the bloc is present as failed rows
+    # rather than absent. Excusing those would hide a collector failure behind the floor.
+    r = (rows(d8[:1], hi)
+         + sum([rows([x], lo) + rows([x], hi[len(lo):], ok=False) for x in d8[1:]], []))
+    a = analyse(r, games(44, "2026-11-01"), date.fromisoformat(d8[-1]),
+                rolling=True, coverage_floor=16)
+    check("failed rows are not a bloc departure", a["flapExemptGames"], 0)
+    check("...and those games surface as holes instead", holes(a) > 0, True)
+
+    # ORPHAN STORE IDS MUST NOT MAKE UP A BLOC. An id in the store with no schedule entry
+    # arises whenever schedule.json changes under an append-only store. Asserted against
+    # the unfloored control AND against the same series without the orphans, so neither the
+    # floor nor the orphans may change the answer.
+    orph_games = [{"gameId": i,
+                   "date": (date(2026, 11, 1) + timedelta(days=i * 2)).isoformat(),
+                   "opponent": {"abbrev": "XXX"}} for i in range(12)]
+    od = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(6)]
+
+    def with_orphans(orphans, floor):
+        rr = []
+        for i, day in enumerate(od):
+            live = [g for g in range(12) if not (i >= 2 and g == 7)]
+            rr += rows([day], live + ([900, 901, 902, 903, 904] if orphans and i < 2 else []))
+        return holes(analyse(rr, orph_games, date.fromisoformat(od[-1]),
+                             rolling=True, coverage_floor=floor))
+
+    check("orphan ids do not excuse a dead game",
+          with_orphans(True, 10), with_orphans(True, None))
+    check("...and the orphans change nothing either way",
+          with_orphans(True, 10), with_orphans(False, 10))
+    check("...and the dead game is found at all", with_orphans(False, None) > 0, True)
+
+    # THE SAFETY PROPERTY, and the strongest statement this design has: a floor can only
+    # ever RELAX the per-game check, never tighten it. So a floor cannot manufacture a
+    # finding that would not exist without it, whatever the series. Checked here on a
+    # handful of shapes and separately by brute force over 60,000 random series (0
+    # violations); kept cheap here because the suite is meant to stay offline and fast.
+    #
+    # Only the flapping shape is killed by any mutant in the sweep - the others document
+    # the property rather than test it, which is worth saying out loud so they are not
+    # mistaken for coverage. Labels carry the full shape because two of them previously
+    # collided and a failure could not say which one broke.
+    for shape in ([29] * 3 + [16] * 4, [29, 28, 27, 26, 25], [29] * 2 + [16] * 2 + [29] * 2,
+                  [20, 20, 19, 5, 5, 5], [29, 16, 29, 16, 29, 16]):
+        sd = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(len(shape))]
+        sr = sum([rows([sd[i]], list(range(n))) for i, n in enumerate(shape)], [])
+        sgs = games(44, "2026-11-01")
+        with_floor = analyse(sr, sgs, date.fromisoformat(sd[-1]), rolling=True,
+                             coverage_floor=16)
+        without = analyse(sr, sgs, date.fromisoformat(sd[-1]), rolling=True)
+        check(f"a floor never adds a hole finding ({'-'.join(map(str, shape))})",
+              holes(with_floor) <= holes(without), True)
+
+    # TWO MUTANTS SURVIVE THIS SUITE ON PURPOSE, recorded so the next session does not
+    # hunt them as gaps:
+    #
+    #   flap_exempt[cur] -> flap_exempt[prev]  shifts the exemption one day earlier. It can
+    #     only lose an exemption on the final day, which adds at most 1 to a run and cannot
+    #     alone reach GAME_GAP_DAYS, so it is near-equivalent in the STRICTER direction.
+    #   served_by_day ignoring the `ok` flag    much narrower than it was. The departure
+    #     diff now reads attempted_by_day, so the mutant cannot change which games form a
+    #     bloc on the day they fail. It still differs on one shape - a game that FAILED on
+    #     the previous day and has no row at all on the next - and no store has produced an
+    #     ok=False row (0 of 352/352/180/152 across the four), so there is no real series
+    #     to build that fixture from. Left uncovered deliberately rather than invented.
+    #
+    # `continue` vs `run = 0` on an excused day is a third, and it is a true equivalence
+    # rather than a gap - see the comment at the per-game loop.
+
+    # A sustained drop BELOW the floor must stay live past day two as well - that is the
+    # collapse the whole check exists for, and it is the mirror of the bug above.
+    # NOTE: reuses `run_days` from the fixture ~230 lines above. That long-distance
+    # dependency is the same hazard that let an added block shadow `gs` and silently break
+    # three horizon assertions; rebind it here if you add anything in between.
+    r = (sum([rows([d], hi) for d in run_days[:3]], [])
+         + sum([rows([d], list(range(11))) for d in run_days[3:]], []))
+    a = analyse(r, games(30, "2026-09-20"), date.fromisoformat(run_days[-1]),
+                rolling=True, coverage_floor=16)
+    check("a sustained drop below the floor is still fatal on day five",
+          bool(fatals(a)), True)
+    # No in-band day anywhere in THIS fixture, so nothing was exempted and the printed
+    # line must not claim otherwise. Not a general property: a real series that flapped
+    # before collapsing has in-band days in its history and reports the floor as in
+    # effect, which is the honest reading of that line.
+    check("a series with no in-band day reports no applied floor",
+          a["acceptedFloor"], None)
+
+    # A floor must not resurrect a finding that was never there. A healthy source with a
+    # floor set reports neither a drop nor an applied floor.
+    r = sum([rows([d], hi) for d in real], [])
+    a = analyse(r, gs29, date(2026, 9, 14), rolling=True, coverage_floor=16)
+    check("a floor on a healthy source changes nothing",
+          any("coverage fell" in m for _, m in a["findings"]), False)
+    check("a healthy source reports no applied floor", a["acceptedFloor"], None)
+
     # Two days is too short to tell a flap from a step, so it warns rather than guessing.
     two = ["2026-09-09", "2026-09-10"]
     r = rows(two[:1], list(range(29))) + rows(two[1:], list(range(16)))
@@ -550,12 +1151,34 @@ def self_test() -> int:
     with tempfile.TemporaryDirectory() as td:
         f = pathlib.Path(td) / ".freshness-accepted"
         f.write_text("# a comment\n\n2026-09-09\n2026-09-10  # trailing reason\n"
-                     "not-a-date\n")
-        got = load_accepted(f)
-    check("parser reads dates, skips comments and junk", sorted(got),
+                     "not-a-date\ncoverage ticketnetwork 16  # reviewed low mode\n"
+                     "coverage 99\n")
+        got_days, got_floors = load_accepted(f)
+    check("parser reads dates, skips comments and junk", sorted(got_days),
           ["2026-09-09", "2026-09-10"])
+    check("parser reads coverage floors", got_floors, {"ticketnetwork": 16})
     check("a missing accepted file is empty, not an error",
-          load_accepted(pathlib.Path("/nonexistent/.freshness-accepted")), set())
+          load_accepted(pathlib.Path("/nonexistent/.freshness-accepted")), (set(), {}))
+
+    # The committed file must actually parse - a typo here silently un-accepts a finding
+    # and turns the gate red for a reason nobody can find. Reading the real file rather
+    # than a fixture is the point: fixtures cannot catch a typo in the thing that ships.
+    real_days, real_floors = load_accepted()
+    check("the committed accept file names only real sources",
+          sorted(set(real_floors) - {n for n, *_ in STORES}), [])
+
+    # PIN THE VALUE, not just the key. A floor is a reviewed number, and the dangerous
+    # edit is not a typo'd source name - it is a floor quietly lowered, which disables the
+    # coverage check for that source while printing a line that reads like protection.
+    # Changing this pin is then a deliberate act with a diff, which is the whole point.
+    check("the committed floors are exactly the reviewed ones",
+          real_floors, {"ticketnetwork": 16})
+
+    # A floor of 0 exempts every level there is. It must not parse.
+    with tempfile.TemporaryDirectory() as td:
+        f = pathlib.Path(td) / ".freshness-accepted"
+        f.write_text("coverage ticketnetwork 0\n")
+        check("a zero floor is refused, not accepted", load_accepted(f)[1], {})
 
     # LATE SEASON, small base. One game leaving is 33% of a three-game window - over the
     # relative threshold, and pure calendar. Firing here would go red in the final week,
