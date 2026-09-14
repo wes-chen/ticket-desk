@@ -1,0 +1,165 @@
+{
+  "_bandIdentity": "NEVER asserted here. Member-map prices are per-game member/exchange prices; the published band prices in config/price_bands.json are full-season averages per game. Matching the two would invent a band assignment out of a unit mismatch.",
+  "_comment": "Row-range band BOUNDARIES derived from member-map row prices in data/primary/prices.jsonl by scripts/member_map_bands.py. ops#113.",
+  "_interval": "A boundary lies in (after, before]. exact=true means those rows are adjacent and the boundary is pinned; otherwise the rows between were never observed and the interval is real.",
+  "_why": "config/price_bands.json records that bands are row ranges within sections and that the official chart prints no row numbers. These are those row numbers, where the captured data supports them.",
+  "sections": {
+    "101": {
+      "band": null,
+      "boundary": {
+        "after": 16,
+        "before": 18,
+        "exact": false
+      },
+      "confidence": "measured",
+      "contradictions": [],
+      "games": [
+        2026010032,
+        2026020034
+      ],
+      "observations": 2,
+      "perGame": {
+        "2026010032": [
+          {
+            "after": 16,
+            "before": 18,
+            "cheaperPrice": 87.5,
+            "dearerPrice": 133.5,
+            "exact": false,
+            "gameId": 2026010032,
+            "observedDate": "2026-09-07",
+            "ratio": 1.526,
+            "rowsComplete": true
+          }
+        ],
+        "2026020034": [
+          {
+            "after": 16,
+            "before": 21,
+            "cheaperPrice": 152.0,
+            "dearerPrice": 237.0,
+            "exact": false,
+            "gameId": 2026020034,
+            "observedDate": "2026-09-07",
+            "ratio": 1.559,
+            "rowsComplete": true
+          }
+        ]
+      },
+      "ratios": [
+        1.526,
+        1.559
+      ]
+    },
+    "102": {
+      "band": null,
+      "confidence": "multiple-boundaries",
+      "contradictions": [],
+      "games": [
+        2026020034
+      ],
+      "observations": 2,
+      "perGame": {
+        "2026020034": [
+          {
+            "after": 3,
+            "before": 14,
+            "cheaperPrice": 203.0,
+            "dearerPrice": 354.0,
+            "exact": false,
+            "gameId": 2026020034,
+            "observedDate": "2026-09-07",
+            "ratio": 1.744,
+            "rowsComplete": true
+          },
+          {
+            "after": 14,
+            "before": 23,
+            "cheaperPrice": 142.0,
+            "dearerPrice": 203.0,
+            "exact": false,
+            "gameId": 2026020034,
+            "observedDate": "2026-09-07",
+            "ratio": 1.43,
+            "rowsComplete": true
+          }
+        ]
+      }
+    },
+    "109": {
+      "band": null,
+      "confidence": "unresolved",
+      "contradictions": [],
+      "games": [
+        2026010032
+      ],
+      "observations": 0
+    },
+    "110": {
+      "band": null,
+      "boundary": {
+        "after": 16,
+        "before": 17,
+        "exact": true
+      },
+      "confidence": "measured",
+      "contradictions": [],
+      "games": [
+        2026010032,
+        2026020198
+      ],
+      "observations": 2,
+      "perGame": {
+        "2026010032": [
+          {
+            "after": 16,
+            "before": 17,
+            "cheaperPrice": 49.5,
+            "dearerPrice": 96.5,
+            "exact": true,
+            "gameId": 2026010032,
+            "observedDate": "2026-09-07",
+            "ratio": 1.949,
+            "rowsComplete": true
+          }
+        ],
+        "2026020198": [
+          {
+            "after": 16,
+            "before": 17,
+            "cheaperPrice": 66.0,
+            "dearerPrice": 127.0,
+            "exact": true,
+            "gameId": 2026020198,
+            "observedDate": "2026-09-07",
+            "ratio": 1.924,
+            "rowsComplete": false
+          }
+        ]
+      },
+      "ratios": [
+        1.949,
+        1.924
+      ]
+    },
+    "112": {
+      "band": null,
+      "confidence": "unresolved",
+      "contradictions": [],
+      "games": [
+        2026010032,
+        2026020198
+      ],
+      "observations": 0
+    },
+    "128": {
+      "band": null,
+      "confidence": "unresolved",
+      "contradictions": [],
+      "games": [
+        2026010032
+      ],
+      "observations": 0
+    }
+  }
+}
