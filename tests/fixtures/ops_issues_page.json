@@ -1,0 +1,4622 @@
+[
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/1",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 1,
+    "title": "synthetic item 1",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/2",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 2,
+    "title": "synthetic item 2",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/3",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 3,
+    "title": "synthetic item 3",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/4",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 4,
+    "title": "synthetic item 4",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/4",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/4",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/5",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 5,
+    "title": "synthetic item 5",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/6",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 6,
+    "title": "synthetic item 6",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/7",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 7,
+    "title": "synthetic item 7",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/8",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 8,
+    "title": "synthetic item 8",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/8",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/8",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/9",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 9,
+    "title": "synthetic item 9",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/10",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 10,
+    "title": "synthetic item 10",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/11",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 11,
+    "title": "synthetic item 11",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/12",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 12,
+    "title": "synthetic item 12",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/12",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/12",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/13",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 13,
+    "title": "synthetic item 13",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/14",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 14,
+    "title": "synthetic item 14",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/15",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 15,
+    "title": "synthetic item 15",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/16",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 16,
+    "title": "synthetic item 16",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/16",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/16",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/17",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 17,
+    "title": "synthetic item 17",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/18",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 18,
+    "title": "synthetic item 18",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/19",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 19,
+    "title": "synthetic item 19",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/20",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 20,
+    "title": "synthetic item 20",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/20",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/20",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/21",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 21,
+    "title": "synthetic item 21",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/22",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 22,
+    "title": "synthetic item 22",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/23",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 23,
+    "title": "synthetic item 23",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/24",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 24,
+    "title": "synthetic item 24",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/24",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/24",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/25",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 25,
+    "title": "synthetic item 25",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/26",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 26,
+    "title": "synthetic item 26",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/27",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 27,
+    "title": "synthetic item 27",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/28",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 28,
+    "title": "synthetic item 28",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/28",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/28",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/29",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 29,
+    "title": "synthetic item 29",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/30",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 30,
+    "title": "synthetic item 30",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/31",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 31,
+    "title": "synthetic item 31",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/32",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 32,
+    "title": "synthetic item 32",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/32",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/32",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/33",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 33,
+    "title": "synthetic item 33",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/34",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 34,
+    "title": "synthetic item 34",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/35",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 35,
+    "title": "synthetic item 35",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/36",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 36,
+    "title": "synthetic item 36",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/36",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/36",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/37",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 37,
+    "title": "synthetic item 37",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/38",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 38,
+    "title": "synthetic item 38",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/39",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 39,
+    "title": "synthetic item 39",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/40",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 40,
+    "title": "synthetic item 40",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/40",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/40",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/41",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 41,
+    "title": "synthetic item 41",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/42",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 42,
+    "title": "synthetic item 42",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/43",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 43,
+    "title": "synthetic item 43",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/44",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 44,
+    "title": "synthetic item 44",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/44",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/44",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/45",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 45,
+    "title": "synthetic item 45",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/46",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 46,
+    "title": "synthetic item 46",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/47",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 47,
+    "title": "synthetic item 47",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/48",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 48,
+    "title": "synthetic item 48",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/48",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/48",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/49",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 49,
+    "title": "synthetic item 49",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/50",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 50,
+    "title": "synthetic item 50",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/51",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 51,
+    "title": "synthetic item 51",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/52",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 52,
+    "title": "synthetic item 52",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/52",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/52",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/53",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 53,
+    "title": "synthetic item 53",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/54",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 54,
+    "title": "synthetic item 54",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/55",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 55,
+    "title": "synthetic item 55",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/56",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 56,
+    "title": "synthetic item 56",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/56",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/56",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/57",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 57,
+    "title": "synthetic item 57",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/58",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 58,
+    "title": "synthetic item 58",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/59",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 59,
+    "title": "synthetic item 59",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/60",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 60,
+    "title": "synthetic item 60",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/60",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/60",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/61",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 61,
+    "title": "synthetic item 61",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/62",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 62,
+    "title": "synthetic item 62",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/63",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 63,
+    "title": "synthetic item 63",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/64",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 64,
+    "title": "synthetic item 64",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/64",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/64",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/65",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 65,
+    "title": "synthetic item 65",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/66",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 66,
+    "title": "synthetic item 66",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/67",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 67,
+    "title": "synthetic item 67",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/68",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 68,
+    "title": "synthetic item 68",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/68",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/68",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/69",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 69,
+    "title": "synthetic item 69",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/70",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 70,
+    "title": "synthetic item 70",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/71",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 71,
+    "title": "synthetic item 71",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/72",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 72,
+    "title": "synthetic item 72",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/72",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/72",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/73",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 73,
+    "title": "synthetic item 73",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/74",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 74,
+    "title": "synthetic item 74",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/75",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 75,
+    "title": "synthetic item 75",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/76",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 76,
+    "title": "synthetic item 76",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/76",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/76",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/77",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 77,
+    "title": "synthetic item 77",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/78",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 78,
+    "title": "synthetic item 78",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/79",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 79,
+    "title": "synthetic item 79",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/80",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 80,
+    "title": "synthetic item 80",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/80",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/80",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/81",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 81,
+    "title": "synthetic item 81",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/82",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 82,
+    "title": "synthetic item 82",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/83",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 83,
+    "title": "synthetic item 83",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/84",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 84,
+    "title": "synthetic item 84",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/84",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/84",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/85",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 85,
+    "title": "synthetic item 85",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/86",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 86,
+    "title": "synthetic item 86",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/87",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 87,
+    "title": "synthetic item 87",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/88",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 88,
+    "title": "synthetic item 88",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/88",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/88",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/89",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 89,
+    "title": "synthetic item 89",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/90",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 90,
+    "title": "synthetic item 90",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/91",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 91,
+    "title": "synthetic item 91",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/92",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 92,
+    "title": "synthetic item 92",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/92",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/92",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/93",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 93,
+    "title": "synthetic item 93",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/94",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 94,
+    "title": "synthetic item 94",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/95",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 95,
+    "title": "synthetic item 95",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/96",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 96,
+    "title": "synthetic item 96",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/96",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/96",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/97",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 97,
+    "title": "synthetic item 97",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/98",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 98,
+    "title": "synthetic item 98",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/99",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 99,
+    "title": "synthetic item 99",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/100",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 100,
+    "title": "synthetic item 100",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/100",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/100",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/101",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 101,
+    "title": "synthetic item 101",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/102",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 102,
+    "title": "synthetic item 102",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/103",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 103,
+    "title": "synthetic item 103",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/104",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 104,
+    "title": "synthetic item 104",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/104",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/104",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/105",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 105,
+    "title": "synthetic item 105",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/106",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 106,
+    "title": "synthetic item 106",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/107",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 107,
+    "title": "synthetic item 107",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/108",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 108,
+    "title": "synthetic item 108",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/108",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/108",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/109",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 109,
+    "title": "synthetic item 109",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/110",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 110,
+    "title": "synthetic item 110",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/111",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 111,
+    "title": "synthetic item 111",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/112",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 112,
+    "title": "synthetic item 112",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/112",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/112",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/113",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 113,
+    "title": "synthetic item 113",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/114",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 114,
+    "title": "synthetic item 114",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/115",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 115,
+    "title": "synthetic item 115",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/116",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 116,
+    "title": "synthetic item 116",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "still working, absurd 11111111",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/116",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/116",
+      "merged_at": null
+    }
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/117",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 117,
+    "title": "synthetic item 117",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/118",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 118,
+    "title": "synthetic item 118",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/119",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 119,
+    "title": "synthetic item 119",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:build",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null
+  },
+  {
+    "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/issues/120",
+    "id": 11111111,
+    "node_id": "X",
+    "number": 120,
+    "title": "synthetic item 120",
+    "user": {
+      "login": "absurd-user"
+    },
+    "labels": [
+      {
+        "id": 11111111,
+        "node_id": "X",
+        "url": "https://example.invalid",
+        "name": "type:research",
+        "color": "111111",
+        "default": false,
+        "description": "",
+        "archived_at": null,
+        "archived_by": null
+      }
+    ],
+    "state": "closed",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+    "closed_at": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "body": "**Closing - absurd 11111111.**",
+    "reactions": {},
+    "state_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/wes-chen/ticket-desk-ops/pulls/120",
+      "html_url": "https://github.com/wes-chen/ticket-desk-ops/pull/120",
+      "merged_at": null
+    }
+  }
+]

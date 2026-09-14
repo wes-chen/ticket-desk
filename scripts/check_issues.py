@@ -359,6 +359,43 @@ def classify(issue: dict, bodies: list[str],
     return out
 
 
+def _project(it: dict) -> dict:
+    """Trim one raw REST issue/PR object to the fields classify() needs."""
+    return {
+        "number": it["number"],
+        "title": it.get("title"),
+        "state": it["state"],
+        "body": it.get("body"),
+        "labels": [l["name"] for l in it.get("labels", [])],
+        "comments": it.get("comments", 0),
+    }
+
+
+def parse_items(raw_items: list[dict]) -> list[dict]:
+    """Filter pull requests out of a full issues+PRs listing and project the rest.
+
+    Pure - fetch() does the network calls and the tracker-total assertion below; this is
+    what the self-test drives directly with a captured >100-item fixture, without
+    touching gh. See ops#138: the REST issues endpoint returns issues AND pull requests
+    together, and the bug this fixes was reading only one un-paginated page of that
+    combined list before ever getting to this filter.
+    """
+    return [_project(it) for it in raw_items if "pull_request" not in it]
+
+
+def check_total(read: int, real_total: int) -> None:
+    """Fail loudly if what fetch() read disagrees with an independent count of the
+    tracker's actual issue total (ops#138). A silent mismatch is exactly how the
+    original bug read as clean: `71 issues (19 open)` with no sign anything was cut off.
+    Kept separate from fetch() so the self-test can drive it without a network call.
+    """
+    if read != real_total:
+        raise RuntimeError(
+            f"read {read} issues but the tracker's search API reports {real_total} - "
+            f"refusing to audit a partial view (fetch may be truncating again, or the "
+            f"count changed mid-run)")
+
+
 def fetch(repo: str, limit: int) -> list[dict]:
     def gh(*args: str) -> str:
         r = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=120)
@@ -366,10 +403,24 @@ def fetch(repo: str, limit: int) -> list[dict]:
             raise RuntimeError(r.stderr.strip()[:300])
         return r.stdout
 
-    raw = gh("api", f"repos/{repo}/issues?state=all&per_page={limit}",
-             "--jq", '[.[] | select(has("pull_request")|not) | '
-                     '{number, title, state, body, labels: [.labels[].name], comments}]')
-    issues = json.loads(raw)
+    # --paginate with NO --jq: gh's documented behaviour is to concatenate successive
+    # JSON-array pages into one array before we ever see it, so json.loads() below gets
+    # everything regardless of tracker size. The original bug came from pairing --jq
+    # with a bare per_page=100 request and no --paginate at all, which reads exactly one
+    # page - applying --jq to a --paginate call instead prints one filtered array PER
+    # PAGE rather than merging them, which is a different footgun, so the PR/projection
+    # filtering happens here in Python on the already-merged raw list instead.
+    raw = gh("api", f"repos/{repo}/issues?state=all&per_page={limit}", "--paginate")
+    issues = parse_items(json.loads(raw))
+
+    # Independent cross-check: the search API's total_count for `is:issue` counts non-PR
+    # issues directly, without needing pagination itself, so it is not subject to the
+    # same failure mode as the listing call above.
+    real_total = int(gh("api", f"search/issues?q=repo:{repo}+is:issue",
+                        "--jq", ".total_count").strip())
+    check_total(len(issues), real_total)
+    print(f"read {len(issues)} issues (tracker's search API confirms {real_total})")
+
     out = []
     for it in issues:
         bodies: list[str] = []
@@ -682,6 +733,38 @@ def self_test() -> int:
     # wrong repo, and this repo's issues are disabled.
     t = tracker()
     check("tracker is the ops repo", t.endswith("-ops"), True)
+
+    # ---- ops#138: the >100-item page must not get silently truncated ----
+    # A real captured shape (field names confirmed against a live tracker response on
+    # 2026-09-13) but synthetic, absurd content - the ops tracker is private and
+    # personal values are allowed THERE (CLAUDE.md), so copying real bodies into this
+    # public repo's fixtures would be exactly the leak CLAUDE.md section 1 forbids.
+    fixture = json.loads((ROOT / "tests" / "fixtures" / "ops_issues_page.json").read_text())
+    check("fixture actually exceeds one page", len(fixture) > 100, True)
+    n_prs = sum(1 for it in fixture if "pull_request" in it)
+    check("fixture mixes in real PRs", n_prs > 0, True)
+
+    parsed = parse_items(fixture)
+    want_issues = len(fixture) - n_prs
+    check("parse_items keeps every non-PR issue across a >100-item page",
+          len(parsed), want_issues)
+    check("parse_items drops every PR",
+          all("pull_request" not in p for p in parsed), True)
+    check("parse_items projects the fields classify() needs",
+          set(parsed[0]) if parsed else set(),
+          {"number", "title", "state", "body", "labels", "comments"})
+
+    # The independent-total assertion: agree -> silent; disagree -> loud, not a quiet
+    # truncation. This is the actual regression guard - a future change that reintroduces
+    # a single-page read would make `len(issues)` disagree with the real total and this
+    # must raise, never just print something plausible.
+    check_total(want_issues, want_issues)  # agrees: must not raise
+    threw = False
+    try:
+        check_total(want_issues - 23, want_issues)  # the ops#138 shape: 23 short
+    except RuntimeError:
+        threw = True
+    check("a truncated read against the real total raises loudly", threw, True)
 
     for f in fails:
         print(f"  FAIL {f}", file=sys.stderr)
