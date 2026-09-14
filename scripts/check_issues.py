@@ -171,9 +171,19 @@ AT_FILE_BODY = re.compile(r"^@[\w./-]+$")
 # fact while recording none of it. Deliberately excludes the case actually seen in the
 # wild (marker + a full sentence of real content, e.g. "**Claiming** - pm-session-01,
 # building the validator...") - only the bare marker itself is trivial.
+#
+# THE GAP BETWEEN THE MARKER WORD AND THE CLOSING `**` MUST BE PUNCTUATION-ONLY, not
+# "anything that isn't a literal asterisk". A first version used `[^*\n]*` there, which
+# is almost everything - it matched "**Closing - shipped in PR #3, reviewed and
+# merged**" and misread a complete, CLAUDE.md-format resolution as a bare marker. Found
+# in review before it ever fired live, but it was aimed squarely at the exact format
+# this file exists to enforce, so it would have eventually. Restricting that gap to the
+# same whitespace/punctuation class as the trailing tail is what makes "**Closing -**"
+# flag while "**Closing - superseded by #77**" does not: the moment a letter or digit
+# appears, the class can't consume it and the match fails.
 TRIVIAL_MARKER_ONLY = re.compile(
     r"^[ \t>]*\*\*(?:Closing|Claiming|Finding|Decision|Input accepted|Cause|Guard|"
-    r"Recorded in)\b[^*\n]*\*\*[ \t\-—:.,]*$", re.I)
+    r"Recorded in)\b[ \t\-—:.,]*\*\*[ \t\-—:.,]*$", re.I)
 
 # Tuned DOWN from the obvious instinct (a real sentence should be at least N words),
 # specifically because the live tracker has a genuine, legitimate 10-character comment
@@ -872,9 +882,25 @@ def self_test() -> int:
           trivial_comment("**Claiming**") is not None, True)
     check("a bare marker with only a dash after it still flags",
           trivial_comment("**Closing** -") is not None, True)
+    check("a bare marker with punctuation INSIDE the bold still flags",
+          trivial_comment("**Closing -**") is not None, True)
+    check("a bare Finding marker flags",
+          trivial_comment("**Finding**") is not None, True)
     check("a marker WITH real content after it does not flag",
           trivial_comment("**Claiming** - pm-session-01, building the validator, "
                           "horizon 2026-09-09") is None, True)
+    # A regression found in review before it ever fired live: a first version of
+    # TRIVIAL_MARKER_ONLY let the gap between the marker word and the closing `**`
+    # swallow anything that wasn't a literal asterisk, so it misread a complete,
+    # CLAUDE.md-format closing comment as a bare marker. Both a short and a long `why`
+    # must survive - the rule must never cry wolf on the exact convention it enforces.
+    check("a SHORT why inside the bold does not flag",
+          trivial_comment("**Closing - superseded by #77**") is None, True)
+    check("a LONG why inside the bold does not flag",
+          trivial_comment("**Closing - shipped in PR #3, reviewed and merged**")
+          is None, True)
+    check("a short why outside the bold does not flag",
+          trivial_comment("**Closing** - superseded by #77") is None, True)
     # The exact case CLAUDE.md calls out: a short but real comment must not flag.
     check("a legitimate short comment does not flag",
           trivial_comment("Superseded by #77.") is None, True)
