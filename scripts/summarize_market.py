@@ -232,6 +232,15 @@ def _help_has_no_side_effect(script: str) -> str | None:
     neither reaches the network for either script. Only --dry-run does, which is why
     fetch_schedule.py is excluded from that half - see _OFFLINE_DRY_RUN.
     """
+    # GAP APPLYING TO EVERY SCRIPT THIS GUARD COVERS, named rather than glossed: every
+    # assertion below is that the target did NOT change, so a script that stops writing
+    # altogether satisfies all of them. `if write:` -> `if False:` survives for all three.
+    # A missing test, not an equivalence. Filed as ops#177.
+    #
+    # Deliberately at function scope: the first version of this note sat inside the
+    # `not in _OFFLINE_DRY_RUN` branch, which only fetch_schedule.py enters - so it named
+    # three scripts from a path two of them never execute, invisible to exactly the reader
+    # tracing the bug.
     root = pathlib.Path(__file__).resolve().parent.parent
     target = root / _WRITES[script]
     path = root / "scripts" / script
@@ -279,11 +288,6 @@ def _help_has_no_side_effect(script: str) -> str | None:
         if claimed != _WRITES[script]:
             return (f"{script} --help says it would write {claimed!r}, but _WRITES says "
                     f"{_WRITES[script]!r} - the write check above is watching the wrong store")
-        # SECOND KNOWN GAP, applying to EVERY script this guard covers: it only ever
-        # asserts the target did NOT change, so a script that stops writing altogether
-        # satisfies every assertion. `if write:` -> `if False:` survives for all three.
-        # A missing test, not an equivalence. Filed.
-        #
         # KNOWN GAP, named rather than glossed: its WRITE GATE is still unpinned -
         # reverting `if write:` there survives this suite, because only --dry-run exercises
         # it and --dry-run fetches. A missing test, not an equivalence. Filed as ops#175.

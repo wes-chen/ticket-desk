@@ -202,12 +202,22 @@ def _cli() -> int:
     audit scoped itself to the scripts CLAUDE.md documents. This one is not documented;
     the one it did check instead, check_readonly.py, writes nothing.
 
-    SCOPE AN AUDIT BY EVERY EXECUTABLE IN scripts/ - `*.py`, `*.mjs` and `lib/*.py` -
-    not by a docs file and not by one extension. The first version of this very sentence
-    said `scripts/*.py`, which is one glob short: review immediately found a fourth
-    instance in `probe_browser.mjs`, sitting in the same directory, which parses argv by
-    hand and on `--help` launches Chromium and loads five live sites. That one IS
-    documented in CLAUDE.md, so neither boundary would have caught it alone. Filed.
+    ENUMERATE scripts/ - DO NOT LIST GLOBS. This sentence has now been wrong twice, each
+    time by exactly one extension, which is the argument for enumerating rather than
+    naming:
+
+      v1  "scope by the scripts CLAUDE.md documents"  missed comps.py        (.py)
+      v2  "scope by scripts/*.py"                     missed probe_browser   (.mjs)
+      v3  "scope by *.py, *.mjs and lib/*.py"         missed agent_worktree  (.sh)
+
+    Each version was found wrong by the next reviewer, not by a check. The directory
+    holds 28 .py, 2 .mjs and 1 .sh; the next addition will be a fourth extension and a
+    fourth version of this sentence. Enumerate what is there.
+
+    Both later instances are DOCUMENTED in CLAUDE.md, so the docs scope and the extension
+    scope each miss a different one and neither is safe alone. The .sh instance is the
+    worst in the repo - on `--help` it creates a git branch, a worktree outside the repo,
+    and copies `.private-patterns` to a new path. Filed as ops#176 and ops#179.
 
     --self-test is declared rather than sniffed out of sys.argv, because adding argparse
     without declaring it is exactly how ops#171 broke run_tests.py mid-flight.
