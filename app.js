@@ -148,7 +148,10 @@
     el.innerHTML =
       '<div class="gt">' + esc(g.abbrev) + " · " + esc(fmtDate(g.date)) + "</div>" +
       "<b>" + fmtMoney(med) + "</b>" +
-      '<span>median comparable resale list, per seat</span>' +
+      '<span>median comparable resale list, per seat' +
+        (g.marketMin != null && g.marketMax != null
+          ? " · range " + fmtMoney(g.marketMin) + "–" + fmtMoney(g.marketMax) : "") +
+      "</span>" +
       '<div class="sub2">' + (n ? n + " comparable pairs tracked" : "No comparable pairs on the market right now") + "</div>" +
       '<div class="sub2">' + ctx + "</div>";
     var credit = TIER_CREDIT[g.tier];
@@ -160,7 +163,7 @@
         ? '<span class="up">resale beats exchange by ' + fmtMoney(gap) + "/seat</span>"
         : '<span class="down">exchange beats resale by ' + fmtMoney(-gap) + "/seat</span>";
       el.innerHTML += '<div class="sub2">Exchange credit ' + fmtMoney(credit) +
-        " · cheapest comparable " + fmtMoney(cheapest) + " · matching it nets " +
+        " · matching cheapest nets " +
         fmtMoney(net) + " · " + verdict + "</div>";
     }
   }
