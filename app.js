@@ -198,15 +198,17 @@
       .filter(function (x) { return x[1] != null; });
     meds.sort(function (a, b) { return b[1] - a[1]; });
     var max = Math.max.apply(null, meds.map(function (x) { return x[1]; }).concat([1]));
-    var rows = meds.map(function (x) {
-      var w = Math.max(4, Math.round((x[1] / max) * 100));
-      return '<div class="barrow"><span class="t">' + esc(x[0]) + '</span>' +
-        '<span class="bar" style="width:' + w + '%"></span>' +
-        '<span class="v">' + fmtMoney(x[1]) + "</span></div>";
+    var H = 110;
+    var cols = meds.map(function (x) {
+      var h = Math.max(6, Math.round((x[1] / max) * H));
+      var tc = TIER_CODE[x[0]] || x[0];
+      return '<div class="vcol"><span class="vv">' + fmtMoney(x[1]) + "</span>" +
+        '<span class="vbar" style="height:' + h + 'px"></span>' +
+        '<span class="vt">' + esc(tc) + "</span></div>";
     }).join("");
-    if (!rows) rows = '<p class="sub2" style="color:var(--mut);font-size:12px">No market data yet.</p>';
-    return '<section class="card"><h3>MARKET BY TIER</h3>' + rows +
-      '<div class="sub2" style="font-size:10.5px;color:var(--dim);margin-top:6px">Median comparable resale list per tier, per seat.</div></section>';
+    if (!cols) cols = '<p class="sub2" style="color:var(--mut);font-size:12px">No market data yet.</p>';
+    return '<section class="card"><h3>MARKET BY TIER</h3><div class="vbars">' + cols + "</div>" +
+      '<div class="sub2" style="font-size:10.5px;color:var(--dim);margin-top:8px">Median comparable resale list per tier, per seat.</div></section>';
   }
 
   function renderEconomics() {
