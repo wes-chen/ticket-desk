@@ -28,8 +28,6 @@
     "test:primary": "python3 scripts/primary_store.py --self-test",
     "hypotheses": "python3 scripts/hypotheses.py",
     "test:hypotheses": "python3 scripts/hypotheses.py --self-test",
-    "calendar": "python3 scripts/make_calendar.py",
-    "test:calendar": "python3 scripts/make_calendar.py --self-test",
     "check:freshness": "python3 scripts/check_data_freshness.py",
     "test:freshness": "python3 scripts/check_data_freshness.py --self-test",
     "test": "python3 scripts/run_tests.py",
