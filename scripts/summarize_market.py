@@ -203,14 +203,15 @@ def summarize(rows_by_source: dict[str, list[dict]], games: list[dict]) -> dict:
 
 # Which tracked store each script writes.
 _WRITES = {"summarize_market.py": "data/market/summary.json",
-           "fetch_schedule.py": "data/schedule.json"}
+           "fetch_schedule.py": "data/schedule.json",
+           "comps.py": "data/primary/comps.json"}
 
 # Which of them can be run with --dry-run INSIDE THIS SUITE. fetch_schedule.py cannot:
 # its main() calls fetch() unconditionally and --dry-run gates only the write, so running
 # it here would put a live NHL request inside a suite CLAUDE.md says is offline - and at
 # the head of collect-tickpick.yml, whose step 1 is this self-test. That is not a
 # hypothetical: it shipped in the first version of this guard and review caught it.
-_OFFLINE_DRY_RUN = {"summarize_market.py"}
+_OFFLINE_DRY_RUN = {"summarize_market.py", "comps.py"}
 
 
 def _help_has_no_side_effect(script: str) -> str | None:
@@ -231,6 +232,15 @@ def _help_has_no_side_effect(script: str) -> str | None:
     neither reaches the network for either script. Only --dry-run does, which is why
     fetch_schedule.py is excluded from that half - see _OFFLINE_DRY_RUN.
     """
+    # GAP APPLYING TO EVERY SCRIPT THIS GUARD COVERS, named rather than glossed: every
+    # assertion below is that the target did NOT change, so a script that stops writing
+    # altogether satisfies all of them. `if write:` -> `if False:` survives for all three.
+    # A missing test, not an equivalence. Filed as ops#177.
+    #
+    # Deliberately at function scope: the first version of this note sat inside the
+    # `not in _OFFLINE_DRY_RUN` branch, which only fetch_schedule.py enters - so it named
+    # three scripts from a path two of them never execute, invisible to exactly the reader
+    # tracing the bug.
     root = pathlib.Path(__file__).resolve().parent.parent
     target = root / _WRITES[script]
     path = root / "scripts" / script
@@ -470,7 +480,7 @@ def self_test() -> int:
     check("empty input", summarize({"tickpick": []}, games)["games"], [])
     check("empty input has no dates", summarize({"tickpick": []}, games)["lastObservedDate"], None)
 
-    for _script in ("summarize_market.py", "fetch_schedule.py"):
+    for _script in ("summarize_market.py", "fetch_schedule.py", "comps.py"):
         _err = _help_has_no_side_effect(_script)
         if _err:
             fails.append(_err)
