@@ -27,8 +27,8 @@ With three games, a pair agrees in 0, 1, 2 or 3 of them. Reporting "0.67" would 
 resolution the data does not have, so this prints "2/3 games" and ranks on the integer.
 When the store grows past a handful of games that judgement should be revisited.
 """
-import itertools
 import argparse
+import itertools
 import json
 import pathlib
 import sys
@@ -200,8 +200,14 @@ def _cli() -> int:
 
     Identical defect to the two fixed in ops#171, and it was missed there because that
     audit scoped itself to the scripts CLAUDE.md documents. This one is not documented;
-    the one it did check instead, check_readonly.py, writes nothing. Scope an audit by
-    `scripts/*.py`, not by a docs file.
+    the one it did check instead, check_readonly.py, writes nothing.
+
+    SCOPE AN AUDIT BY EVERY EXECUTABLE IN scripts/ - `*.py`, `*.mjs` and `lib/*.py` -
+    not by a docs file and not by one extension. The first version of this very sentence
+    said `scripts/*.py`, which is one glob short: review immediately found a fourth
+    instance in `probe_browser.mjs`, sitting in the same directory, which parses argv by
+    hand and on `--help` launches Chromium and loads five live sites. That one IS
+    documented in CLAUDE.md, so neither boundary would have caught it alone. Filed.
 
     --self-test is declared rather than sniffed out of sys.argv, because adding argparse
     without declaring it is exactly how ops#171 broke run_tests.py mid-flight.

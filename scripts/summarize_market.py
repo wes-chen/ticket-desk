@@ -279,6 +279,11 @@ def _help_has_no_side_effect(script: str) -> str | None:
         if claimed != _WRITES[script]:
             return (f"{script} --help says it would write {claimed!r}, but _WRITES says "
                     f"{_WRITES[script]!r} - the write check above is watching the wrong store")
+        # SECOND KNOWN GAP, applying to EVERY script this guard covers: it only ever
+        # asserts the target did NOT change, so a script that stops writing altogether
+        # satisfies every assertion. `if write:` -> `if False:` survives for all three.
+        # A missing test, not an equivalence. Filed.
+        #
         # KNOWN GAP, named rather than glossed: its WRITE GATE is still unpinned -
         # reverting `if write:` there survives this suite, because only --dry-run exercises
         # it and --dry-run fetches. A missing test, not an equivalence. Filed as ops#175.
