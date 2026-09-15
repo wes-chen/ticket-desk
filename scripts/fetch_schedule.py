@@ -35,6 +35,12 @@ def tm_event_id(link: str | None) -> str | None:
     return m.group(1) if m else None
 
 
+# ONE definition, referenced by both the write and the --help text. The self-test's
+# positive control reads the path out of --help stdout, so a literal in either place
+# would let the guard watch a file this script does not write (mutant M4b).
+DEST = ROOT / "data" / "schedule.json"
+
+
 def main(write: bool = True):
     tiers = json.loads((ROOT / "config" / "tiers.json").read_text())
     by_date = {g["date"]: g for g in tiers["games"]}
@@ -115,11 +121,12 @@ def main(write: bool = True):
         for p in problems:
             print(f"  - {p}", file=sys.stderr)
 
-    dest = ROOT / "data" / "schedule.json"
+    dest = DEST
     if write:
         dest.write_text(json.dumps({"season": SEASON, "team": TEAM, "games": out}, indent=2) + "\n")
         print(f"\nwrote {dest.relative_to(ROOT)}")
     else:
+        # Wording asserted by summarize_market.py's guard; keep DEST in it.
         print(f"\n--dry-run: would write {dest.relative_to(ROOT)} ({len(out)} games)")
 
     return 1 if problems else 0
@@ -144,7 +151,8 @@ def _cli() -> int:
         description="Refresh data/schedule.json from the NHL API and VALIDATE it against "
                     "the hand-transcribed tier table on date and opponent.")
     ap.add_argument("--dry-run", action="store_true",
-                    help="fetch and validate, but do not write data/schedule.json")
+                    help=f"fetch and validate, but do not write "
+                         f"{DEST.relative_to(ROOT)}")
     args = ap.parse_args()
     return main(write=not args.dry_run)
 

@@ -255,17 +255,35 @@ def _help_has_no_side_effect(script: str) -> str | None:
         return f"{script} silently ignored an unknown flag instead of erroring"
 
     if script not in _OFFLINE_DRY_RUN:
-        # KNOWN GAP, named rather than glossed: fetch_schedule.py's --help and unknown-flag
-        # behaviour is pinned above, but its WRITE GATE is not - reverting `if write:` there
-        # survives this suite. That is a missing test, not an equivalence, and closing it
-        # needs a fixture that monkeypatches fetch() so --dry-run can run offline. Filed.
+        # POSITIVE CONTROL for a script we cannot dry-run here. Without one, mis-pointing
+        # _WRITES makes the "--help wrote the store" assertion above watch the wrong file
+        # and pass vacuously (mutant M4b) - the same defect mutation already found for the
+        # other script. Its --help text names the destination, printed from the same DEST
+        # constant the write uses, so no network is needed to check it.
+        if _WRITES[script] not in r.stdout:
+            return (f"{script} --help does not name {_WRITES[script]}, so the write check "
+                    f"above is watching a store it may not write")
+        # KNOWN GAP, named rather than glossed: its WRITE GATE is still unpinned -
+        # reverting `if write:` there survives this suite, because only --dry-run exercises
+        # it and --dry-run fetches. A missing test, not an equivalence. Filed as ops#175.
         return None
 
     # --dry-run, separately, because --help does NOT exercise the write gate: argparse
     # exits before main() runs, so reverting `if write:` leaves --help untouched. Found by
     # mutation - two mutants survived a --help-only guard, which was a missing test.
     before2 = target.stat().st_mtime_ns
-    dry = subprocess.run([sys.executable, str(path), "--dry-run"],
+    # RUN IT UNDER A POISONED PROXY. _OFFLINE_DRY_RUN is a hand-maintained set with
+    # nothing tying it to whether the script actually fetches - the same shape as the
+    # `watched` literal that mutation already killed once. Without this, adding a network
+    # call to a script in that set leaves the suite green on a connected machine and red
+    # only where there was no network anyway, which is precisely the regression this guard
+    # exists to prevent and which shipped in its first version.
+    #
+    # Honest limit: this catches urllib and requests, which honour proxy env vars, not a
+    # raw socket. Every fetch in this repo is urllib, so it covers the realistic case.
+    offline_env = {**os.environ, "https_proxy": "http://127.0.0.1:1",
+                   "http_proxy": "http://127.0.0.1:1", "no_proxy": ""}
+    dry = subprocess.run([sys.executable, str(path), "--dry-run"], env=offline_env,
                          capture_output=True, text=True, timeout=60)
     if dry.returncode != 0:
         return (f"{script} --dry-run exited {dry.returncode}; cannot judge the write gate: "
@@ -278,7 +296,11 @@ def _help_has_no_side_effect(script: str) -> str | None:
     # watching the wrong store and could not tell. Mutation found exactly that.
     #
     # The path is taken from --dry-run's own output, which is printed from DEST - the same
-    # object the write uses - so it cannot drift from the real write path. An earlier
+    # object the write uses. That is a CONVENTION, not a constraint: replacing the f-string
+    # with a literal decouples them and this control passes while the write goes elsewhere
+    # (mutant M12). A missing test, not an equivalence - the real-run control it replaced
+    # was immune to it. Kept anyway, because that control could silently revert a
+    # concurrent write and left a window where a kill stranded a dirty tree. An earlier
     # version ran the script FOR REAL and restored the bytes afterwards; that worked, but
     # it made an offline suite mutate a tracked store, which review showed could silently
     # revert a concurrent write and left ~55ms where a SIGKILL stranded a dirty tree.
@@ -467,6 +489,7 @@ def main(write: bool = True) -> int:
                   f"({abs(v['medianRatioToPrimary'] - 1) * 100:.1f}% {arrow}) "
                   f"range {v['minRatio']:.3f}-{v['maxRatio']:.3f}")
     print(f"confidence: {summary['confidence']}")
+    # The --dry-run wording is asserted by _help_has_no_side_effect; keep DEST in it.
     print(f"wrote {DEST.relative_to(ROOT)}" if write
           else f"--dry-run: would write {DEST.relative_to(ROOT)}")
     if not summary["games"]:
