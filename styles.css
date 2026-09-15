@@ -1,0 +1,103 @@
+/* Sharks Ticket Desk — read-only dashboard. Dark, mobile-first. No frameworks. */
+*{box-sizing:border-box}
+:root{
+  --bg:#060d16; --card:#0b1520; --card2:#0e1a25; --line:#14242f;
+  --ink:#e8f1f2; --mut:#8fa6ad; --dim:#5f7a83;
+  --teal:#2dd4bf; --teal-dk:#0d9488;
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:#02070c; color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+.dash{max-width:480px;margin:0 auto;background:var(--bg);padding:18px 16px 14px;min-height:100vh}
+.loading,.noscript,.err{color:var(--mut);text-align:center;padding:48px 16px;font-size:14px}
+
+/* hero */
+.hero{
+  background:linear-gradient(135deg,#0a1a24 0%,#0d2b33 60%,#0a1a24 100%);
+  border:1px solid #123843;border-radius:16px;padding:16px;
+  display:flex;gap:14px;align-items:center;margin-bottom:12px;
+  position:relative;overflow:hidden;
+}
+.hero::after{content:"";position:absolute;right:-30px;top:-30px;width:130px;height:130px;
+  background:radial-gradient(circle,rgba(0,180,180,.25),transparent 70%);pointer-events:none}
+.hero img{width:64px;height:64px;flex:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
+.hero .kick{font-size:10.5px;font-weight:800;letter-spacing:.14em;color:var(--teal);margin:0 0 4px}
+.hero h2{font-size:17px;margin:0 0 2px;font-weight:700}
+.hero .meta{font-size:12.5px;color:var(--mut);margin:0 0 8px}
+.cd{display:flex;gap:10px}
+.cd div{text-align:center}
+.cd b{display:block;font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.cd span{font-size:9.5px;letter-spacing:.08em;color:var(--mut)}
+.pill{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.06em;
+  padding:4px 10px;border-radius:999px;margin-top:8px;
+  background:rgba(45,212,191,.15);color:var(--teal);border:1px solid rgba(45,212,191,.4)}
+.pill.attending{background:rgba(96,165,250,.15);color:#93c5fd;border-color:rgba(96,165,250,.4)}
+.pill.sold{background:rgba(74,222,128,.13);color:#86efac;border-color:rgba(74,222,128,.35)}
+.pill.exchanged{background:rgba(251,191,36,.13);color:#fcd34d;border-color:rgba(251,191,36,.35)}
+
+/* cards */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.card h3{font-size:10.5px;font-weight:800;letter-spacing:.12em;color:var(--mut);margin:0 0 10px}
+
+/* donut */
+.ringwrap{display:flex;align-items:center;gap:12px}
+.ring{transform:rotate(-90deg)}
+.ring .trk{stroke:#16232e}
+.ring .arc{stroke:var(--teal);stroke-linecap:round;transition:stroke-dashoffset 1.2s ease}
+.ringc{position:relative;width:96px;height:96px;flex:none}
+.ringc .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ringc .ctr b{font-size:24px;font-weight:800;color:#fff}
+.ringc .ctr span{font-size:9.5px;color:var(--mut);letter-spacing:.08em}
+.rleg{font-size:12px;color:#b9cdd3;display:grid;gap:6px}
+.rleg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
+
+/* market pulse */
+.bigstat b{display:block;font-size:26px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
+.bigstat .gt{font-size:11px;color:var(--teal);font-weight:700;margin-bottom:2px}
+.bigstat span{display:block;font-size:11px;color:var(--mut)}
+.bigstat .sub2{font-size:11px;color:var(--dim);margin-top:4px}
+
+/* timeline */
+.mrow{display:flex;gap:10px;align-items:flex-start;margin:9px 0}
+.mlab{width:34px;flex:none;font-size:10.5px;font-weight:800;color:var(--dim);padding-top:8px;letter-spacing:.06em}
+.dots{display:flex;gap:8px;flex-wrap:wrap}
+.dot{width:30px;height:30px;border-radius:50%;border:2px solid #1d303c;background:#101d28;
+  padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent}
+.dot span{font-size:10px;font-weight:700;color:var(--mut);font-variant-numeric:tabular-nums}
+.dot.listed{background:var(--teal-dk);border-color:var(--teal);animation:pulse 2.2s infinite}
+.dot.listed span{color:#e6fffa}
+.dot.sold{background:#14532d;border-color:#4ade80}
+.dot.sold span{color:#dcfce7}
+.dot.exchanged{background:#713f12;border-color:#fbbf24}
+.dot.exchanged span{color:#fef3c7}
+.dot.attending{background:#1e3a8a;border-color:#60a5fa}
+.dot.attending span{color:#dbeafe}
+.dot.sel{outline:2px solid #fff;outline-offset:2px}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(45,212,191,.5)}55%{box-shadow:0 0 0 7px rgba(45,212,191,0)}}
+.gdetail{display:flex;gap:12px;align-items:center;background:var(--card2);
+  border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:10px;min-height:64px}
+.gdetail img{width:40px;height:40px;flex:none}
+.gdetail .t1{font-size:14px;font-weight:700;color:#fff}
+.gdetail .t2{font-size:11.5px;color:var(--mut)}
+
+/* tier bars */
+.barrow{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12px}
+.barrow .t{width:78px;flex:none;font-weight:700;color:#b9cdd3}
+.bar{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--teal-dk),var(--teal));min-width:4px}
+.barrow .v{color:var(--mut);font-variant-numeric:tabular-nums;margin-left:auto}
+
+/* economics */
+.snap{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;
+  scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.snap .f{flex:0 0 210px;scroll-snap-align:start;background:var(--card2);
+  border:1px solid var(--line);border-radius:12px;padding:12px}
+.snap code{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--teal);
+  display:block;margin-bottom:6px}
+.snap p{font-size:11.5px;color:var(--mut);margin:0;line-height:1.45}
+
+.ft{text-align:center;font-size:10.5px;color:var(--dim);padding:8px 0 2px}
+@media (prefers-reduced-motion:reduce){.dot.listed{animation:none}.ring .arc{transition:none}}

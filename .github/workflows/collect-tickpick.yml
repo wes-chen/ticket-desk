@@ -118,8 +118,8 @@ jobs:
       # STRICT here on purpose: in the collector's own run, a gap means the collector is
       # broken, and a silent collector is worse than a noisy one. This runs after the
       # aggregate commit so a secondary-source regression remains noisy without losing
-      # the non-backfillable primary observation. `npm run build` runs the same check
-      # advisory, so stale data cannot block the deploy that ships a fix.
+      # the non-backfillable primary observation. The deploy no longer runs data checks
+      # (static site since ops#165), so stale data cannot block the deploy that ships a fix.
       - name: Check for gaps
         run: python3 scripts/check_data_freshness.py --strict
 

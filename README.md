@@ -1,11 +1,12 @@
 # Ticket Desk
 
-Decision support for a season ticket holder: should I list this game, at what price, or return it
-for credit?
+A read-only season dashboard for a San Jose Sharks season ticket holder: 44 home games,
+per-game status, market context, and the resale economics. Currently configured for the
+**San Jose Sharks, 2026-27 season**.
 
-Currently configured for the **San Jose Sharks, 2026-27 season, 44 home games**. Everything
-team-specific lives in `config/`; the model itself is not team-specific. Everything *person*-specific
-lives in the browser and never touches this repo.
+The site is display-only. There are no inputs, no accounts, no stored profile - updates
+happen by messaging Rumi, and the dashboard re-renders from `data/outcomes.json`, which is
+regenerated daily from the private ops repo. See `scripts/check_readonly.py`.
 
 ## The problem
 
@@ -62,30 +63,12 @@ In every sample so far the implied bid netted *below* the tier exchange credit, 
 marquee opponents. If that holds, the instant offer is never the right exit while the exchange
 window is still open.
 
-## Invoice reconciliation
-
-Tier credits are hand-entered, so the app checks them against the season invoice:
-
-```
-sum(tierCredit x gamesInTier)  ==?  invoiceTotal / seatCount
-```
-
-Three outcomes, all informative:
-
-- **Sums to the invoice** - credit equals face, no hidden fees to price around.
-- **Falls short** - the residual is non-refundable service fee, the slice of the season the exchange
-  structurally cannot return.
-- **Overshoots** - a credit was mistyped, caught before it silently misprices a season.
-
-It also independently validates the hand-transcribed tier table: a misfiled game skews the sum by
-the price gap between two tiers, not by a plausible-looking fee.
-
 ## Privacy model
 
 GitHub Pages sites are reachable by anyone, even when the source repo is private - Pages access
-control is Enterprise-only. So the deployed bundle is deliberately **empty of personal data**:
+control is Enterprise-only. So this repo is deliberately **empty of personal data**:
 
-| Public, in this repo | Private, browser only |
+| Public, in this repo | Private, elsewhere |
 | --- | --- |
 | NHL schedule, 44 home games | Seat section / row / numbers |
 | Tier assignment per game (from the public marketing graphic) | Season invoice total |
@@ -93,16 +76,17 @@ control is Enterprise-only. So the deployed bundle is deliberately **empty of pe
 | Collected market prices - other sellers, whole arena | **Our** list prices, nets, and offers |
 | Isolated (list, net) pairs, as fee measurements | Which games we have listed, and at what |
 | Published team pricing, e.g. the section/band table | Account, listing, and order identifiers |
+| Per-game status labels (`listed`, `sold`, ...) + outcome counts | |
 
 The line is the **linkage, not the field**. A `$70 -> $63.00` pair is a measurement of
 Ticketmaster's fee and carries no seat; *our* asking price on a named game does. The test: could
 a reader connect this number to our seats or our account?
 
-Personal data lives in `localStorage` and moves between devices through a URL **fragment**.
-Fragments are never transmitted in an HTTP request - they don't reach GitHub and don't appear in
-access logs. The encoding is obfuscation, not encryption: anyone holding the link can read it.
+Personal data lives in the private ops repo and in the chat interface - never in this repo, and
+since ops#165, never in the browser either. The old localStorage profile, URL-fragment transfer,
+and backup import/export are gone.
 
-`scripts/check_privacy.py` enforces this and runs as part of `npm run build`. It exists because the
+`scripts/check_privacy.py` enforces this and runs in CI on every push and PR. It exists because the
 leak has happened **twice**: first form *placeholders* written with real seat and invoice values,
 then a *self-test fixture* that used the real invoice total as its example value. Both times the
 config files were scrubbed correctly. Scrubbing config is not sufficient - personal data leaks
@@ -111,10 +95,10 @@ through UI copy, examples, test fixtures, and documentation just as easily. Coro
 
 Three passes:
 
-- **Structural** - rejects forbidden keys (`creditPerSeat`, `invoiceTotal`, `costBasis`, ...) in
-  committed JSON and JSONL, recursively under `config/`, `data/`, and `tests/`. Runs everywhere,
-  including CI.
-- **Literal** - greps the built output *and every git-tracked file* for real private values listed in
+- **Structural** - rejects forbidden keys (`creditPerSeat`, `invoiceTotal`, `costBasis`,
+  `tmListingId`, ...) in committed JSON and JSONL, recursively under `config/`, `data/`, and
+  `tests/`. Runs everywhere, including CI.
+- **Literal** - greps the deployed files *and every git-tracked file* for real private values listed in
   a gitignored `.private-patterns`. Local only, by design: committing that file would defeat it.
 - **History** - git log content *and* commit messages, since scrubbing the tree does nothing about
   commits that already shipped. Automatically fatal when the remote is public.
@@ -126,32 +110,39 @@ All three are verified against deliberately introduced leaks. Two hooks back the
 `.private-patterns` the literal and history passes silently skip, so CI stays green on
 findings only a local build can see.
 
+`scripts/check_readonly.py` is the second gate: it fails if any write path (localStorage,
+form elements, URL-fragment imports) reappears in the site, and spot-checks that
+`data/outcomes.json` renders the 44-game timeline.
+
 ## Layout
 
 ```
-config/economics.json       fee model, exchange rules, instant-offer findings  (public)
-config/tiers.json           game -> tier assignments                           (public)
-scripts/fetch_schedule.py   pulls the NHL public API and VALIDATES the tier join
-scripts/check_privacy.py    fails the build if anything personal would ship
-scripts/make_icons.py       generates PWA icons with no image dependency
-data/schedule.json          generated: 44 home games with tier attached
-src/lib/economics.ts        the money model
-src/lib/profile.ts          private profile + URL-fragment device transfer
+index.html / styles.css / app.js   the dashboard (static, zero dependencies)
+data/schedule.json                 44 home games with tier attached (public NHL data)
+data/outcomes.json                 generated daily: per-game status + market medians (anonymized)
+scripts/check_privacy.py           fails the build if anything personal would ship
+scripts/check_readonly.py          fails if any write path reappears in the site
+scripts/run_tests.py               runs every script's --self-test; untested scripts fail
+config/economics.json              fee model, exchange rules, instant-offer findings (public)
 ```
 
 Schedule source, no auth required:
 `https://api-web.nhle.com/v1/club-schedule-season/SJS/20262027`
 
-`fetch_schedule.py` does not just fetch - it cross-checks every tier entry against the live schedule
+`scripts/fetch_schedule.py` does not just fetch - it cross-checks every tier entry against the live schedule
 on both date and opponent, and fails loudly on any mismatch, orphan, or count drift. The tier table
 was transcribed from a JPEG by hand; one misread date would silently misprice a game for a whole
 season.
 
+`data/outcomes.json` is generated by `scripts/export_public_outcomes.py` in the **private ops repo**,
+which reads the listing state and the TM snapshots, keeps the comparable-section filter and all
+personal values on the private side, and pushes only the anonymized feed here. It refreshes daily.
+
 ## Status
 
-**Built:** schedule ingestion + validation, tier/fee/exchange/break-even math, invoice
-reconciliation, private profile with cross-device transfer, installable PWA with offline support,
-enforced privacy checks.
+**Built:** read-only dashboard (season mix, 44-game timeline, market pulse, tier context, economics),
+anonymized outcomes feed, read-only + privacy gates, schedule ingestion + validation, tier/fee/exchange
+math, enforced privacy checks.
 
 **Also built:** the market collector. Two independent sources (TickPick and Gametime) run daily
 in GitHub Actions over plain HTTP, 44/44 home games, and cross-check each other -
@@ -174,9 +165,12 @@ Outcome recording now exists to accumulate that history; the model comes after e
 ## Development
 
 ```bash
-npm install
-npm run schedule    # refresh + validate data/schedule.json
-npm run icons       # regenerate PWA icons
-npm run dev
-npm run build       # type-check, build, then enforce the privacy checks
+python3 scripts/run_tests.py       # every script's self-test; untested scripts fail
+python3 scripts/check_readonly.py  # read-only gate
+python3 scripts/check_privacy.py   # privacy gate
+python3 scripts/fetch_schedule.py  # refresh + validate data/schedule.json
 ```
+
+The dashboard itself is static: open `index.html` (served over HTTP so `fetch` works, e.g.
+`python3 -m http.server`) after generating `data/outcomes.json`. Deploys to GitHub Pages on
+every push to `main`; no build step.
