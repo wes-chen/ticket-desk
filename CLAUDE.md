@@ -256,6 +256,56 @@ And when an issue's last mile is an action only Wesley can take, that is not a c
 it is a `type:input` issue with a validator, or the issue stays open. "One thing only you can
 verify" written into a close is a requirement with nowhere to live.
 
+### Before asking Wesley for a value, search HISTORY for it
+
+The companion failure to the rule above, and it cost a full session on 2026-09-13.
+
+`type:input` asks Wesley to go and get something. That is the most expensive request this
+project can make - it is the only one that cannot be done unattended - so the bar before
+filing one is that **the value genuinely is not already here.** A value scrubbed from a
+working tree is still in git history, and "git never forgets" cuts both ways: the same
+permanence that makes a leak unfixable makes a deleted measurement recoverable.
+
+ops#139 asked for the five regular-season tier credits. They had been **measured on
+2026-09-03 and committed to the ops repo**, then moved out of committed config into
+browser localStorage when personal data was pulled out ahead of the public split. Correct
+at the time - but they went to localStorage and to *nothing else*, so they survived only
+in Wesley's browser and in history. He is the one who caught it: *"i thought we already
+gathered the credit before... and ive looked for it."* The recovered values reconciled
+against the public face **exactly, to $0.00**.
+
+**Two silent failures produced the wrong answer, and both reported clean:**
+
+- **`--depth` on the clone.** The sweep ran against `gh repo clone --depth 20`, and the
+  commit holding the values was older than that. A shallow clone does not say "I cannot
+  see that far back"; it just finds nothing. Clone full depth before concluding a value
+  has never existed.
+- **A grep that assumed prose.** The filter wanted a dollar amount on the *same line* as
+  the word "credit". The values lived in a JSON object, tier keys and numbers on separate
+  lines from any prose, so every one of them was invisible. **Ninth instance in this
+  project of the instrument being the thing that was wrong.**
+
+The sweep that missed them covered 145 issues and 369 comments and looked thorough. What
+actually found them searches every blob that has ever existed, which is the only sweep
+that can see a file's deleted contents:
+
+```bash
+git clone <repo>                           # FULL depth - not --depth N
+git log --all --oneline -S'<key>'          # commits that added or removed the string
+git rev-list --objects --all | awk '{print $1}' | while read o; do
+  [ "$(git cat-file -t $o)" = blob ] && git cat-file -p $o | grep -l '<key>' >/dev/null \
+    && echo "$o"
+done
+```
+
+Search for the **key**, never the value: you are looking for a number you do not know.
+`creditPerSeat` found what `$120` never could have.
+
+And when a recovered value lands in a store, its `provenance` says **recovered, and from
+where** - never the request that went unanswered. A line claiming Wesley pasted something
+he did not is a false record of where a load-bearing constant came from, and six months
+on it is indistinguishable from the truth.
+
 ### A claim is a debt, not a deliverable
 
 Claiming work announces that you are doing it. **It is not doing it, and a tick that ends
