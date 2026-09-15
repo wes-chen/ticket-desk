@@ -152,14 +152,16 @@
       '<div class="sub2">' + (n ? n + " comparable pairs tracked" : "No comparable pairs on the market right now") + "</div>" +
       '<div class="sub2">' + ctx + "</div>";
     var credit = TIER_CREDIT[g.tier];
-    if (credit != null && med != null) {
-      var net = med * 0.9;
+    var cheapest = g.marketMin;
+    if (credit != null && cheapest != null) {
+      var net = cheapest * 0.9;
       var gap = net - credit;
       var verdict = gap >= 0
         ? '<span class="up">resale beats exchange by ' + fmtMoney(gap) + "/seat</span>"
         : '<span class="down">exchange beats resale by ' + fmtMoney(-gap) + "/seat</span>";
       el.innerHTML += '<div class="sub2">Exchange credit ' + fmtMoney(credit) +
-        " · resale nets " + fmtMoney(net) + " at this pulse · " + verdict + "</div>";
+        " · cheapest comparable " + fmtMoney(cheapest) + " · matching it nets " +
+        fmtMoney(net) + " · " + verdict + "</div>";
     }
   }
 
