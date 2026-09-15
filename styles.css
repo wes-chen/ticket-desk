@@ -129,5 +129,7 @@ body{
   .hero{justify-content:center;text-align:center}
   .hero .cd{justify-content:center}
   .ringwrap{justify-content:center}
-  .mrow .dots{flex:1;justify-content:center}
+  .bigstat{text-align:center}
+  .bigstat .row{justify-content:center}
+  .hero img{width:96px;height:96px}
 }
