@@ -34,6 +34,20 @@
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
   }
 
+  function trendDelta(trend) {
+    // Last non-null median vs the non-null point ~7 entries earlier (or earliest).
+    // Returns {d, span} in dollars / entries, or null when there is no movement to measure.
+    var pts = [];
+    (trend || []).forEach(function (v, i) { if (v != null) pts.push([i, v]); });
+    if (pts.length < 2) return null;
+    var last = pts[pts.length - 1], first = pts[0], target = last[0] - 7;
+    for (var i = pts.length - 1; i >= 0; i--) {
+      if (pts[i][0] <= target) { first = pts[i]; break; }
+    }
+    if (first[0] === last[0]) return null;
+    return { d: last[1] - first[1], span: last[0] - first[0] };
+  }
+
   var state = { data: null, selected: null, timer: null };
 
   function nextGame(games) {
@@ -236,6 +250,35 @@
       " · Market " + fmtMoney(g.marketMedian) + "</div></div>";
   }
 
+  function renderMovers(games) {
+    var now = Date.now(), rows = [];
+    games.forEach(function (g) {
+      var puck = Date.parse(g.puckTime || g.date);
+      if (isNaN(puck) || puck <= now) return;
+      var t = trendDelta(g.trend);
+      if (t && Math.abs(t.d) >= 2) rows.push({ g: g, d: t.d, span: t.span });
+    });
+    var ups = rows.filter(function (r) { return r.d > 0; })
+      .sort(function (a, b) { return b.d - a.d; }).slice(0, 3);
+    var dns = rows.filter(function (r) { return r.d < 0; })
+      .sort(function (a, b) { return a.d - b.d; }).slice(0, 3);
+    function col(title, list) {
+      var rs = list.map(function (r) {
+        var cls = r.d > 0 ? "up" : "down";
+        var txt = (r.d > 0 ? "+$" : "-$") + Math.abs(Math.round(r.d));
+        return '<div class="mvrow"><span>' + esc(fmtDate(r.g.puckTime || r.g.date)) + " · " +
+          esc(r.g.abbrev) + '</span><span><b class="' + cls + '">' + txt +
+          "</b><em>" + r.span + "d</em></span></div>";
+      }).join("");
+      return '<div class="mvcol"><h4>' + title + "</h4>" + (rs || '<p class="qempty">—</p>') + "</div>";
+    }
+    var body = (!ups.length && !dns.length)
+      ? '<p class="qempty">Not enough market history yet — movers appear once games have two days of data.</p>'
+      : '<div class="mvgrid">' + col("HEATING UP", ups) + col("COOLING OFF", dns) + "</div>";
+    return '<section class="card"><h3>MARKET MOVERS</h3>' + body +
+      '<p class="fnote">Median of comparable pairs · moves vs 7 days of tracking</p></section>';
+  }
+
   function renderTiers(games) {
     var tm = tierMedians(games);
     var meds = Object.keys(tm).map(function (t) { return [t, tm[t]]; })
@@ -246,13 +289,22 @@
     var cols = meds.map(function (x) {
       var h = Math.max(6, Math.round((x[1] / max) * H));
       var tc = TIER_CODE[x[0]] || x[0];
-      return '<div class="vcol"><span class="vv">' + fmtMoney(x[1]) + "</span>" +
+      var ds = [];
+      games.forEach(function (g) {
+        if (g.tier !== x[0]) return;
+        var t = trendDelta(g.trend);
+        if (t) ds.push(t.d);
+      });
+      var td = ds.length ? Math.round(median(ds)) : 0;
+      var tdHtml = td === 0 ? "" : '<span class="vd ' + (td > 0 ? "up" : "down") + '">' +
+        (td > 0 ? "+" : "-") + "$" + Math.abs(td) + "</span>";
+      return '<div class="vcol"><span class="vv">' + fmtMoney(x[1]) + "</span>" + tdHtml +
         '<span class="vbar" style="height:' + h + 'px"></span>' +
         '<span class="vt">' + esc(tc) + "</span></div>";
     }).join("");
     if (!cols) cols = '<p class="sub2" style="color:var(--mut);font-size:12px">No market data yet.</p>';
     return '<section class="card"><h3>MARKET BY TIER</h3><div class="vbars">' + cols + "</div>" +
-      '<div class="fnote">Median comparable resale list per tier, per seat.</div></section>';
+      '<div class="fnote">Median comparable resale list per tier, per seat · Δ vs 7d of tracking</div></section>';
   }
 
   function renderEconomics() {
@@ -359,6 +411,7 @@
       renderHero(next) +
       '<div class="grid2">' + renderQueue() + renderPulseShell() + "</div>" +
       renderTimeline(games) +
+      renderMovers(games) +
       '<div class="grid2x">' + renderTiers(games) + renderMixCard(games) + "</div>" +
       '<div class="grid2x">' + renderCheat() + renderEconomics() + "</div>" +
       renderFooter(data.generated_at);
