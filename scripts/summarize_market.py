@@ -260,6 +260,11 @@ def _help_has_no_side_effect(script: str) -> str | None:
         # and pass vacuously (mutant M4b) - the same defect mutation already found for the
         # other script. Its --help text names the destination, printed from the same DEST
         # constant the write uses, so no network is needed to check it.
+        # Subject to M12's class too, in the same way and for the same reason: this reads
+        # a path the script PRINTS, so a literal typed next to DEST in either the help
+        # string or the write would decouple them and pass. Neither half of this guard is
+        # drift-proof; both are cheaper than a real run that mutates the tree.
+        #
         # ANCHOR ON THE MARKER, AND COMPARE FOR EQUALITY. A bare substring test over all
         # of --help was the first version and it was too weak two ways: argparse prints
         # the destination in more than one place, only one of which derives from DEST, so
@@ -308,14 +313,13 @@ def _help_has_no_side_effect(script: str) -> str | None:
     # The path is taken from --dry-run's own output, which is printed from DEST - the same
     # object the write uses. That is a CONVENTION, not a constraint: replacing the f-string
     # with a literal decouples them and this control passes while the write goes elsewhere
-    # (mutant M12). A missing test, not an equivalence - the real-run control it replaced
-    # was immune to it. Kept anyway: the real-run control could
-    # silently revert a concurrent peer write and left a window where a kill stranded a
-    # dirty tree, which is the worse trade. An earlier
-    # version ran the script FOR REAL and restored the bytes afterwards; that worked, but
-    # it made an offline suite mutate a tracked store, which review showed could silently
-    # revert a concurrent write and left ~55ms where a SIGKILL stranded a dirty tree.
-    # Reading the path costs nothing and proves the same thing.
+    # (mutant M12). A missing test, not an equivalence.
+    #
+    # An earlier version ran the script FOR REAL and restored the bytes afterwards, and it
+    # WAS immune to M12. It was dropped because it made an offline suite mutate a tracked
+    # store: review measured it silently reverting a concurrent peer write 20/20, and ~55ms
+    # in which a SIGKILL stranded a dirty tree. Reading the path costs nothing and proves
+    # nearly the same thing, which is the better trade - but "nearly" is the honest word.
     claimed = [ln.split("would write", 1)[1].strip().split()[0]
                for ln in dry.stdout.splitlines() if "would write" in ln]
     if not claimed:
