@@ -193,7 +193,7 @@
       }).join("");
       return '<div class="mrow"><div class="mlab">' + monthName(m) + '</div><div class="dots">' + dots + "</div></div>";
     }).join("");
-    return '<section class="card"><h3>SEASON TIMELINE</h3>' + rows +
+    return '<section class="card"><h3>SEASON TIMELINE</h3><div class="tgrid">' + rows + "</div>" +
       '<div class="tlegend">Code under each date = Sharks pricing tier</div>' +
       '<div class="gdetail" id="gdetail"></div></section>';
   }
