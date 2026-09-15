@@ -18,6 +18,7 @@ runner and a residential browser. Anything downstream that treats these as his o
 achievable prices is wrong.
 """
 
+import argparse
 import json
 import pathlib
 import sys
@@ -198,6 +199,51 @@ def summarize(rows_by_source: dict[str, list[dict]], games: list[dict]) -> dict:
     }
 
 
+def _help_has_no_side_effect(script: str) -> str | None:
+    """Assert `--help` neither writes a tracked file nor reaches the network.
+
+    THE REGRESSION THIS PINS (ops#171). Neither this script nor fetch_schedule.py parsed
+    arguments, so unknown flags were ignored and `--help` - the first thing anyone types
+    to find out what a script does - ran the whole job. This one rewrote
+    data/market/summary.json, whose `generatedAt` changes every run, so the probe dirtied
+    the tree every time. fetch_schedule.py was worse and better hidden: it performed a
+    live NHL fetch and wrote byte-identical content, so `git status` stayed clean while a
+    network call had happened.
+
+    Checked by mtime rather than by content, because content comparison is exactly what
+    missed it: a byte-identical rewrite is still a write.
+    """
+    import subprocess
+    root = pathlib.Path(__file__).resolve().parent.parent
+    watched = [root / "data" / "schedule.json", root / "data" / "market" / "summary.json"]
+    before = {f: f.stat().st_mtime_ns for f in watched if f.exists()}
+    r = subprocess.run([sys.executable, str(root / "scripts" / script), "--help"],
+                       capture_output=True, text=True, timeout=60)
+    if r.returncode != 0:
+        return f"{script} --help exited {r.returncode}, want 0"
+    for f, was in before.items():
+        if f.stat().st_mtime_ns != was:
+            return f"{script} --help wrote {f.name}"
+    bogus = subprocess.run([sys.executable, str(root / "scripts" / script), "--nope"],
+                           capture_output=True, text=True, timeout=60)
+    if bogus.returncode == 0:
+        return f"{script} silently ignored an unknown flag instead of erroring"
+
+    # --dry-run, separately, because --help does NOT exercise the write gate: argparse
+    # prints usage and exits before main() runs, so reverting `if write:` to `if True:`
+    # leaves --help behaviour untouched. Found by mutation - two mutants survived a
+    # --help-only guard, and that is a missing test rather than an equivalence.
+    before2 = {f: f.stat().st_mtime_ns for f in watched if f.exists()}
+    dry = subprocess.run([sys.executable, str(root / "scripts" / script), "--dry-run"],
+                         capture_output=True, text=True, timeout=120)
+    if dry.returncode != 0:
+        return f"{script} --dry-run exited {dry.returncode}, want 0"
+    for f, was in before2.items():
+        if f.stat().st_mtime_ns != was:
+            return f"{script} --dry-run wrote {f.name}"
+    return None
+
+
 def self_test() -> int:
     fails = []
 
@@ -340,20 +386,24 @@ def self_test() -> int:
 
     for f in fails:
         print(f"  FAIL {f}", file=sys.stderr)
+    for _script in ("summarize_market.py", "fetch_schedule.py"):
+        _err = _help_has_no_side_effect(_script)
+        if _err:
+            fails.append(_err)
+
     print(f"self-test: {'FAILED' if fails else 'passed'} ({len(fails)} failure(s))")
     return 1 if fails else 0
 
 
-def main() -> int:
-    if "--self-test" in sys.argv:
-        return self_test()
+def main(write: bool = True) -> int:
     rows_by_source = {name: load_rows(path) for name, path in STORES}
     games = json.loads(SCHEDULE.read_text())["games"]
     summary = summarize(rows_by_source, games)
     for name, rows in rows_by_source.items():
         print(f"  {name}: {len(rows)} rows")
-    DEST.parent.mkdir(parents=True, exist_ok=True)
-    DEST.write_text(json.dumps(summary, indent=2) + "\n")
+    if write:
+        DEST.parent.mkdir(parents=True, exist_ok=True)
+        DEST.write_text(json.dumps(summary, indent=2) + "\n")
     print(f"days: {summary['observationDays']}  "
           f"games with data: {len(summary['games'])}/{len(games)}")
     if summary.get("crossSource"):
@@ -368,11 +418,34 @@ def main() -> int:
                   f"({abs(v['medianRatioToPrimary'] - 1) * 100:.1f}% {arrow}) "
                   f"range {v['minRatio']:.3f}-{v['maxRatio']:.3f}")
     print(f"confidence: {summary['confidence']}")
-    print(f"wrote {DEST.relative_to(ROOT)}")
+    print(f"wrote {DEST.relative_to(ROOT)}" if write
+          else f"--dry-run: would write {DEST.relative_to(ROOT)}")
     if not summary["games"]:
         print("\nNo priced games - the app will show no market context.", file=sys.stderr)
     return 0
 
 
+def _cli() -> int:
+    """See fetch_schedule.py's _cli docstring - same defect, found by the same audit.
+
+    `--help` here wrote data/market/summary.json, a tracked file whose `generatedAt`
+    changes every run, so the probe dirtied the working tree every time.
+    """
+    ap = argparse.ArgumentParser(
+        description="Derive data/market/summary.json from the four market stores.")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="compute and report, but do not write data/market/summary.json")
+    # KEEP THIS FLAG. main() used to sniff sys.argv for it; adding argparse without
+    # declaring it made the parser reject the runner's own invocation, and `npm test`
+    # went red for this script. Caught because the suite was read in full rather than
+    # tailed - a two-line tail showed the coverage summary and hid the FAIL above it.
+    ap.add_argument("--self-test", action="store_true",
+                    help="run the self-test against captured fixtures; no network, no write")
+    args = ap.parse_args()
+    if args.self_test:
+        return self_test()
+    return main(write=not args.dry_run)
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_cli())

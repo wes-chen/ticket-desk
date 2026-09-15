@@ -7,6 +7,7 @@ season. So every game must match on BOTH date and opponent, and every game must 
 with exactly one tier. Anything that doesn't line up is reported and exits non-zero.
 """
 
+import argparse
 import json
 import pathlib
 import re
@@ -34,7 +35,7 @@ def tm_event_id(link: str | None) -> str | None:
     return m.group(1) if m else None
 
 
-def main():
+def main(write: bool = True):
     tiers = json.loads((ROOT / "config" / "tiers.json").read_text())
     by_date = {g["date"]: g for g in tiers["games"]}
 
@@ -115,11 +116,38 @@ def main():
             print(f"  - {p}", file=sys.stderr)
 
     dest = ROOT / "data" / "schedule.json"
-    dest.write_text(json.dumps({"season": SEASON, "team": TEAM, "games": out}, indent=2) + "\n")
-    print(f"\nwrote {dest.relative_to(ROOT)}")
+    if write:
+        dest.write_text(json.dumps({"season": SEASON, "team": TEAM, "games": out}, indent=2) + "\n")
+        print(f"\nwrote {dest.relative_to(ROOT)}")
+    else:
+        print(f"\n--dry-run: would write {dest.relative_to(ROOT)} ({len(out)} games)")
 
     return 1 if problems else 0
 
 
+def _cli() -> int:
+    """Parse arguments before doing anything with a side effect.
+
+    WHY THIS EXISTS. This script had no argument parsing, so unknown flags were silently
+    ignored - and `--help`, which is what anyone types first to find out what a script
+    does, performed a LIVE NHL FETCH and rewrote data/schedule.json (ops#171).
+
+    It hid from a naive check, too: the rewrite was byte-identical, so `git status` stayed
+    clean while a network call and a write had both happened. The schedule genuinely moves
+    - this script exists because dates change - so on a day when it has shifted, the same
+    probe silently mutates a tracked store under whoever is working.
+
+    --dry-run fetches and validates without writing, which is the thing `--help` was
+    accidentally almost doing, made deliberate and safe.
+    """
+    ap = argparse.ArgumentParser(
+        description="Refresh data/schedule.json from the NHL API and VALIDATE it against "
+                    "the hand-transcribed tier table on date and opponent.")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="fetch and validate, but do not write data/schedule.json")
+    args = ap.parse_args()
+    return main(write=not args.dry_run)
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_cli())
