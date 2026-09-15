@@ -856,6 +856,18 @@ changed - do not paper over it.
   silently discarded every file, self-test fixtures that asserted an API field copied
   from documentation nobody had checked, and a probe that truncated responses at 400KB
   and scored a working 1.4MB source as empty.
+- **A mutation test with n=1 is not evidence a suite is sound.** Measured 2026-09-15 on
+  ops PR #110. A reviewer ran **one** mutation against its self-test, that mutation
+  happened to be caught, and the review concluded the suite "actually exercises
+  fail-closed behavior rather than being vacuous". A later sweep of twelve mutants killed
+  three - and one of those three died on a `KeyError` rather than an assertion. Every item
+  in that PR's own stated review focus survived deletion.
+
+  The shape is this project's signature failure appearing *inside* a review of it: a
+  sample of one, generalised. When you check whether a test suite is real, delete the
+  checks the code claims to make - each one, separately - and confirm each deletion turns
+  the suite red. A surviving mutant is either a missing test or a genuine equivalence, and
+  you must say which; "I tried one and it failed correctly" is neither.
 - **Check the instrument before believing the measurement.** Four of those failures were
   the measuring tool, not the thing measured. When a probe says a source is unusable,
   confirm it independently - `curl` the URL by hand - before acting on it.
