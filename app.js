@@ -12,6 +12,7 @@
     exchanged: "exchanged", undecided: ""
   };
   var TIER_CODE = { PRESEASON: "PRE", "A+": "A+", A: "A", B: "B", C: "C", D: "D" };
+  var TIER_CREDIT = { PRESEASON: 51, "A+": 120, A: 109, B: 100, C: 83, D: 69 };
 
   function $(sel, el) { return (el || document).querySelector(sel); }
   function esc(s) {
@@ -150,6 +151,16 @@
       '<span>median comparable resale list, per seat</span>' +
       '<div class="sub2">' + (n ? n + " comparable pairs tracked" : "No comparable pairs on the market right now") + "</div>" +
       '<div class="sub2">' + ctx + "</div>";
+    var credit = TIER_CREDIT[g.tier];
+    if (credit != null && med != null) {
+      var net = med * 0.9;
+      var gap = net - credit;
+      var verdict = gap >= 0
+        ? '<span class="up">resale beats exchange by ' + fmtMoney(gap) + "/seat</span>"
+        : '<span class="down">exchange beats resale by ' + fmtMoney(-gap) + "/seat</span>";
+      el.innerHTML += '<div class="sub2">Exchange credit ' + fmtMoney(credit) +
+        " · resale nets " + fmtMoney(net) + " at this pulse · " + verdict + "</div>";
+    }
   }
 
   function renderTimeline(games) {
