@@ -148,8 +148,8 @@ def _cli() -> int:
     accidentally almost doing, made deliberate and safe.
     """
     ap = argparse.ArgumentParser(
-        description="Refresh data/schedule.json from the NHL API and VALIDATE it against "
-                    "the hand-transcribed tier table on date and opponent.")
+        description=f"Refresh {DEST.relative_to(ROOT)} from the NHL API and VALIDATE it "
+                    f"against the hand-transcribed tier table on date and opponent.")
     ap.add_argument("--dry-run", action="store_true",
                     help=f"fetch and validate, but do not write "
                          f"{DEST.relative_to(ROOT)}")

@@ -260,9 +260,19 @@ def _help_has_no_side_effect(script: str) -> str | None:
         # and pass vacuously (mutant M4b) - the same defect mutation already found for the
         # other script. Its --help text names the destination, printed from the same DEST
         # constant the write uses, so no network is needed to check it.
-        if _WRITES[script] not in r.stdout:
-            return (f"{script} --help does not name {_WRITES[script]}, so the write check "
-                    f"above is watching a store it may not write")
+        # ANCHOR ON THE MARKER, AND COMPARE FOR EQUALITY. A bare substring test over all
+        # of --help was the first version and it was too weak two ways: argparse prints
+        # the destination in more than one place, only one of which derives from DEST, so
+        # moving DEST still matched the other; and `data/x.json` is a substring of
+        # `data/x.json.bak`, so even an exact-token containment test passes. This is the
+        # "a source-mention check is NOT enough" lesson one level up from where it is
+        # already written down, three lines above.
+        joined = " ".join(r.stdout.split())   # argparse wraps help text at terminal width
+        marker = "do not write "
+        claimed = joined.split(marker, 1)[1].split()[0] if marker in joined else None
+        if claimed != _WRITES[script]:
+            return (f"{script} --help says it would write {claimed!r}, but _WRITES says "
+                    f"{_WRITES[script]!r} - the write check above is watching the wrong store")
         # KNOWN GAP, named rather than glossed: its WRITE GATE is still unpinned -
         # reverting `if write:` there survives this suite, because only --dry-run exercises
         # it and --dry-run fetches. A missing test, not an equivalence. Filed as ops#175.
@@ -299,8 +309,9 @@ def _help_has_no_side_effect(script: str) -> str | None:
     # object the write uses. That is a CONVENTION, not a constraint: replacing the f-string
     # with a literal decouples them and this control passes while the write goes elsewhere
     # (mutant M12). A missing test, not an equivalence - the real-run control it replaced
-    # was immune to it. Kept anyway, because that control could silently revert a
-    # concurrent write and left a window where a kill stranded a dirty tree. An earlier
+    # was immune to it. Kept anyway: the real-run control could
+    # silently revert a concurrent peer write and left a window where a kill stranded a
+    # dirty tree, which is the worse trade. An earlier
     # version ran the script FOR REAL and restored the bytes afterwards; that worked, but
     # it made an offline suite mutate a tracked store, which review showed could silently
     # revert a concurrent write and left ~55ms where a SIGKILL stranded a dirty tree.
