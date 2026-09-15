@@ -239,6 +239,56 @@
     return '<section class="card"><h3>THE ECONOMICS</h3><div class="snap">' + cards + "</div></section>";
   }
 
+  function renderCheat() {
+    var tiers = ["A+", "A", "B", "C", "D", "PRESEASON"];
+    var rows = tiers.map(function (t) {
+      var c = TIER_CREDIT[t], be = c / 0.9, bt = be * 1.165;
+      return "<tr><td class=\"tc\">" + t + "</td><td>$" + c + "</td><td>$" + be.toFixed(2) +
+        "</td><td>$" + bt.toFixed(2) + "</td></tr>";
+    }).join("");
+    return '<section class="card"><h3>LISTING CHEAT SHEET</h3>' +
+      '<table class="ctable"><thead><tr><th>TIER</th><th>CREDIT</th><th>BREAK-EVEN</th><th>BUYER PAYS</th></tr></thead>' +
+      "<tbody>" + rows + "</tbody></table>" +
+      '<p class="fnote">Per seat. Break-even = credit ÷ 0.90 · buyer total = list × 1.165</p></section>';
+  }
+
+  function fmtDur(ms) {
+    if (ms < 0) return "passed";
+    var m = Math.floor(ms / 60000), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60);
+    if (d > 0) return d + "d " + h + "h";
+    if (h > 0) return h + "h " + (m % 60) + "m";
+    return m + "m";
+  }
+
+  function renderQueue() {
+    var now = Date.now(), items = [];
+    state.data.games.forEach(function (g) {
+      var puck = Date.parse(g.puckTime || g.date);
+      if (isNaN(puck) || puck <= now) return;
+      var st = g.status || "undecided";
+      if (st === "sold" || st === "attending" || st === "exchanged") return;
+      var cutoff = puck - 48 * 3600 * 1000;
+      if (cutoff - now > 14 * 24 * 3600 * 1000) return;
+      items.push({ g: g, cutoff: cutoff, listed: st === "listed" });
+    });
+    items.sort(function (a, b) { return a.cutoff - b.cutoff; });
+    var body;
+    if (!items.length) {
+      body = '<p class="qempty">Nothing needs action — every upcoming game is decided or outside the 14-day window.</p>';
+    } else {
+      body = items.slice(0, 8).map(function (it) {
+        var g = it.g, urgent = (it.cutoff - now) < 72 * 3600 * 1000;
+        var tag = it.listed ? "Listed" : "No plan yet";
+        return '<div class="qrow' + (urgent ? " urgent" : "") + '">' +
+          '<div class="qmain"><b>' + esc(g.team) + "</b><span> · " + esc(fmtDate(g.puckTime || g.date)) + "</span></div>" +
+          '<div class="qcut">cutoff ' + fmtDur(it.cutoff - now) + "</div>" +
+          '<div class="qsub">' + tag + " · " + esc(g.tier) + " tier</div></div>";
+      }).join("");
+      if (items.length > 8) body += '<p class="fnote">+' + (items.length - 8) + " more in the daily digest</p>";
+    }
+    return '<section class="card"><h3>ACTION QUEUE</h3>' + body + "</section>";
+  }
+
   function renderFooter(genAt) {
     var d = genAt ? new Date(genAt) : null;
     var when = d && !isNaN(d) ? d.toLocaleString(undefined, {
@@ -283,12 +333,20 @@
       renderMix(games) +
       renderTimeline(games) +
       '<div class="grid2x">' + renderTiers(games) + renderEconomics() + "</div>" +
+      '<div class="grid2x">' + renderCheat() + renderQueue() + "</div>" +
       renderFooter(data.generated_at);
     var sel = null;
     games.forEach(function (g) { if (g.gameId === state.selected) sel = g; });
     if (sel) { renderPulse(sel); renderDetail(sel); }
     if (next) startCountdown(next.puckTime || next.date);
     bindTimeline();
+    if (window.matchMedia && window.matchMedia("(min-width:1024px)").matches) {
+      var sdot = document.querySelector(".tgrid .dot.sel"), tgrid = document.querySelector(".tgrid");
+      if (sdot && tgrid) {
+        var r = sdot.getBoundingClientRect(), gr = tgrid.getBoundingClientRect();
+        tgrid.scrollLeft += (r.left - gr.left) - gr.width / 2 + r.width / 2;
+      }
+    }
   }
 
   function fail(msg) {
