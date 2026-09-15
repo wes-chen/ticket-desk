@@ -150,11 +150,32 @@
     var rangeTxt = (g.marketMin != null && g.marketMax != null)
       ? " · range " + fmtMoney(g.marketMin) + "–" + fmtMoney(g.marketMax) : "";
     var pairsTxt = n === 1 ? "1 pair" : n + " pairs";
+    var trend = g.trend || [], tpts = [];
+    trend.forEach(function (v) { if (v != null) tpts.push(v); });
+    var spark = "";
+    if (tpts.length >= 2) {
+      var W = 140, H = 36, mn = Math.min.apply(null, tpts), mx = Math.max.apply(null, tpts);
+      var coords = tpts.map(function (v, i) {
+        var x = (i / (tpts.length - 1)) * W;
+        var y = H - 4 - ((v - mn) / ((mx - mn) || 1)) * (H - 8);
+        return x.toFixed(1) + "," + y.toFixed(1);
+      }).join(" ");
+      var dd = Math.round(tpts[tpts.length - 1] - tpts[0]);
+      var capTxt = dd === 0 ? "flat over " + tpts.length + "d"
+        : (dd > 0 ? "+$" + dd : "-$" + Math.abs(dd)) + " over " + tpts.length + "d";
+      var capCls = dd === 0 ? "" : (dd > 0 ? "up" : "down");
+      spark = '<div class="spark"><svg viewBox="0 0 ' + W + " " + H +
+        '" preserveAspectRatio="none" aria-hidden="true">' +
+        '<polyline points="' + coords + '" vector-effect="non-scaling-stroke"/></svg>' +
+        '<div class="scap' + (capCls ? " " + capCls : "") + '">' + capTxt + "</div></div>";
+    } else if (trend.length) {
+      spark = '<div class="spark"><div class="scap">trend building — new point each morning</div></div>';
+    }
     el.innerHTML =
       '<div class="gt">' + esc(g.abbrev) + " · " + esc(fmtDate(g.date)) + "</div>" +
       "<b>" + fmtMoney(med) + "</b>" +
       "<span>median" + rangeTxt + " · " + pairsTxt + "</span>" +
-      tierRow;
+      tierRow + spark;
     var credit = TIER_CREDIT[g.tier];
     var cheapest = g.marketMin;
     if (credit != null && cheapest != null) {
@@ -194,8 +215,13 @@
       var n = byMonth[m].length, rws = Math.ceil(n / 5), cls = Math.ceil(n / rws);
       return '<div class="mrow"><div class="mlab">' + monthName(m) + '</div><div class="dots" style="--cols:' + cls + '">' + dots + "</div></div>";
     }).join("");
+    var skey = [["Listed", "#2dd4bf"], ["Sold", "#4ade80"], ["Going", "#60a5fa"],
+                ["Exchanged", "#fbbf24"], ["To decide", "#5f7a83"]].map(function (s) {
+      return '<span><i style="background:' + s[1] + '"></i>' + s[0] + "</span>";
+    }).join("");
     return '<section class="card"><h3>SEASON TIMELINE</h3><div class="tgrid">' + rows + "</div>" +
       '<div class="tlegend">Code under each date = Sharks pricing tier</div>' +
+      '<div class="skey">' + skey + "</div>" +
       '<div class="gdetail" id="gdetail"></div></section>';
   }
 
