@@ -84,8 +84,48 @@ Never write into this repo anything that ties **our seats or our account** to a 
   have listed, at what price, with what net
 - Account, listing, or order identifiers
 
-These live in **browser `localStorage`** (entered by the user through the app's setup
-screen) and in the **private ops repo**. Nowhere else.
+These live in the **private ops repo** and in the chat interface. Nowhere else.
+
+**Not in the browser either, since ops#165.** This used to read "browser `localStorage`,
+entered through the app's setup screen". Both are gone: the site is display-only and Rumi
+(chat -> git) is the input interface. `scripts/check_readonly.py` **fails the build** if a
+write path or input surface reappears, and `localStorage` is the first pattern it looks
+for - so an agent following the old sentence would build a setup screen and have the gate
+reject it after the work was done.
+
+**One carve-out, approved in ops#165 and easy to misread as a violation of the line
+above.** `data/outcomes.json` is committed here and deployed, carrying per-game **status
+labels** (`undecided`, `listed`, `sold`, `exchanged`). That is a deliberate exception to
+"which games we have listed" - the dashboard exists to show it.
+
+**The line is not "no dollars", and getting that wrong in either direction is costly.**
+Those rows also carry `marketMedian` and `marketCount`, on every game. Those are fine:
+they are *other sellers'* public asks, the same market series `data/market/` has always
+committed, and the paragraph below explicitly permits them. An earlier version of this
+note said the file had "no dollar amounts" - false about the file, and false as a rule.
+An agent reading it would open the file, find 44 dollar figures, conclude the repo was
+leaking, and strip the market context out of the dashboard - deleting an ops#165
+acceptance criterion to satisfy a rule that was mis-stated.
+
+What would be the linkage is **our** number against a named game: a list price, net,
+payout, per-seat credit or invoice figure. `scripts/check_privacy.py` draws exactly that
+line in `OWN_PRICE_FIELDS`, and deliberately excludes `low`, `high` and `price` - it says
+why in a comment worth reading before touching this rule.
+
+**An aggregate over our own listings is our number too**, however it is labelled - a
+median of our asks, an average net, a season total. It names no single game, so
+`linkages()` will not catch it: that check fires only on a record holding an own-price
+field *and* an event field together. The guard here is this rule and nothing else.
+
+And aggregation does not anonymise at this scale. The carve-out above publishes **which**
+games are listed, and n is 2 - a median of our asks is the mean of the pair, and at n=1 it
+*is* the listing price.
+
+**One assumption this rests on, so it fails loudly rather than silently.** `marketMedian`
+is safe because none of the four collected sources carries *our* listing - we sell on
+Ticketmaster, and TM is uncollected (ops#16). If ops#16 ever lands, the market median for
+a game we have listed would start including our own ask, and this paragraph quietly stops
+being true. Revisit it then.
 
 **Fine here**, because they carry no seat and no account:
 
@@ -161,7 +201,7 @@ Two rules, both checkable:
 - a closed issue must carry a closing comment - a resolution nobody recorded is one
   nobody can audit six months later
 
-`npm run issues:audit` checks both against the live tracker. It needs network and `gh`
+`python3 scripts/check_issues.py` checks both against the live tracker. It needs network and `gh`
 auth, so it is **not** part of `npm test`, which is deliberately offline; its classifier
 is pure and self-tested. Run it after any batch of issue work.
 
@@ -223,9 +263,12 @@ picked up on a tick, and only a fork whose answer is a *preference* becomes a
 item on his queue - that is the failure this practice exists to avoid, in the other
 direction.
 
-Say what is explicitly out of scope, too. ops#61 wants a profile export and names real
-sync as **not** in scope, because sync needs a credential in the browser and would drag a
-small UI change into the protected set.
+Say what is explicitly out of scope, too. ops#61 *wanted* a profile export and named real
+sync as **not** in scope, because sync would have needed a credential in the browser and
+dragged a small UI change into the protected set. Kept as an illustration of the practice,
+in the past tense on purpose: ops#165 deleted the architecture it assumed - there is no
+browser profile, no transfer link and no export any more, and `check_readonly.py` now
+fails the build on all three by name.
 
 ### A measured value goes in a STORE, not in an issue body
 
@@ -328,7 +371,7 @@ your involvement:
 still holding:
 
 ```bash
-npm run issues:audit     # flags an open claim past its horizon, and one with no horizon
+python3 scripts/check_issues.py   # flags an open claim past its horizon, and one with no horizon
 ```
 
 `scripts/check_issues.py` enforces both halves now. It always caught a `claimed` label
@@ -400,7 +443,7 @@ who acts and what closing it has to show**:
 | `type:meta` | agent | the actual rule diff, merged |
 | `type:incident` | agent | `**Cause**` **and** `**Guard**`, separately |
 
-`npm run issues:audit` enforces all of it, plus: an **open** issue with no type is
+`python3 scripts/check_issues.py` enforces all of it, plus: an **open** issue with no type is
 unroutable and flagged; two types at once is flagged; a `claimed` label with no
 `**Claiming**` comment is a stale lock from an agent that died mid-run. Closed issues are
 exempt from the type requirement - 21 of them predate the scheme, and reflagging history
@@ -457,6 +500,13 @@ The privacy checks are the gate, not a review by Wesley. Before pushing, confirm
 `npm run build` is clean **and** that the literal and history passes actually ran rather
 than skipping - a fresh clone without `.private-patterns` reports "clean" on evidence it
 never gathered.
+
+**`npm run build` is a smaller gate than this rule was written against.** Since ops#165 it
+runs the privacy passes, the read-only check, and a file copy - it no longer type-checks
+or runs the band, tier-market and freshness checks. Those still exist and CI still runs
+the last two, but only on the collector's own cron. So a clean local build does **not**
+mean the collected data is fresh: run `python3 scripts/check_data_freshness.py` yourself
+before pushing anything that touches it. See Commands.
 
 Stop and ask for anything that is not an ordinary push: force-pushing, changing repo
 visibility, rewriting history, adding a secret, or deleting data.
@@ -715,30 +765,52 @@ successes cannot be audited.
 
 ## Commands
 
+`package.json` carries **four** scripts. Everything else is invoked directly, which is
+also how CI invokes it - `collect-tickpick.yml` calls the Python entry points rather than
+npm, so a collector missing from `package.json` is not breakage. Verified by running each
+of these on 2026-09-15, after the ops#165 rewrite.
+
 ```bash
-npm run dev            # local app
-npm run build          # type-check, build, enforce privacy checks
-npm run schedule       # refresh + VALIDATE data/schedule.json against the NHL API
-npm run check:privacy  # privacy checks alone
-npm run check:bands    # validate config/price_bands.json (section -> price band map)
-npm run check:tiermarket   # cross-check the tier table against collected market prices
-npm run collect            # all four collectors, then summarise
-npm run collect:tickpick   # TickPick prices -> data/market/tickpick.jsonl (+ raw to raw-out/)
-npm run collect:gametime   # second source, 44/44, AggregateOffer
-npm run collect:ticketnetwork  # third, ROLLING window - see the time-join warning below
-npm run collect:scorebig   # fourth, ROLLING - its declared UTC offset is wrong, see below
-npm run resolve:tickpick   # rebuild data/tickpick_events.json from TickPick's sitemap
-npm run summarize:market   # derive data/market/summary.json, which the app imports
-npm run check:freshness    # gap + staleness + coverage-regression across all four sources
-npm run hypotheses         # readiness of each registered hypothesis, then run the ready ones
-npm run calendar           # rebuild deadlines.ics - the T-48h alarms, 7d/24h/1h per game
-npm run issues:audit       # issue hygiene against the live tracker (network + gh auth)
-npm run resolve:tm     # TM Discovery event ids -> data/tm_events.json
-npm run test:tm        # resolver self-test against real captured fixtures; no key, no network
+npm run build          # privacy + read-only checks, then copy the static site into dist/
+npm run check:privacy  # the three privacy passes alone
+npm run check:readonly # assert the site ships no input path - see check_readonly.py
+npm test               # the self-test suite (offline; does NOT run the privacy passes)
+
+python3 -m http.server -d dist 8000   # preview the built site; there is no dev server now
+
+python3 scripts/fetch_schedule.py          # refresh + VALIDATE data/schedule.json vs the NHL API
+python3 scripts/check_price_bands.py       # validate config/price_bands.json
+python3 scripts/check_tier_market.py       # cross-check the tier table against market prices
+python3 scripts/check_data_freshness.py    # gap + staleness + coverage regression, four sources
+python3 scripts/check_issues.py            # issue hygiene vs the live tracker (network + gh auth)
+python3 scripts/hypotheses.py              # readiness of each registered hypothesis, then run
+python3 scripts/summarize_market.py        # derive data/market/summary.json
+
+python3 scripts/collect_tickpick.py        # TickPick -> data/market/tickpick.jsonl
+python3 scripts/collect_gametime.py        # second source, 44/44, AggregateOffer
+python3 scripts/collect_ticketnetwork.py   # third, ROLLING window - see the time-join warning
+python3 scripts/collect_scorebig.py        # fourth, ROLLING - declared UTC offset is wrong
+python3 scripts/collect_tickpick.py --resolve   # rebuild data/tickpick_events.json
+python3 scripts/resolve_tm_events.py       # TM Discovery ids -> data/tm_events.json
+
 python3 scripts/probe_sources.py --label local  # HTTP-level reachability (no browser needed)
 python3 scripts/probe_sources.py --self-test    # replay measured responses through verdict()
-node scripts/probe_browser.mjs --label local   # source reachability (needs local Chromium)
+node scripts/probe_browser.mjs --label local    # source reachability (needs local Chromium)
 ```
+
+**`npm run build` is a smaller gate than it used to be, and rule 5 leans on it.** Before
+the ops#165 rewrite it chained the band, tier-market and freshness checks behind a
+type-check. It no longer does: it runs the privacy passes, the read-only check, and copies
+files. Nothing was deleted - every one of those checks still exists and CI still runs the
+freshness and tier-market ones directly - but a clean local `npm run build` now proves
+less than the sentence in rule 5 implies. Run the freshness check yourself before a push
+that touches collected data. Whether they belong back in the build chain is an open
+question, deliberately not settled here.
+
+**`summary.json` has no app consumer.** The dashboard reads `data/outcomes.json` and
+nothing else; `build` copies only `schedule.json` and `outcomes.json` into `dist/data/`.
+`summarize_market.py` still earns its place as the derived store the model and the checks
+read, but do not expect a UI change from running it.
 
 `resolve_tm_events.py` needs `TM_DISCOVERY_API_KEY`, from the environment or from
 `.env.local` (gitignored). It is a read-only public-data key with no connection to the
@@ -816,6 +888,20 @@ changed - do not paper over it.
 - **Check the instrument before believing the measurement.** Four of those failures were
   the measuring tool, not the thing measured. When a probe says a source is unusable,
   confirm it independently - `curl` the URL by hand - before acting on it.
+- **A mutation test with n=1 is not evidence a suite is sound.** Measured 2026-09-15 on
+  ops PR #110. A reviewer ran **one** mutation against its self-test, that mutation
+  happened to be caught, and the review concluded the suite "actually exercises
+  fail-closed behavior rather than being vacuous". A later sweep of twelve mutants killed
+  three - and one of those three died on a `KeyError` rather than an assertion. Every item
+  in that PR's own stated review focus survived deletion.
+
+  The shape is this project's signature failure appearing *inside* a review of it: a
+  sample of one, generalised. When you check whether a test suite is real, delete the
+  checks the code claims to make - each one, separately - and confirm each deletion turns
+  the suite red. A surviving mutant is either a missing test or a genuine equivalence, and
+  you must say which; "I tried one and it failed correctly" is neither.
+
+  Recorded in the ops#110 closing comment, which carries the full mutant table.
 - **`npm test` runs the suite** (ops#17). Nine scripts self-test against *real captured
   fixtures* - responses actually received from the APIs, plus a throwaway git repo for
   the privacy history pass - never against shapes copied from documentation. That
