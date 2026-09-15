@@ -15,9 +15,11 @@
 # place. So this script symlinks the new path's memory directory at the canonical one.
 # One memory set, many checkouts.
 #
-# Usage:  scripts/agent_worktree.sh <name>        e.g. scripts/agent_worktree.sh f33859f9
-#         scripts/agent_worktree.sh --list
-#         scripts/agent_worktree.sh --remove <name>
+# Usage:  scripts/agent_worktree.sh --help
+#
+# Deliberately not repeated here. This comment used to carry its own copy of the three
+# invocation forms, which is a second source for one string - and it was already stale,
+# missing --help. One usage() function, referenced.
 
 set -euo pipefail
 
@@ -33,12 +35,15 @@ usage() {
 usage: agent_worktree.sh <name>        give session <name> its own checkout
        agent_worktree.sh --list        list existing worktrees
        agent_worktree.sh --remove <n>  remove a worktree and its memory symlink
+       agent_worktree.sh --help        this message
 
 <name> is a session id, e.g. f33859f9. It must not begin with "-".
 
 Creates ../ticket-desk-<name> on branch agent/<name>, symlinks its Claude Code
-memory directory at the canonical checkout's, and copies .private-patterns and
-.privacy-accepted so the literal and history privacy passes actually run there.
+memory directory at the canonical checkout's, and copies .private-patterns - which is
+gitignored and local-only, so a fresh worktree without it silently SKIPS the literal
+and history privacy passes. (.privacy-accepted is tracked and arrives with the
+checkout; the copy loop covers both but only ever fires for the first.)
 USAGE
 }
 
@@ -47,7 +52,10 @@ case "${1:-}" in
     git -C "$CANON" worktree list
     exit 0 ;;
   --remove)
-    name="${2:?need a name}"
+    name="${2:-}"
+    # Not ${2:?...}: that exits 1 with a bash-internal message and no usage, so this
+    # was a THIRD error path while the PR claimed two.
+    [[ -n "$name" ]] || { echo "--remove needs a name" >&2; usage >&2; exit 2; }
     wt="$(dirname "$CANON")/$(basename "$CANON")-$name"
     git -C "$CANON" worktree remove "$wt" --force
     proj="$PROJECTS/$(key "$wt")"
@@ -82,6 +90,14 @@ case "${1:-}" in
 esac
 
 name="$1"
+# A POSITIVE check, not just "does not start with -". Two holes this closes, both
+# measured: a transposition like `agent_worktree.sh zz9 --remove` silently CREATED zz9
+# and ignored the rest, and a name containing "/" created an intermediate directory
+# that is not a worktree and that --remove leaves orphaned.
+[[ $# -eq 1 ]] || { echo "expected one name, got $#: $*" >&2; usage >&2; exit 2; }
+[[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || {
+  echo "invalid name: $name (use letters, digits, dot, underscore, dash)" >&2
+  usage >&2; exit 2; }
 wt="$(dirname "$CANON")/$(basename "$CANON")-$name"
 
 if [[ -e "$wt" ]]; then
