@@ -61,6 +61,11 @@ body{
 .bigstat .sub2{font-size:11px;color:var(--dim);margin-top:4px}
 .bigstat .up{color:#86efac;font-weight:700}
 .bigstat .down{color:#fca5a5;font-weight:700}
+.bigstat .row{display:flex;gap:8px;font-size:11.5px;color:var(--ink);margin-top:6px;align-items:baseline}
+.bigstat .lab{flex:none;width:38px;font-size:9.5px;font-weight:800;letter-spacing:.1em;color:var(--dim)}
+.bigstat .banner{margin-top:10px;background:rgba(45,212,191,.07);border:1px solid rgba(45,212,191,.25);border-radius:12px;padding:10px 12px}
+.bigstat .banner .v{font-size:13px;font-weight:800;color:var(--teal)}
+.bigstat .banner .m{font-size:11px;color:var(--mut);margin-top:2px}
 
 /* timeline */
 .mrow{display:flex;gap:10px;align-items:flex-start;margin:9px 0}
