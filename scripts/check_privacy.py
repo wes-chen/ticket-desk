@@ -75,6 +75,10 @@ OWN_PRICE_FIELDS = {
 EVENT_FIELDS = {"game", "gameId", "event", "eventId", "opponent", "date"}
 
 FORBIDDEN_KEYS = {
+    # Listing IDs are account-personal: they identify OUR listings on TM.
+    # Added for the read-only dashboard (ops#165) - the public outcomes feed
+    # must carry status labels only, never the IDs behind them.
+    "tmListingId", "listingId", "tm_listing_id", "listing_id",
     "creditPerSeat",
     "invoiceTotal",
     "seasonInvoiceTotal",
