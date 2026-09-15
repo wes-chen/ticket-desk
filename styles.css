@@ -140,10 +140,10 @@ body{
   .grid2x>.card{margin-bottom:0}
   .snap{display:grid;grid-template-columns:repeat(3,1fr);overflow:visible;padding-bottom:0}
   .snap .f{flex:none}
-  .hero{justify-content:center;text-align:center}
-  .hero .cd{justify-content:center;position:absolute;right:28px;top:50%;transform:translateY(-50%)}
+  .hero{justify-content:flex-start;text-align:left}
+  .hero .cd{justify-content:flex-start;position:absolute;right:28px;top:50%;transform:translateY(-50%)}
   .cd b{font-size:34px}
-  .tgrid{display:flex;gap:22px;overflow-x:auto;padding:8px 2px 12px;scroll-snap-type:x proximity;scrollbar-width:thin}
+  .tgrid{display:flex;gap:22px;overflow-x:auto;padding:8px 14px 12px;scroll-snap-type:x proximity;scrollbar-width:thin;scroll-padding-left:14px}
   .tgrid::-webkit-scrollbar{height:6px}
   .tgrid::-webkit-scrollbar-thumb{background:#1e3a3a;border-radius:3px}
   .tgrid .mrow{flex-direction:column;gap:8px;margin:0;flex:none;scroll-snap-align:start}
