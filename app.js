@@ -107,7 +107,7 @@
                     exchanged: "#fbbf24", undecided: "#5f7a83" }[s];
       return '<div><i style="background:' + color + '"></i>' + STATUS_LABEL[s] + ' · ' + counts[s] + "</div>";
     }).join("");
-    return '<section class="card"><h3>SEASON MIX</h3><div class="ringwrap">' +
+    return '<section class="card" id="mixcard"><h3>SEASON MIX</h3><div class="ringwrap">' +
       '<div class="ringc"><svg class="ring" width="96" height="96" viewBox="0 0 96 96">' +
       '<circle class="trk" cx="48" cy="48" r="40" fill="none" stroke-width="11"/>' + arcs + "</svg>" +
       '<div class="ctr"><b>' + decided + "</b><span>SET</span></div></div>" +
@@ -237,7 +237,7 @@
     ].map(function (c) {
       return '<div class="f"><code>' + esc(c[0]) + "</code><p>" + esc(c[1]) + "</p></div>";
     }).join("");
-    return '<section class="card"><h3>THE ECONOMICS</h3><div class="snap">' + cards + "</div></section>";
+    return '<section class="card" id="econcard"><h3>THE ECONOMICS</h3><div class="snap">' + cards + "</div></section>";
   }
 
   function renderCheat() {
