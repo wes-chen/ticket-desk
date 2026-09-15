@@ -57,7 +57,7 @@ body{
 /* market pulse */
 .bigstat b{display:block;font-size:26px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
 .bigstat .gt{font-size:11px;color:var(--teal);font-weight:700;margin-bottom:2px}
-.bigstat span{display:block;font-size:11px;color:var(--mut)}
+.bigstat>span{display:block;font-size:11px;color:var(--mut)}
 .bigstat .sub2{font-size:11px;color:var(--dim);margin-top:4px}
 .bigstat .up{color:#86efac;font-weight:700}
 .bigstat .down{color:#fca5a5;font-weight:700}
