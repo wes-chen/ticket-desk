@@ -282,8 +282,7 @@
       renderHero(next) +
       renderMix(games) +
       renderTimeline(games) +
-      renderTiers(games) +
-      renderEconomics() +
+      '<div class="grid2x">' + renderTiers(games) + renderEconomics() + "</div>" +
       renderFooter(data.generated_at);
     var sel = null;
     games.forEach(function (g) { if (g.gameId === state.selected) sel = g; });
