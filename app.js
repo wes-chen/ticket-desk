@@ -191,7 +191,8 @@
           "<span>" + day + "</span></button>" +
           '<span class="tcode">' + esc(tc) + "</span></span>";
       }).join("");
-      return '<div class="mrow"><div class="mlab">' + monthName(m) + '</div><div class="dots">' + dots + "</div></div>";
+      var n = byMonth[m].length, rws = Math.ceil(n / 5), cls = Math.ceil(n / rws);
+      return '<div class="mrow"><div class="mlab">' + monthName(m) + '</div><div class="dots" style="--cols:' + cls + '">' + dots + "</div></div>";
     }).join("");
     return '<section class="card"><h3>SEASON TIMELINE</h3><div class="tgrid">' + rows + "</div>" +
       '<div class="tlegend">Code under each date = Sharks pricing tier</div>' +
