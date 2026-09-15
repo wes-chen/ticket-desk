@@ -59,7 +59,8 @@
       '<p class="meta">' + esc(fmtDate(g.puckTime || g.date)) + ' · ' + esc(g.tier) + ' tier</p>' +
       '<div class="cd" id="cd"><div><b data-cd="d">–</b><span>DAYS</span></div>' +
       '<div><b data-cd="h">–</b><span>HRS</span></div>' +
-      '<div><b data-cd="m">–</b><span>MIN</span></div></div>' + pill +
+      '<div><b data-cd="m">–</b><span>MIN</span></div>' +
+      '<div><b data-cd="s">–</b><span>SEC</span></div></div>' + pill +
       '</div></section>';
   }
 
@@ -71,15 +72,17 @@
       if (ms < 0) ms = 0;
       var d = Math.floor(ms / 86400000),
           h = Math.floor(ms / 3600000) % 24,
-          m = Math.floor(ms / 60000) % 60;
+          m = Math.floor(ms / 60000) % 60,
+          s = Math.floor(ms / 1000) % 60;
       var root = $("#cd");
       if (!root) return;
       root.querySelector('[data-cd="d"]').textContent = d;
       root.querySelector('[data-cd="h"]').textContent = h;
       root.querySelector('[data-cd="m"]').textContent = m;
+      root.querySelector('[data-cd="s"]').textContent = s;
     }
     tick();
-    state.timer = setInterval(tick, 30000);
+    state.timer = setInterval(tick, 1000);
   }
 
   function renderMix(games) {
