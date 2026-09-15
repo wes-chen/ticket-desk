@@ -84,8 +84,22 @@ Never write into this repo anything that ties **our seats or our account** to a 
   have listed, at what price, with what net
 - Account, listing, or order identifiers
 
-These live in **browser `localStorage`** (entered by the user through the app's setup
-screen) and in the **private ops repo**. Nowhere else.
+These live in the **private ops repo** and in the chat interface. Nowhere else.
+
+**Not in the browser either, since ops#165.** This used to read "browser `localStorage`,
+entered through the app's setup screen". Both are gone: the site is display-only and Rumi
+(chat -> git) is the input interface. `scripts/check_readonly.py` **fails the build** if a
+write path or input surface reappears, and `localStorage` is the first pattern it looks
+for - so an agent following the old sentence would build a setup screen and have the gate
+reject it after the work was done.
+
+**One carve-out, approved in ops#165 and easy to misread as a violation of the line
+above.** `data/outcomes.json` is committed here and deployed: per-game **status labels**
+(`undecided`, `listed`, `sold`, `exchanged`) with **no dollar amounts**. That is a
+deliberate exception to "which games we have listed" - the dashboard exists to show it -
+and `check_privacy.py` records the carve-out where it is enforced. Status without a price
+carries no amount and no seat. Adding a dollar figure to that file would not be a
+carve-out; it would be the linkage.
 
 **Fine here**, because they carry no seat and no account:
 
@@ -161,7 +175,7 @@ Two rules, both checkable:
 - a closed issue must carry a closing comment - a resolution nobody recorded is one
   nobody can audit six months later
 
-`npm run issues:audit` checks both against the live tracker. It needs network and `gh`
+`python3 scripts/check_issues.py` checks both against the live tracker. It needs network and `gh`
 auth, so it is **not** part of `npm test`, which is deliberately offline; its classifier
 is pure and self-tested. Run it after any batch of issue work.
 
@@ -328,7 +342,7 @@ your involvement:
 still holding:
 
 ```bash
-npm run issues:audit     # flags an open claim past its horizon, and one with no horizon
+python3 scripts/check_issues.py   # flags an open claim past its horizon, and one with no horizon
 ```
 
 `scripts/check_issues.py` enforces both halves now. It always caught a `claimed` label
@@ -400,7 +414,7 @@ who acts and what closing it has to show**:
 | `type:meta` | agent | the actual rule diff, merged |
 | `type:incident` | agent | `**Cause**` **and** `**Guard**`, separately |
 
-`npm run issues:audit` enforces all of it, plus: an **open** issue with no type is
+`python3 scripts/check_issues.py` enforces all of it, plus: an **open** issue with no type is
 unroutable and flagged; two types at once is flagged; a `claimed` label with no
 `**Claiming**` comment is a stale lock from an agent that died mid-run. Closed issues are
 exempt from the type requirement - 21 of them predate the scheme, and reflagging history
@@ -457,6 +471,13 @@ The privacy checks are the gate, not a review by Wesley. Before pushing, confirm
 `npm run build` is clean **and** that the literal and history passes actually ran rather
 than skipping - a fresh clone without `.private-patterns` reports "clean" on evidence it
 never gathered.
+
+**`npm run build` is a smaller gate than this rule was written against.** Since ops#165 it
+runs the privacy passes, the read-only check, and a file copy - it no longer type-checks
+or runs the band, tier-market and freshness checks. Those still exist and CI still runs
+the last two, but only on the collector's own cron. So a clean local build does **not**
+mean the collected data is fresh: run `python3 scripts/check_data_freshness.py` yourself
+before pushing anything that touches it. See Commands.
 
 Stop and ask for anything that is not an ordinary push: force-pushing, changing repo
 visibility, rewriting history, adding a secret, or deleting data.
@@ -725,6 +746,8 @@ npm run build          # privacy + read-only checks, then copy the static site i
 npm run check:privacy  # the three privacy passes alone
 npm run check:readonly # assert the site ships no input path - see check_readonly.py
 npm test               # the self-test suite (offline; does NOT run the privacy passes)
+
+python3 -m http.server -d dist 8000   # preview the built site; there is no dev server now
 
 python3 scripts/fetch_schedule.py          # refresh + VALIDATE data/schedule.json vs the NHL API
 python3 scripts/check_price_bands.py       # validate config/price_bands.json
