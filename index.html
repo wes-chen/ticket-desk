@@ -1,14 +1,18 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ticket Desk</title>
-    <meta name="theme-color" content="#006d75" />
-    <meta name="robots" content="noindex, nofollow" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Sharks Ticket Desk — 2026-27</title>
+<meta name="description" content="Season dashboard: 44 Sharks home games, market context, and the resale economics.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="dash" id="app" aria-live="polite">
+  <div class="loading" id="loading">Loading season data…</div>
+</main>
+<noscript><div class="dash"><p class="noscript">This dashboard needs JavaScript to render.</p></div></noscript>
+<script src="app.js" defer></script>
+</body>
 </html>
