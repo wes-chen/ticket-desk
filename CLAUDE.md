@@ -888,6 +888,29 @@ changed - do not paper over it.
 - **Check the instrument before believing the measurement.** Four of those failures were
   the measuring tool, not the thing measured. When a probe says a source is unusable,
   confirm it independently - `curl` the URL by hand - before acting on it.
+- **Two instruments can be wrong in opposite directions on the same question.** Measured
+  2026-09-15, counting the scripts that write a tracked store. A coarse grep said **13**;
+  a narrow matcher keyed on `VAR = ROOT / "..."` said **3**, missing every collector that
+  writes through `market_store.py`; resolving each default destination gave **10**. The
+  grep over-counted by including an untracked destination and a script that only reads;
+  the matcher under-counted by missing indirect writes.
+
+  Tenth instance in this project of the instrument being the thing that was wrong, and
+  the first where **agreement between two quick measurements would have been the wrong
+  signal too** - they bracket the answer without containing it. When a count matters,
+  resolve the thing being counted rather than pattern-matching for it, and if two cheap
+  methods disagree, neither is the answer.
+
+  The corollary is the one this project keeps relearning: **a number that lives in an
+  issue body is a number nobody re-derives.** That one is in ops#178.
+
+- **Scope a sweep by enumerating the directory, not by naming globs.** Same day, same
+  bug found five times. The rule for "which scripts must I check" was written three
+  times and wrong twice, each time by exactly one extension - `scripts/*.py` missed a
+  `.mjs`, then `*.py`/`*.mjs`/`lib/*.py` missed a `.sh`. Both misses were scripts this
+  file documents, so scoping by the docs and scoping by extension each miss a different
+  one. `scripts/comps.py` carries the table.
+
 - **A mutation test with n=1 is not evidence a suite is sound.** Measured 2026-09-15 on
   ops PR #110. A reviewer ran **one** mutation against its self-test, that mutation
   happened to be caught, and the review concluded the suite "actually exercises
