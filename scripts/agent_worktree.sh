@@ -28,6 +28,20 @@ key() { echo "${1//\//-}"; }
 CANON_KEY="$(key "$CANON")"
 CANON_MEM="$PROJECTS/$CANON_KEY/memory"
 
+usage() {
+  cat <<'USAGE'
+usage: agent_worktree.sh <name>        give session <name> its own checkout
+       agent_worktree.sh --list        list existing worktrees
+       agent_worktree.sh --remove <n>  remove a worktree and its memory symlink
+
+<name> is a session id, e.g. f33859f9. It must not begin with "-".
+
+Creates ../ticket-desk-<name> on branch agent/<name>, symlinks its Claude Code
+memory directory at the canonical checkout's, and copies .private-patterns and
+.privacy-accepted so the literal and history privacy passes actually run there.
+USAGE
+}
+
 case "${1:-}" in
   --list)
     git -C "$CANON" worktree list
@@ -46,8 +60,24 @@ case "${1:-}" in
       || { [[ -d "$proj" ]] && echo "NOTE: $proj is not empty; left in place" >&2; }
     echo "removed worktree $wt"
     exit 0 ;;
+  -h|--help)
+    usage; exit 0 ;;
   "")
-    echo "usage: $0 <name> | --list | --remove <name>" >&2
+    usage >&2
+    exit 2 ;;
+  -*)
+    # ANY unrecognised flag is an ERROR, never a worktree name. Without this, `--help`
+    # fell through to `name="$1"` and CREATED things: a branch `agent/--help` (which
+    # `git check-ref-format` happily accepts), a worktree directory outside the repo, a
+    # symlink into ~/.claude, and a COPY OF .private-patterns at a new path. Typing
+    # --help at a script to find out what it does is not a reasonable way to acquire a
+    # git branch, and a mistyped flag became a worktree rather than a complaint.
+    #
+    # Fifth instance of the same defect found on 2026-09-15 (ops#171/172/176/179), and
+    # the worst: the others wrote a tracked store or fetched a page, this one mutated
+    # git state and duplicated the private-literals file. See ops#179.
+    echo "unknown option: $1" >&2
+    usage >&2
     exit 2 ;;
 esac
 
