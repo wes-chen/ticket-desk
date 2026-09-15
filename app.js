@@ -11,6 +11,7 @@
     listed: "listed", sold: "sold", attending: "attending",
     exchanged: "exchanged", undecided: ""
   };
+  var TIER_CODE = { PRESEASON: "PRE", "A+": "A+", A: "A", B: "B", C: "C", D: "D" };
 
   function $(sel, el) { return (el || document).querySelector(sel); }
   function esc(s) {
@@ -127,6 +128,13 @@
   }
 
   function renderTimeline(games) {
+    var meds = games.map(function (g) { return g.marketMedian; })
+      .filter(function (v) { return v != null; });
+    var lo = Math.min.apply(null, meds), hi = Math.max.apply(null, meds);
+    var sizeFor = function (v) {
+      if (v == null || hi <= lo) return 30;
+      return Math.round(30 + ((v - lo) / (hi - lo)) * 16);
+    };
     var byMonth = {}, order = [];
     games.forEach(function (g) {
       var m = (g.date || "").slice(0, 7);
@@ -140,13 +148,19 @@
       var dots = byMonth[m].map(function (g) {
         var day = parseInt((g.date || "").slice(8, 10), 10);
         var sel = state.selected === g.gameId ? " sel" : "";
-        return '<button class="dot ' + STATUS_CLASS[g.status] + sel + '" data-game="' + g.gameId + '"' +
-          ' aria-label="' + esc(g.opponent) + " " + esc(g.date) + " — " + esc(STATUS_LABEL[g.status]) + '">' +
-          "<span>" + day + "</span></button>";
+        var sz = sizeFor(g.marketMedian);
+        var tc = TIER_CODE[g.tier] || g.tier;
+        return '<span class="tcell"><button class="dot ' + STATUS_CLASS[g.status] + sel + '"' +
+          ' style="width:' + sz + "px;height:" + sz + 'px" data-game="' + g.gameId + '"' +
+          ' aria-label="' + esc(g.opponent) + " " + esc(g.date) + " — " + esc(g.tier) +
+          " tier — " + esc(STATUS_LABEL[g.status]) + '">' +
+          "<span>" + day + "</span></button>" +
+          '<span class="tcode">' + esc(tc) + "</span></span>";
       }).join("");
       return '<div class="mrow"><div class="mlab">' + monthName(m) + '</div><div class="dots">' + dots + "</div></div>";
     }).join("");
     return '<section class="card"><h3>SEASON TIMELINE</h3>' + rows +
+      '<div class="tlegend">Bigger dot = higher market median · code = Sharks pricing tier</div>' +
       '<div class="gdetail" id="gdetail"></div></section>';
   }
 
@@ -170,6 +184,7 @@
     });
     var meds = order.map(function (t) { return [t, median(tiers[t])]; })
       .filter(function (x) { return x[1] != null; });
+    meds.sort(function (a, b) { return b[1] - a[1]; });
     var max = Math.max.apply(null, meds.map(function (x) { return x[1]; }).concat([1]));
     var rows = meds.map(function (x) {
       var w = Math.max(4, Math.round((x[1] / max) * 100));
