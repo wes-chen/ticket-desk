@@ -89,7 +89,7 @@ body{
 .dot.attending span{color:#dbeafe}
 .dot.sel{outline:2px solid #fff;outline-offset:2px}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(45,212,191,.5)}55%{box-shadow:0 0 0 7px rgba(45,212,191,0)}}
-.gdetail{display:flex;gap:12px;align-items:center;background:var(--card2);
+.gdetail{display:flex;gap:12px;align-items:center;justify-content:center;background:var(--card2);
   border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:10px;min-height:64px}
 .gdetail img{width:40px;height:40px;flex:none}
 .gdetail .t1{font-size:14px;font-weight:700;color:#fff}
