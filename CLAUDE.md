@@ -715,30 +715,50 @@ successes cannot be audited.
 
 ## Commands
 
+`package.json` carries **four** scripts. Everything else is invoked directly, which is
+also how CI invokes it - `collect-tickpick.yml` calls the Python entry points rather than
+npm, so a collector missing from `package.json` is not breakage. Verified by running each
+of these on 2026-09-15, after the ops#165 rewrite.
+
 ```bash
-npm run dev            # local app
-npm run build          # type-check, build, enforce privacy checks
-npm run schedule       # refresh + VALIDATE data/schedule.json against the NHL API
-npm run check:privacy  # privacy checks alone
-npm run check:bands    # validate config/price_bands.json (section -> price band map)
-npm run check:tiermarket   # cross-check the tier table against collected market prices
-npm run collect            # all four collectors, then summarise
-npm run collect:tickpick   # TickPick prices -> data/market/tickpick.jsonl (+ raw to raw-out/)
-npm run collect:gametime   # second source, 44/44, AggregateOffer
-npm run collect:ticketnetwork  # third, ROLLING window - see the time-join warning below
-npm run collect:scorebig   # fourth, ROLLING - its declared UTC offset is wrong, see below
-npm run resolve:tickpick   # rebuild data/tickpick_events.json from TickPick's sitemap
-npm run summarize:market   # derive data/market/summary.json, which the app imports
-npm run check:freshness    # gap + staleness + coverage-regression across all four sources
-npm run hypotheses         # readiness of each registered hypothesis, then run the ready ones
-npm run calendar           # rebuild deadlines.ics - the T-48h alarms, 7d/24h/1h per game
-npm run issues:audit       # issue hygiene against the live tracker (network + gh auth)
-npm run resolve:tm     # TM Discovery event ids -> data/tm_events.json
-npm run test:tm        # resolver self-test against real captured fixtures; no key, no network
+npm run build          # privacy + read-only checks, then copy the static site into dist/
+npm run check:privacy  # the three privacy passes alone
+npm run check:readonly # assert the site ships no input path - see check_readonly.py
+npm test               # the self-test suite (offline; does NOT run the privacy passes)
+
+python3 scripts/fetch_schedule.py          # refresh + VALIDATE data/schedule.json vs the NHL API
+python3 scripts/check_price_bands.py       # validate config/price_bands.json
+python3 scripts/check_tier_market.py       # cross-check the tier table against market prices
+python3 scripts/check_data_freshness.py    # gap + staleness + coverage regression, four sources
+python3 scripts/check_issues.py            # issue hygiene vs the live tracker (network + gh auth)
+python3 scripts/hypotheses.py              # readiness of each registered hypothesis, then run
+python3 scripts/summarize_market.py        # derive data/market/summary.json
+
+python3 scripts/collect_tickpick.py        # TickPick -> data/market/tickpick.jsonl
+python3 scripts/collect_gametime.py        # second source, 44/44, AggregateOffer
+python3 scripts/collect_ticketnetwork.py   # third, ROLLING window - see the time-join warning
+python3 scripts/collect_scorebig.py        # fourth, ROLLING - declared UTC offset is wrong
+python3 scripts/collect_tickpick.py --resolve   # rebuild data/tickpick_events.json
+python3 scripts/resolve_tm_events.py       # TM Discovery ids -> data/tm_events.json
+
 python3 scripts/probe_sources.py --label local  # HTTP-level reachability (no browser needed)
 python3 scripts/probe_sources.py --self-test    # replay measured responses through verdict()
-node scripts/probe_browser.mjs --label local   # source reachability (needs local Chromium)
+node scripts/probe_browser.mjs --label local    # source reachability (needs local Chromium)
 ```
+
+**`npm run build` is a smaller gate than it used to be, and rule 5 leans on it.** Before
+the ops#165 rewrite it chained the band, tier-market and freshness checks behind a
+type-check. It no longer does: it runs the privacy passes, the read-only check, and copies
+files. Nothing was deleted - every one of those checks still exists and CI still runs the
+freshness and tier-market ones directly - but a clean local `npm run build` now proves
+less than the sentence in rule 5 implies. Run the freshness check yourself before a push
+that touches collected data. Whether they belong back in the build chain is an open
+question, deliberately not settled here.
+
+**`summary.json` has no app consumer.** The dashboard reads `data/outcomes.json` and
+nothing else; `build` copies only `schedule.json` and `outcomes.json` into `dist/data/`.
+`summarize_market.py` still earns its place as the derived store the model and the checks
+read, but do not expect a UI change from running it.
 
 `resolve_tm_events.py` needs `TM_DISCOVERY_API_KEY`, from the environment or from
 `.env.local` (gitignored). It is a read-only public-data key with no connection to the
