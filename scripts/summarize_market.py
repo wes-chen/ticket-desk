@@ -201,78 +201,95 @@ def summarize(rows_by_source: dict[str, list[dict]], games: list[dict]) -> dict:
     }
 
 
-# Which tracked store each script writes. Per script rather than one shared literal,
-# because a shared list is invisible to the guard: dropping an entry weakened the check
-# and the check could not tell (found by mutation).
-_WRITES = {"summarize_market.py": "data/market/summary.json"}
+# Which tracked store each script writes.
+_WRITES = {"summarize_market.py": "data/market/summary.json",
+           "fetch_schedule.py": "data/schedule.json"}
+
+# Which of them can be run with --dry-run INSIDE THIS SUITE. fetch_schedule.py cannot:
+# its main() calls fetch() unconditionally and --dry-run gates only the write, so running
+# it here would put a live NHL request inside a suite CLAUDE.md says is offline - and at
+# the head of collect-tickpick.yml, whose step 1 is this self-test. That is not a
+# hypothetical: it shipped in the first version of this guard and review caught it.
+_OFFLINE_DRY_RUN = {"summarize_market.py"}
 
 
 def _help_has_no_side_effect(script: str) -> str | None:
-    """Assert `--help` neither writes a tracked file nor reaches the network.
+    """Assert `--help` neither writes a tracked store nor is silently ignored.
 
-    THE REGRESSION THIS PINS (ops#171). Neither this script nor fetch_schedule.py parsed
-    arguments, so unknown flags were ignored and `--help` - the first thing anyone types
-    to find out what a script does - ran the whole job. This one rewrote
-    data/market/summary.json, whose `generatedAt` changes every run, so the probe dirtied
-    the tree every time. fetch_schedule.py was worse and better hidden: it performed a
-    live NHL fetch and wrote byte-identical content, so `git status` stayed clean while a
-    network call had happened.
+    THE REGRESSION THIS PINS (ops#171). Neither script parsed arguments, so unknown flags
+    were ignored and `--help` - the first thing anyone types to find out what a script
+    does - ran the whole job. summarize_market.py rewrote data/market/summary.json;
+    fetch_schedule.py was worse and better hidden, performing a live NHL fetch and writing
+    BYTE-IDENTICAL content, so `git status` stayed clean while a network call had happened.
 
-    Checked by mtime rather than by content, because content comparison is exactly what
-    missed it: a byte-identical rewrite is still a write.
+    Checked by mtime, not content, for exactly that reason: a byte-identical rewrite is
+    still a write. Note mtime here is ~4ms-granular, not nanosecond, despite the field
+    name - the margin over a ~40ms subprocess spawn is about 10x, and the failure
+    direction is a silent pass rather than a flaky red.
+
+    OFFLINE BY CONSTRUCTION. argparse handles --help and --nope before main() runs, so
+    neither reaches the network for either script. Only --dry-run does, which is why
+    fetch_schedule.py is excluded from that half - see _OFFLINE_DRY_RUN.
     """
     root = pathlib.Path(__file__).resolve().parent.parent
     target = root / _WRITES[script]
-    # A MISSING FILE IS A FAILURE, NOT A PASS. This read `if f.exists()`, so an absent
+    path = root / "scripts" / script
+
+    # A MISSING STORE IS A FAILURE, NOT A PASS. This read `if f.exists()`, so an absent
     # store was silently unwatched and *creating* it counted as clean - failing open, the
     # same shape as the fresh-clone `.private-patterns` hole rule 1 warns about.
     if not target.exists():
         return f"{script}: watched store {target.name} is missing, so this proves nothing"
 
-    # POSITIVE CONTROL. Everything below asserts that the target did NOT change, so a
-    # _WRITES entry pointing at a file the script never touches passes vacuously - the
-    # guard would be watching the wrong thing and could not tell. Found by mutation:
-    # swapping the target to another real store survived the whole suite.
-    #
-    # A source-mention check is NOT enough and was tried first: this script legitimately
-    # READS data/schedule.json, so pointing _WRITES at it passed a grep of the source
-    # while still watching a file the script never writes. The only honest control is to
-    # run it for real and confirm the named file moves. Offline - it reads local stores.
-    # The original bytes and mtime are restored, so the tree is untouched either way.
-    original, original_mtime = target.read_bytes(), target.stat().st_mtime_ns
-    try:
-        subprocess.run([sys.executable, str(root / "scripts" / script)],
-                       capture_output=True, text=True, timeout=60)
-        if target.stat().st_mtime_ns == original_mtime:
-            return (f"{script} does not write {target.name}, so watching it proves "
-                    f"nothing - _WRITES is pointing at the wrong store")
-    finally:
-        target.write_bytes(original)
-        os.utime(target, ns=(original_mtime, original_mtime))
-
     before = target.stat().st_mtime_ns
-    r = subprocess.run([sys.executable, str(root / "scripts" / script), "--help"],
+    r = subprocess.run([sys.executable, str(path), "--help"],
                        capture_output=True, text=True, timeout=60)
     if r.returncode != 0:
         return f"{script} --help exited {r.returncode}, want 0"
     if target.stat().st_mtime_ns != before:
         return f"{script} --help wrote {target.name}"
-    bogus = subprocess.run([sys.executable, str(root / "scripts" / script), "--nope"],
+
+    bogus = subprocess.run([sys.executable, str(path), "--nope"],
                            capture_output=True, text=True, timeout=60)
     if bogus.returncode == 0:
         return f"{script} silently ignored an unknown flag instead of erroring"
 
+    if script not in _OFFLINE_DRY_RUN:
+        # KNOWN GAP, named rather than glossed: fetch_schedule.py's --help and unknown-flag
+        # behaviour is pinned above, but its WRITE GATE is not - reverting `if write:` there
+        # survives this suite. That is a missing test, not an equivalence, and closing it
+        # needs a fixture that monkeypatches fetch() so --dry-run can run offline. Filed.
+        return None
+
     # --dry-run, separately, because --help does NOT exercise the write gate: argparse
-    # prints usage and exits before main() runs, so reverting `if write:` to `if True:`
-    # leaves --help behaviour untouched. Found by mutation - two mutants survived a
-    # --help-only guard, and that is a missing test rather than an equivalence.
+    # exits before main() runs, so reverting `if write:` leaves --help untouched. Found by
+    # mutation - two mutants survived a --help-only guard, which was a missing test.
     before2 = target.stat().st_mtime_ns
-    dry = subprocess.run([sys.executable, str(root / "scripts" / script), "--dry-run"],
-                         capture_output=True, text=True, timeout=120)
+    dry = subprocess.run([sys.executable, str(path), "--dry-run"],
+                         capture_output=True, text=True, timeout=60)
     if dry.returncode != 0:
-        return f"{script} --dry-run exited {dry.returncode}, want 0"
+        return (f"{script} --dry-run exited {dry.returncode}; cannot judge the write gate: "
+                f"{dry.stderr.strip()[-200:]}")
     if target.stat().st_mtime_ns != before2:
         return f"{script} --dry-run wrote {target.name}"
+
+    # POSITIVE CONTROL. Everything above asserts the target did NOT change, so a _WRITES
+    # entry naming a file the script never touches passes vacuously - the guard would be
+    # watching the wrong store and could not tell. Mutation found exactly that.
+    #
+    # The path is taken from --dry-run's own output, which is printed from DEST - the same
+    # object the write uses - so it cannot drift from the real write path. An earlier
+    # version ran the script FOR REAL and restored the bytes afterwards; that worked, but
+    # it made an offline suite mutate a tracked store, which review showed could silently
+    # revert a concurrent write and left ~55ms where a SIGKILL stranded a dirty tree.
+    # Reading the path costs nothing and proves the same thing.
+    claimed = [ln.split("would write", 1)[1].strip().split()[0]
+               for ln in dry.stdout.splitlines() if "would write" in ln]
+    if not claimed:
+        return f"{script} --dry-run did not say what it would write; cannot verify the target"
+    if claimed[0] != _WRITES[script]:
+        return (f"{script} --dry-run would write {claimed[0]}, but _WRITES says "
+                f"{_WRITES[script]} - the guard is watching the wrong store")
     return None
 
 
@@ -416,7 +433,7 @@ def self_test() -> int:
     check("empty input", summarize({"tickpick": []}, games)["games"], [])
     check("empty input has no dates", summarize({"tickpick": []}, games)["lastObservedDate"], None)
 
-    for _script in ("summarize_market.py",):
+    for _script in ("summarize_market.py", "fetch_schedule.py"):
         _err = _help_has_no_side_effect(_script)
         if _err:
             fails.append(_err)
