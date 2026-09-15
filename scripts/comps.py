@@ -28,6 +28,7 @@ resolution the data does not have, so this prints "2/3 games" and ranks on the i
 When the store grows past a handful of games that judgement should be revisited.
 """
 import itertools
+import argparse
 import json
 import pathlib
 import sys
@@ -104,7 +105,7 @@ def build(by):
     return out
 
 
-def main():
+def main(write: bool = True):
     by = load()
     if not by:
         print("NOT CHECKED - primary store is empty")
@@ -123,10 +124,15 @@ def main():
                    "distinctPrices": len(set(by[g].values()))} for g in sorted(by)],
         "sections": table,
     }
-    OUT.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n")
+    if write:
+        OUT.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n")
 
     n_games = len(by)
-    print(f"{len(table)} sections across {n_games} game(s) -> {OUT.relative_to(ROOT)}")
+    # The --dry-run wording is asserted by summarize_market.py's guard; keep OUT in it.
+    print(f"{len(table)} sections across {n_games} game(s) -> {OUT.relative_to(ROOT)}"
+          if write else
+          f"--dry-run: would write {OUT.relative_to(ROOT)} "
+          f"({len(table)} sections across {n_games} game(s))")
     if n_games < 2:
         print("  only one game: every equality is a coincidence until a second confirms it")
     sizes = [len(v["comps"]) for v in table.values()]
@@ -185,5 +191,32 @@ def self_test():
     return 1 if fails else 0
 
 
+def _cli() -> int:
+    """Parse arguments before doing anything with a side effect.
+
+    WHY (ops#172). This script had no argument parsing, so unknown flags were silently
+    ignored and `--help` - the first thing anyone types to find out what a script does -
+    ran the whole job and wrote data/primary/comps.json, a tracked store.
+
+    Identical defect to the two fixed in ops#171, and it was missed there because that
+    audit scoped itself to the scripts CLAUDE.md documents. This one is not documented;
+    the one it did check instead, check_readonly.py, writes nothing. Scope an audit by
+    `scripts/*.py`, not by a docs file.
+
+    --self-test is declared rather than sniffed out of sys.argv, because adding argparse
+    without declaring it is exactly how ops#171 broke run_tests.py mid-flight.
+    """
+    ap = argparse.ArgumentParser(
+        description=f"Derive equal-priced section comps into {OUT.relative_to(ROOT)}.")
+    ap.add_argument("--dry-run", action="store_true",
+                    help=f"compute and report, but do not write {OUT.relative_to(ROOT)}")
+    ap.add_argument("--self-test", action="store_true",
+                    help="run the self-test against captured fixtures; no network, no write")
+    args = ap.parse_args()
+    if args.self_test:
+        return self_test()
+    return main(write=not args.dry_run)
+
+
 if __name__ == "__main__":
-    sys.exit(self_test() if "--self-test" in sys.argv else main())
+    sys.exit(_cli())
