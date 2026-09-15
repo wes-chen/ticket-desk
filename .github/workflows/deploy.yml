@@ -39,18 +39,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-        env:
-          GITHUB_PAGES: "1"
+      # ops#165: the site is static (index.html, styles.css, app.js) - no build step,
+      # no bundle, nothing to hash. Assemble exactly what Pages should serve so repo
+      # tooling (scripts/, config/, workflows) is never web-accessible.
+      - name: Assemble Pages staging dir
+        run: |
+          mkdir -p pages/data
+          cp index.html styles.css app.js pages/
+          cp data/schedule.json data/outcomes.json pages/data/
+          test -f pages/index.html && test -f pages/data/outcomes.json
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: dist
+          path: pages
 
   deploy:
     needs: build
