@@ -63,7 +63,10 @@ body{
 /* timeline */
 .mrow{display:flex;gap:10px;align-items:flex-start;margin:9px 0}
 .mlab{width:34px;flex:none;font-size:10.5px;font-weight:800;color:var(--dim);padding-top:8px;letter-spacing:.06em}
-.dots{display:flex;gap:8px;flex-wrap:wrap}
+.dots{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}
+.tcell{display:flex;flex-direction:column;align-items:center;gap:3px}
+.tcode{font-size:8.5px;font-weight:800;letter-spacing:.05em;color:var(--dim);font-variant-numeric:tabular-nums}
+.tlegend{font-size:10.5px;color:var(--dim);margin:10px 0 2px}
 .dot{width:30px;height:30px;border-radius:50%;border:2px solid #1d303c;background:#101d28;
   padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;
   -webkit-tap-highlight-color:transparent}
