@@ -55,13 +55,14 @@ body{
 .rleg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
 
 /* market pulse */
+.bigstat{text-align:center}
 .bigstat b{display:block;font-size:26px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
 .bigstat .gt{font-size:11px;color:var(--teal);font-weight:700;margin-bottom:2px}
 .bigstat>span{display:block;font-size:11px;color:var(--mut)}
 .bigstat .sub2{font-size:11px;color:var(--dim);margin-top:4px}
 .bigstat .up{color:#86efac;font-weight:700}
 .bigstat .down{color:#fca5a5;font-weight:700}
-.bigstat .row{display:flex;gap:8px;font-size:11.5px;color:var(--ink);margin-top:6px;align-items:baseline}
+.bigstat .row{display:flex;gap:8px;font-size:11.5px;color:var(--ink);margin-top:6px;align-items:baseline;justify-content:center}
 .bigstat .row>span{min-width:0}
 .bigstat .lab{flex:none;width:38px;font-size:9.5px;font-weight:800;letter-spacing:.1em;color:var(--dim)}
 .bigstat .banner{margin-top:10px;background:rgba(45,212,191,.07);border:1px solid rgba(45,212,191,.25);border-radius:12px;padding:10px 12px}
@@ -150,7 +151,5 @@ body{
   .tgrid .mlab{padding-top:0;width:auto}
   .tgrid .dots{flex-wrap:wrap;max-width:182px}
   .ringwrap{justify-content:center}
-  .bigstat{text-align:center}
-  .bigstat .row{justify-content:center}
   .hero img{width:96px;height:96px}
 }
