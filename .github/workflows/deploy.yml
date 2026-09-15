@@ -15,7 +15,24 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # NOT cancel-in-progress. Cancelling a deployment mid-flight is what put the red X on
+  # this repo's Environments page: three of the four bad github-pages deployment records
+  # are cancelled runs, not failed ones (06304bc0 2026-09-05, 647afb14 2026-09-06,
+  # 12537e84 2026-09-14), each from two pushes to main landing seconds apart - PR merges
+  # back to back. The build was fine every time; GitHub just records a killed deployment
+  # as `error`, permanently, and the site is briefly left mid-publish.
+  #
+  # false is what GitHub's own Pages starter workflow uses, for this reason: a production
+  # deployment should be allowed to finish. The cost is that a rapid second push waits
+  # instead of pre-empting. That is the right trade for a site that deploys in ~40s and is
+  # not on a hot path - and queued runs beyond the first are still cancelled WHILE PENDING,
+  # before they create a deployment record, so they leave no red behind.
+  #
+  # The fourth bad record is unrelated and not a config fault: 18b7c0a3 hit a transient
+  # OIDC timeout inside actions/deploy-pages ("Failed to get ID Token ... Request
+  # timeout"). Its advice to "ensure GITHUB_TOKEN has permission id-token: write" is a
+  # red herring - that permission is set above and every other run works. Do not chase it.
+  cancel-in-progress: false
 
 jobs:
   build:
