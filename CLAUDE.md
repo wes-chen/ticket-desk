@@ -112,6 +112,21 @@ payout, per-seat credit or invoice figure. `scripts/check_privacy.py` draws exac
 line in `OWN_PRICE_FIELDS`, and deliberately excludes `low`, `high` and `price` - it says
 why in a comment worth reading before touching this rule.
 
+**An aggregate over our own listings is our number too**, however it is labelled - a
+median of our asks, an average net, a season total. It names no single game, so
+`linkages()` will not catch it: that check fires only on a record holding an own-price
+field *and* an event field together. The guard here is this rule and nothing else.
+
+And aggregation does not anonymise at this scale. The carve-out above publishes **which**
+games are listed, and n is 2 - a median of our asks is the mean of the pair, and at n=1 it
+*is* the listing price.
+
+**One assumption this rests on, so it fails loudly rather than silently.** `marketMedian`
+is safe because none of the four collected sources carries *our* listing - we sell on
+Ticketmaster, and TM is uncollected (ops#16). If ops#16 ever lands, the market median for
+a game we have listed would start including our own ask, and this paragraph quietly stops
+being true. Revisit it then.
+
 **Fine here**, because they carry no seat and no account:
 
 - Fee *ratios* and the isolated (list, net) pairs they are derived from. A `$70 -> $63.00`
