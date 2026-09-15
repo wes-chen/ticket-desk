@@ -116,25 +116,41 @@
       "</div>";
   }
 
+  function tierMedians(games) {
+    var tiers = {}, order = [];
+    games.forEach(function (g) {
+      if (g.marketMedian == null) return;
+      if (!tiers[g.tier]) { tiers[g.tier] = []; order.push(g.tier); }
+      tiers[g.tier].push(g.marketMedian);
+    });
+    var out = {};
+    order.forEach(function (t) { out[t] = median(tiers[t]); });
+    return out;
+  }
+
   function renderPulse(g) {
     var el = $("#pulse");
     if (!el) return;
     var med = g.marketMedian, n = g.marketCount;
+    var tm = state.tierMeds ? state.tierMeds[g.tier] : null;
+    var ctx;
+    if (tm == null || med == null) {
+      ctx = esc(g.tier) + " tier";
+    } else {
+      var d = Math.round(med - tm);
+      var rel = d === 0 ? "at the tier median"
+        : "$" + Math.abs(d) + (d > 0 ? " above" : " below") + " the tier median";
+      ctx = esc(g.tier) + " tier · tier median " + fmtMoney(tm) + " · " + rel;
+    }
     el.innerHTML =
       '<div class="gt">' + esc(g.abbrev) + " · " + esc(fmtDate(g.date)) + "</div>" +
       "<b>" + fmtMoney(med) + "</b>" +
       '<span>median comparable resale list, per seat</span>' +
-      '<div class="sub2">' + (n ? n + " comparable pairs tracked" : "No comparable pairs on the market right now") + "</div>";
+      '<div class="sub2">' + (n ? n + " comparable pairs tracked" : "No comparable pairs on the market right now") + "</div>" +
+      '<div class="sub2">' + ctx + "</div>";
   }
 
   function renderTimeline(games) {
-    var meds = games.map(function (g) { return g.marketMedian; })
-      .filter(function (v) { return v != null; });
-    var lo = Math.min.apply(null, meds), hi = Math.max.apply(null, meds);
-    var sizeFor = function (v) {
-      if (v == null || hi <= lo) return 30;
-      return Math.round(30 + ((v - lo) / (hi - lo)) * 16);
-    };
     var byMonth = {}, order = [];
     games.forEach(function (g) {
       var m = (g.date || "").slice(0, 7);
@@ -148,10 +164,9 @@
       var dots = byMonth[m].map(function (g) {
         var day = parseInt((g.date || "").slice(8, 10), 10);
         var sel = state.selected === g.gameId ? " sel" : "";
-        var sz = sizeFor(g.marketMedian);
         var tc = TIER_CODE[g.tier] || g.tier;
         return '<span class="tcell"><button class="dot ' + STATUS_CLASS[g.status] + sel + '"' +
-          ' style="width:' + sz + "px;height:" + sz + 'px" data-game="' + g.gameId + '"' +
+          ' data-game="' + g.gameId + '"' +
           ' aria-label="' + esc(g.opponent) + " " + esc(g.date) + " — " + esc(g.tier) +
           " tier — " + esc(STATUS_LABEL[g.status]) + '">' +
           "<span>" + day + "</span></button>" +
@@ -160,7 +175,7 @@
       return '<div class="mrow"><div class="mlab">' + monthName(m) + '</div><div class="dots">' + dots + "</div></div>";
     }).join("");
     return '<section class="card"><h3>SEASON TIMELINE</h3>' + rows +
-      '<div class="tlegend">Bigger dot = higher market median · code = Sharks pricing tier</div>' +
+      '<div class="tlegend">Code under each date = Sharks pricing tier</div>' +
       '<div class="gdetail" id="gdetail"></div></section>';
   }
 
@@ -176,13 +191,8 @@
   }
 
   function renderTiers(games) {
-    var tiers = {}, order = [];
-    games.forEach(function (g) {
-      if (g.marketMedian == null) return;
-      if (!tiers[g.tier]) { tiers[g.tier] = []; order.push(g.tier); }
-      tiers[g.tier].push(g.marketMedian);
-    });
-    var meds = order.map(function (t) { return [t, median(tiers[t])]; })
+    var tm = tierMedians(games);
+    var meds = Object.keys(tm).map(function (t) { return [t, tm[t]]; })
       .filter(function (x) { return x[1] != null; });
     meds.sort(function (a, b) { return b[1] - a[1]; });
     var max = Math.max.apply(null, meds.map(function (x) { return x[1]; }).concat([1]));
@@ -243,6 +253,7 @@
     });
     var next = nextGame(games);
     state.selected = (next || games[0]).gameId;
+    state.tierMeds = tierMedians(games);
     var app = $("#app");
     app.innerHTML =
       renderHero(next) +
