@@ -49,6 +49,7 @@ USAGE
 
 case "${1:-}" in
   --list)
+    [[ $# -eq 1 ]] || { echo "--list takes no arguments" >&2; usage >&2; exit 2; }
     git -C "$CANON" worktree list
     exit 0 ;;
   --remove)
@@ -97,6 +98,14 @@ name="$1"
 [[ $# -eq 1 ]] || { echo "expected one name, got $#: $*" >&2; usage >&2; exit 2; }
 [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || {
   echo "invalid name: $name (use letters, digits, dot, underscore, dash)" >&2
+  usage >&2; exit 2; }
+# ...and then ASK GIT rather than encoding its rules here. The pattern above allows "."
+# so it lets through names git refuses - abc.lock, .., .hidden, abc. - which then failed
+# at `worktree add` with "fatal: invalid reference: agent/abc.lock", a message that reads
+# as "no such branch" rather than "bad name". Nothing was half-created, but the
+# diagnosis was wrong. refs/heads/ form, not --branch: --branch resolves @{-1} shorthand.
+git check-ref-format "refs/heads/agent/$name" 2>/dev/null || {
+  echo "invalid name: $name (must form a valid branch agent/$name)" >&2
   usage >&2; exit 2; }
 wt="$(dirname "$CANON")/$(basename "$CANON")-$name"
 
