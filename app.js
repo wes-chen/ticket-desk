@@ -138,9 +138,11 @@
       ctx = esc(g.tier) + " tier";
     } else {
       var d = Math.round(med - tm);
-      var rel = d === 0 ? "at the tier median"
+      var relCls = d === 0 ? "" : (d > 0 ? "up" : "down");
+      var relTxt = d === 0 ? "at the tier median"
         : "$" + Math.abs(d) + (d > 0 ? " above" : " below") + " the tier median";
-      ctx = esc(g.tier) + " tier · tier median " + fmtMoney(tm) + " · " + rel;
+      ctx = esc(g.tier) + " tier · tier median " + fmtMoney(tm) + " · " +
+        (relCls ? '<span class="' + relCls + '">' + relTxt + "</span>" : relTxt);
     }
     el.innerHTML =
       '<div class="gt">' + esc(g.abbrev) + " · " + esc(fmtDate(g.date)) + "</div>" +
