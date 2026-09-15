@@ -206,7 +206,8 @@ def _cli() -> int:
     time by exactly one extension, which is the argument for enumerating rather than
     naming:
 
-      v1  "scope by the scripts CLAUDE.md documents"  missed comps.py        (.py)
+      v1  "scope by the scripts CLAUDE.md documents"  missed comps.py        (in
+                                                        scope, unenumerated)
       v2  "scope by scripts/*.py"                     missed probe_browser   (.mjs)
       v3  "scope by *.py, *.mjs and lib/*.py"         missed agent_worktree  (.sh)
 
