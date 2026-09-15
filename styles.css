@@ -151,5 +151,12 @@ body{
   .tgrid .mlab{padding-top:0;width:auto}
   .tgrid .dots{flex-wrap:wrap;max-width:calc(var(--cols,5)*38px - 8px)}
   .ringwrap{justify-content:center}
+  #mixcard{display:flex;flex-direction:column;justify-content:center}
+  #mixcard .ringc{width:150px;height:150px}
+  #mixcard .ring{width:150px;height:150px}
+  #mixcard .ringc .ctr b{font-size:32px}
+  #econcard{display:flex;flex-direction:column}
+  #econcard .snap{flex:1;grid-template-columns:1fr;grid-template-rows:repeat(3,1fr)}
+  #econcard .snap .f{display:flex;flex-direction:column;justify-content:center}
   .hero img{width:96px;height:96px}
 }
