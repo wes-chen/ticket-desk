@@ -90,10 +90,12 @@ body{
 .gdetail .t2{font-size:11.5px;color:var(--mut)}
 
 /* tier bars */
-.barrow{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12px}
-.barrow .t{width:78px;flex:none;font-weight:700;color:#b9cdd3}
-.bar{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--teal-dk),var(--teal));min-width:4px}
-.barrow .v{color:var(--mut);font-variant-numeric:tabular-nums;margin-left:auto}
+.vbars{display:flex;align-items:flex-end;gap:10px;padding:8px 2px 0}
+.vcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.vv{font-size:11.5px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+.vbar{width:100%;max-width:44px;border-radius:6px 6px 3px 3px;
+  background:linear-gradient(180deg,var(--teal),var(--teal-dk));min-height:6px}
+.vt{font-size:10.5px;font-weight:800;letter-spacing:.05em;color:var(--mut)}
 
 /* economics */
 .snap{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;
