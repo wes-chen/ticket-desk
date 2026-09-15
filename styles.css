@@ -126,4 +126,8 @@ body{
   .grid2x>.card{margin-bottom:0}
   .snap{display:grid;grid-template-columns:repeat(3,1fr);overflow:visible;padding-bottom:0}
   .snap .f{flex:none}
+  .hero{justify-content:center;text-align:center}
+  .hero .cd{justify-content:center}
+  .ringwrap{justify-content:center}
+  .mrow .dots{flex:1;justify-content:center}
 }
