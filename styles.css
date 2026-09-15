@@ -114,3 +114,16 @@ body{
 
 .ft{text-align:center;font-size:10.5px;color:var(--dim);padding:8px 0 2px}
 @media (prefers-reduced-motion:reduce){.dot.listed{animation:none}.ring .arc{transition:none}}
+
+/* desktop: widen into a multi-column view */
+@media (min-width:1024px){
+  .dash{max-width:1120px;padding:28px 32px 20px}
+  .hero{padding:22px 26px}
+  .hero h2{font-size:22px}
+  .cd b{font-size:26px}
+  .grid2{grid-template-columns:1fr 1fr}
+  .grid2x{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;align-items:start}
+  .grid2x>.card{margin-bottom:0}
+  .snap{display:grid;grid-template-columns:repeat(3,1fr);overflow:visible;padding-bottom:0}
+  .snap .f{flex:none}
+}
