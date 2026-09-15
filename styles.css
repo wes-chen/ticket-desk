@@ -149,7 +149,7 @@ body{
   .tgrid::-webkit-scrollbar-thumb{background:#1e3a3a;border-radius:3px}
   .tgrid .mrow{flex-direction:column;gap:8px;margin:0;flex:none;scroll-snap-align:start}
   .tgrid .mlab{padding-top:0;width:auto}
-  .tgrid .dots{flex-wrap:wrap;max-width:182px}
+  .tgrid .dots{flex-wrap:wrap;max-width:calc(var(--cols,5)*38px - 8px)}
   .ringwrap{justify-content:center}
   .hero img{width:96px;height:96px}
 }
