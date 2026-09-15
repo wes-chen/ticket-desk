@@ -134,37 +134,38 @@
     if (!el) return;
     var med = g.marketMedian, n = g.marketCount;
     var tm = state.tierMeds ? state.tierMeds[g.tier] : null;
-    var ctx;
+    var tcode = TIER_CODE[g.tier] || g.tier;
+    var tierRow;
     if (tm == null || med == null) {
-      ctx = esc(g.tier) + " tier";
+      tierRow = '<div class="row"><span class="lab">TIER</span><span>' + esc(tcode) + "</span></div>";
     } else {
       var d = Math.round(med - tm);
       var relCls = d === 0 ? "" : (d > 0 ? "up" : "down");
-      var relTxt = d === 0 ? "at the tier median"
-        : "$" + Math.abs(d) + (d > 0 ? " above" : " below") + " the tier median";
-      ctx = esc(g.tier) + " tier · tier median " + fmtMoney(tm) + " · " +
-        (relCls ? '<span class="' + relCls + '">' + relTxt + "</span>" : relTxt);
+      var relTxt = d === 0 ? "at avg"
+        : (d > 0 ? "+" : "-") + "$" + Math.abs(d);
+      tierRow = '<div class="row"><span class="lab">TIER</span><span>' + esc(tcode) +
+        " · avg " + fmtMoney(tm) + " · " +
+        (relCls ? '<span class="' + relCls + '">' + relTxt + "</span>" : relTxt) + "</span></div>";
     }
+    var rangeTxt = (g.marketMin != null && g.marketMax != null)
+      ? " · range " + fmtMoney(g.marketMin) + "–" + fmtMoney(g.marketMax) : "";
+    var pairsTxt = n === 1 ? "1 pair" : n + " pairs";
     el.innerHTML =
       '<div class="gt">' + esc(g.abbrev) + " · " + esc(fmtDate(g.date)) + "</div>" +
       "<b>" + fmtMoney(med) + "</b>" +
-      '<span>median comparable resale list, per seat' +
-        (g.marketMin != null && g.marketMax != null
-          ? " · range " + fmtMoney(g.marketMin) + "–" + fmtMoney(g.marketMax) : "") +
-      "</span>" +
-      '<div class="sub2">' + (n ? n + " comparable pairs tracked" : "No comparable pairs on the market right now") + "</div>" +
-      '<div class="sub2">' + ctx + "</div>";
+      "<span>median" + rangeTxt + " · " + pairsTxt + "</span>" +
+      tierRow;
     var credit = TIER_CREDIT[g.tier];
     var cheapest = g.marketMin;
     if (credit != null && cheapest != null) {
       var net = cheapest * 0.9;
       var gap = net - credit;
       var verdict = gap >= 0
-        ? '<span class="up">resale beats exchange by ' + fmtMoney(gap) + "/seat</span>"
-        : '<span class="down">exchange beats resale by ' + fmtMoney(-gap) + "/seat</span>";
-      el.innerHTML += '<div class="sub2">Exchange credit ' + fmtMoney(credit) +
-        " · matching cheapest nets " +
-        fmtMoney(net) + " · " + verdict + "</div>";
+        ? "Resale wins " + fmtMoney(gap) + "/seat"
+        : "Exchange wins " + fmtMoney(-gap) + "/seat";
+      el.innerHTML += '<div class="banner"><div class="v">' + verdict + "</div>" +
+        '<div class="m">nets ' + fmtMoney(net) + " vs " + fmtMoney(credit) +
+        " credit · cheapest " + fmtMoney(cheapest) + "</div></div>";
     }
   }
 
