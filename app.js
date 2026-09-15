@@ -235,7 +235,9 @@
 
   function renderFooter(genAt) {
     var d = genAt ? new Date(genAt) : null;
-    var when = d && !isNaN(d) ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
+    var when = d && !isNaN(d) ? d.toLocaleString(undefined, {
+      month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
+    }) : "—";
     return '<div class="ft">Data refreshes daily · Updated ' + esc(when) + "</div>";
   }
 
