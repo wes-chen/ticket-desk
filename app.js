@@ -340,13 +340,17 @@
     if (sel) { renderPulse(sel); renderDetail(sel); }
     if (next) startCountdown(next.puckTime || next.date);
     bindTimeline();
-    if (window.matchMedia && window.matchMedia("(min-width:1024px)").matches) {
-      var sdot = document.querySelector(".tgrid .dot.sel"), tgrid = document.querySelector(".tgrid");
-      if (sdot && tgrid) {
-        var r = sdot.getBoundingClientRect(), gr = tgrid.getBoundingClientRect();
-        tgrid.scrollLeft += (r.left - gr.left) - gr.width / 2 + r.width / 2;
-      }
-    }
+    snapStripToSelected();
+    if (window.addEventListener) window.addEventListener("load", snapStripToSelected);
+  }
+
+  function snapStripToSelected() {
+    if (!window.matchMedia || !window.matchMedia("(min-width:1024px)").matches) return;
+    var sdot = document.querySelector(".tgrid .dot.sel"), tgrid = document.querySelector(".tgrid");
+    if (!sdot || !tgrid) return;
+    var r = sdot.getBoundingClientRect(), gr = tgrid.getBoundingClientRect();
+    var target = tgrid.scrollLeft + (r.left - gr.left) - gr.width / 2 + r.width / 2;
+    tgrid.scrollLeft = Math.max(0, Math.min(tgrid.scrollWidth - tgrid.clientWidth, target));
   }
 
   function fail(msg) {
