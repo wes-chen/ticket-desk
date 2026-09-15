@@ -891,20 +891,23 @@ changed - do not paper over it.
 - **Two cheap measurements can fail in OPPOSITE directions, so their spread bounds
   nothing.** Measured 2026-09-15, counting the scripts that write a tracked store. A
   coarse grep over-counted; a matcher keyed on `VAR = ROOT / "..."` under-counted, because
-  it required the write's receiver to be the module-level constant - so it missed the
-  collectors writing through `market_store.py` **and** the four scripts that alias the
-  constant into a local or hand it to a helper.
+  it required the write's receiver to be the module-level constant - so it missed
+  collectors writing through `market_store.py` **and** the scripts that alias the constant
+  into a local or hand it to a helper. Not all of them: one collector using `market_store`
+  was caught anyway, through a second constant it does own.
 
-  **No number is recorded here, deliberately.** The count has now produced four different
-  answers - two quick methods, then two successive attempts to resolve it properly, the
-  second of which found a script whose writes happen only in its own self-test. Each
-  answer looked settled when written. Whatever integer sat in this sentence would be the
-  fifth candidate, and ops#178 exists to replace all of them with a check.
+  **No count of the writers is recorded here, deliberately.** It has already produced four
+  different answers - two quick methods, then two successive attempts to resolve it
+  properly, the second of which found a script whose writes happen only in its own
+  self-test. Each looked settled when written. Whatever integer sat in this sentence would
+  be one more candidate, and ops#178 exists to replace all of them with a check.
 
   The transferable part is not the count: when a count matters, **resolve every site to
   its destination and test that destination** - do not pattern-match for it, and do not
-  treat two cheap methods landing near each other as corroboration. Tenth instance in
-  this project of the instrument being the thing that was wrong.
+  treat two cheap methods landing near each other as corroboration. Another instance in
+  this project of the instrument being the thing that was wrong - and deliberately not a
+  numbered one: the running tally those claims keep is unchecked prose that skips "sixth"
+  and double-books "fifth", so extending it would manufacture precision.
 
 - **Scope a sweep by enumerating the directory, not by naming globs.** Same day, same bug
   found five times. The rule for "which scripts must I check" was written three times and
@@ -912,8 +915,8 @@ changed - do not paper over it.
 
   | scope | missed | because |
   | --- | --- | --- |
-  | the scripts this file documents | `comps.py` | it is not documented |
-  | `scripts/*.py` | `probe_browser.mjs` | wrong extension |
+  | the scripts this file documents | `comps.py` | it was not documented then |
+  | `scripts/*.py` | `probe_browser.mjs` | wrong extension - and not recursive, so it missed `lib/` too |
   | `*.py`, `*.mjs`, `lib/*.py` | `agent_worktree.sh` | wrong extension, again |
 
   `scripts/` holds 28 `.py`, 2 `.mjs`, 1 `.sh`. The two extension misses **are** documented
