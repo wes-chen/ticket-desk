@@ -87,7 +87,7 @@
     state.timer = setInterval(tick, 1000);
   }
 
-  function renderMix(games) {
+  function renderMixCard(games) {
     var counts = { listed: 0, sold: 0, attending: 0, exchanged: 0, undecided: 0 };
     games.forEach(function (g) { counts[g.status] = (counts[g.status] || 0) + 1; });
     var decided = games.length - counts.undecided;
@@ -107,14 +107,14 @@
                     exchanged: "#fbbf24", undecided: "#5f7a83" }[s];
       return '<div><i style="background:' + color + '"></i>' + STATUS_LABEL[s] + ' · ' + counts[s] + "</div>";
     }).join("");
-    return '<div class="grid2">' +
-      '<section class="card"><h3>SEASON MIX</h3><div class="ringwrap">' +
+    return '<section class="card"><h3>SEASON MIX</h3><div class="ringwrap">' +
       '<div class="ringc"><svg class="ring" width="96" height="96" viewBox="0 0 96 96">' +
       '<circle class="trk" cx="48" cy="48" r="40" fill="none" stroke-width="11"/>' + arcs + "</svg>" +
       '<div class="ctr"><b>' + decided + "</b><span>SET</span></div></div>" +
-      '<div class="rleg">' + leg + "</div></div></section>" +
-      '<section class="card" id="pulsecard"><h3>MARKET PULSE</h3><div class="bigstat" id="pulse"></div></section>' +
-      "</div>";
+      '<div class="rleg">' + leg + "</div></div></section>";
+  }
+  function renderPulseShell() {
+    return '<section class="card" id="pulsecard"><h3>MARKET PULSE</h3><div class="bigstat" id="pulse"></div></section>';
   }
 
   function tierMedians(games) {
@@ -330,10 +330,10 @@
     var app = $("#app");
     app.innerHTML =
       renderHero(next) +
-      renderMix(games) +
+      '<div class="grid2">' + renderQueue() + renderPulseShell() + "</div>" +
       renderTimeline(games) +
-      '<div class="grid2x">' + renderTiers(games) + renderEconomics() + "</div>" +
-      '<div class="grid2x">' + renderCheat() + renderQueue() + "</div>" +
+      '<div class="grid2x">' + renderTiers(games) + renderMixCard(games) + "</div>" +
+      '<div class="grid2x">' + renderCheat() + renderEconomics() + "</div>" +
       renderFooter(data.generated_at);
     var sel = null;
     games.forEach(function (g) { if (g.gameId === state.selected) sel = g; });
