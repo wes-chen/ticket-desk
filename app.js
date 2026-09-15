@@ -225,7 +225,7 @@
     }).join("");
     if (!cols) cols = '<p class="sub2" style="color:var(--mut);font-size:12px">No market data yet.</p>';
     return '<section class="card"><h3>MARKET BY TIER</h3><div class="vbars">' + cols + "</div>" +
-      '<div class="sub2" style="font-size:10.5px;color:var(--dim);margin-top:8px">Median comparable resale list per tier, per seat.</div></section>';
+      '<div class="fnote">Median comparable resale list per tier, per seat.</div></section>';
   }
 
   function renderEconomics() {
