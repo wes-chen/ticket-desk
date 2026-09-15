@@ -126,8 +126,12 @@ body{
   .grid2x>.card{margin-bottom:0}
   .snap{display:grid;grid-template-columns:repeat(3,1fr);overflow:visible;padding-bottom:0}
   .snap .f{flex:none}
-  .hero{justify-content:center;text-align:center}
-  .hero .cd{justify-content:center}
+  .hero{justify-content:flex-start;text-align:left}
+  .hero .cd{justify-content:flex-start;position:absolute;right:28px;top:50%;transform:translateY(-50%)}
+  .cd b{font-size:34px}
+  .tgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px 12px;margin:4px 0 2px}
+  .tgrid .mrow{flex-direction:column;gap:8px;margin:0;align-items:flex-start}
+  .tgrid .mlab{padding-top:0}
   .ringwrap{justify-content:center}
   .bigstat{text-align:center}
   .bigstat .row{justify-content:center}
