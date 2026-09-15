@@ -137,7 +137,7 @@ body{
   .hero h2{font-size:22px}
   .cd b{font-size:26px}
   .grid2{grid-template-columns:1fr 1fr}
-  .grid2x{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;align-items:start}
+  .grid2x{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
   .grid2x>.card{margin-bottom:0}
   .snap{display:grid;grid-template-columns:repeat(3,1fr);overflow:visible;padding-bottom:0}
   .snap .f{flex:none}
