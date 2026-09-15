@@ -20,6 +20,8 @@ achievable prices is wrong.
 
 import argparse
 import json
+import os
+import subprocess
 import pathlib
 import sys
 from datetime import datetime, timezone
@@ -199,6 +201,12 @@ def summarize(rows_by_source: dict[str, list[dict]], games: list[dict]) -> dict:
     }
 
 
+# Which tracked store each script writes. Per script rather than one shared literal,
+# because a shared list is invisible to the guard: dropping an entry weakened the check
+# and the check could not tell (found by mutation).
+_WRITES = {"summarize_market.py": "data/market/summary.json"}
+
+
 def _help_has_no_side_effect(script: str) -> str | None:
     """Assert `--help` neither writes a tracked file nor reaches the network.
 
@@ -213,17 +221,42 @@ def _help_has_no_side_effect(script: str) -> str | None:
     Checked by mtime rather than by content, because content comparison is exactly what
     missed it: a byte-identical rewrite is still a write.
     """
-    import subprocess
     root = pathlib.Path(__file__).resolve().parent.parent
-    watched = [root / "data" / "schedule.json", root / "data" / "market" / "summary.json"]
-    before = {f: f.stat().st_mtime_ns for f in watched if f.exists()}
+    target = root / _WRITES[script]
+    # A MISSING FILE IS A FAILURE, NOT A PASS. This read `if f.exists()`, so an absent
+    # store was silently unwatched and *creating* it counted as clean - failing open, the
+    # same shape as the fresh-clone `.private-patterns` hole rule 1 warns about.
+    if not target.exists():
+        return f"{script}: watched store {target.name} is missing, so this proves nothing"
+
+    # POSITIVE CONTROL. Everything below asserts that the target did NOT change, so a
+    # _WRITES entry pointing at a file the script never touches passes vacuously - the
+    # guard would be watching the wrong thing and could not tell. Found by mutation:
+    # swapping the target to another real store survived the whole suite.
+    #
+    # A source-mention check is NOT enough and was tried first: this script legitimately
+    # READS data/schedule.json, so pointing _WRITES at it passed a grep of the source
+    # while still watching a file the script never writes. The only honest control is to
+    # run it for real and confirm the named file moves. Offline - it reads local stores.
+    # The original bytes and mtime are restored, so the tree is untouched either way.
+    original, original_mtime = target.read_bytes(), target.stat().st_mtime_ns
+    try:
+        subprocess.run([sys.executable, str(root / "scripts" / script)],
+                       capture_output=True, text=True, timeout=60)
+        if target.stat().st_mtime_ns == original_mtime:
+            return (f"{script} does not write {target.name}, so watching it proves "
+                    f"nothing - _WRITES is pointing at the wrong store")
+    finally:
+        target.write_bytes(original)
+        os.utime(target, ns=(original_mtime, original_mtime))
+
+    before = target.stat().st_mtime_ns
     r = subprocess.run([sys.executable, str(root / "scripts" / script), "--help"],
                        capture_output=True, text=True, timeout=60)
     if r.returncode != 0:
         return f"{script} --help exited {r.returncode}, want 0"
-    for f, was in before.items():
-        if f.stat().st_mtime_ns != was:
-            return f"{script} --help wrote {f.name}"
+    if target.stat().st_mtime_ns != before:
+        return f"{script} --help wrote {target.name}"
     bogus = subprocess.run([sys.executable, str(root / "scripts" / script), "--nope"],
                            capture_output=True, text=True, timeout=60)
     if bogus.returncode == 0:
@@ -233,14 +266,13 @@ def _help_has_no_side_effect(script: str) -> str | None:
     # prints usage and exits before main() runs, so reverting `if write:` to `if True:`
     # leaves --help behaviour untouched. Found by mutation - two mutants survived a
     # --help-only guard, and that is a missing test rather than an equivalence.
-    before2 = {f: f.stat().st_mtime_ns for f in watched if f.exists()}
+    before2 = target.stat().st_mtime_ns
     dry = subprocess.run([sys.executable, str(root / "scripts" / script), "--dry-run"],
                          capture_output=True, text=True, timeout=120)
     if dry.returncode != 0:
         return f"{script} --dry-run exited {dry.returncode}, want 0"
-    for f, was in before2.items():
-        if f.stat().st_mtime_ns != was:
-            return f"{script} --dry-run wrote {f.name}"
+    if target.stat().st_mtime_ns != before2:
+        return f"{script} --dry-run wrote {target.name}"
     return None
 
 
@@ -384,13 +416,13 @@ def self_test() -> int:
     check("empty input", summarize({"tickpick": []}, games)["games"], [])
     check("empty input has no dates", summarize({"tickpick": []}, games)["lastObservedDate"], None)
 
-    for f in fails:
-        print(f"  FAIL {f}", file=sys.stderr)
-    for _script in ("summarize_market.py", "fetch_schedule.py"):
+    for _script in ("summarize_market.py",):
         _err = _help_has_no_side_effect(_script)
         if _err:
             fails.append(_err)
 
+    for f in fails:
+        print(f"  FAIL {f}", file=sys.stderr)
     print(f"self-test: {'FAILED' if fails else 'passed'} ({len(fails)} failure(s))")
     return 1 if fails else 0
 
