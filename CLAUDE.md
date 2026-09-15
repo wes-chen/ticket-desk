@@ -94,12 +94,23 @@ for - so an agent following the old sentence would build a setup screen and have
 reject it after the work was done.
 
 **One carve-out, approved in ops#165 and easy to misread as a violation of the line
-above.** `data/outcomes.json` is committed here and deployed: per-game **status labels**
-(`undecided`, `listed`, `sold`, `exchanged`) with **no dollar amounts**. That is a
-deliberate exception to "which games we have listed" - the dashboard exists to show it -
-and `check_privacy.py` records the carve-out where it is enforced. Status without a price
-carries no amount and no seat. Adding a dollar figure to that file would not be a
-carve-out; it would be the linkage.
+above.** `data/outcomes.json` is committed here and deployed, carrying per-game **status
+labels** (`undecided`, `listed`, `sold`, `exchanged`). That is a deliberate exception to
+"which games we have listed" - the dashboard exists to show it.
+
+**The line is not "no dollars", and getting that wrong in either direction is costly.**
+Those rows also carry `marketMedian` and `marketCount`, on every game. Those are fine:
+they are *other sellers'* public asks, the same market series `data/market/` has always
+committed, and the paragraph below explicitly permits them. An earlier version of this
+note said the file had "no dollar amounts" - false about the file, and false as a rule.
+An agent reading it would open the file, find 44 dollar figures, conclude the repo was
+leaking, and strip the market context out of the dashboard - deleting an ops#165
+acceptance criterion to satisfy a rule that was mis-stated.
+
+What would be the linkage is **our** number against a named game: a list price, net,
+payout, per-seat credit or invoice figure. `scripts/check_privacy.py` draws exactly that
+line in `OWN_PRICE_FIELDS`, and deliberately excludes `low`, `high` and `price` - it says
+why in a comment worth reading before touching this rule.
 
 **Fine here**, because they carry no seat and no account:
 
@@ -237,9 +248,12 @@ picked up on a tick, and only a fork whose answer is a *preference* becomes a
 item on his queue - that is the failure this practice exists to avoid, in the other
 direction.
 
-Say what is explicitly out of scope, too. ops#61 wants a profile export and names real
-sync as **not** in scope, because sync needs a credential in the browser and would drag a
-small UI change into the protected set.
+Say what is explicitly out of scope, too. ops#61 *wanted* a profile export and named real
+sync as **not** in scope, because sync would have needed a credential in the browser and
+dragged a small UI change into the protected set. Kept as an illustration of the practice,
+in the past tense on purpose: ops#165 deleted the architecture it assumed - there is no
+browser profile, no transfer link and no export any more, and `check_readonly.py` now
+fails the build on all three by name.
 
 ### A measured value goes in a STORE, not in an issue body
 
@@ -856,6 +870,9 @@ changed - do not paper over it.
   silently discarded every file, self-test fixtures that asserted an API field copied
   from documentation nobody had checked, and a probe that truncated responses at 400KB
   and scored a working 1.4MB source as empty.
+- **Check the instrument before believing the measurement.** Four of those failures were
+  the measuring tool, not the thing measured. When a probe says a source is unusable,
+  confirm it independently - `curl` the URL by hand - before acting on it.
 - **A mutation test with n=1 is not evidence a suite is sound.** Measured 2026-09-15 on
   ops PR #110. A reviewer ran **one** mutation against its self-test, that mutation
   happened to be caught, and the review concluded the suite "actually exercises
@@ -868,9 +885,8 @@ changed - do not paper over it.
   checks the code claims to make - each one, separately - and confirm each deletion turns
   the suite red. A surviving mutant is either a missing test or a genuine equivalence, and
   you must say which; "I tried one and it failed correctly" is neither.
-- **Check the instrument before believing the measurement.** Four of those failures were
-  the measuring tool, not the thing measured. When a probe says a source is unusable,
-  confirm it independently - `curl` the URL by hand - before acting on it.
+
+  Recorded in the ops#110 closing comment, which carries the full mutant table.
 - **`npm test` runs the suite** (ops#17). Nine scripts self-test against *real captured
   fixtures* - responses actually received from the APIs, plus a throwaway git repo for
   the privacy history pass - never against shapes copied from documentation. That
