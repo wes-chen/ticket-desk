@@ -76,11 +76,19 @@ control is Enterprise-only. So this repo is deliberately **empty of personal dat
 | Collected market prices - other sellers, whole arena | **Our** list prices, nets, and offers |
 | Isolated (list, net) pairs, as fee measurements | Which games we have listed, and at what |
 | Published team pricing, e.g. the section/band table | Account, listing, and order identifiers |
-| Per-game status labels (`listed`, `sold`, ...) + outcome counts | |
+| Per-game status labels (`listed`, `sold`, ...) + outcome counts | **How many seats we hold** |
+| A per-seat season face that **reproduces** a published band price x 44 | A per-seat figure that reproduces none |
 
 The line is the **linkage, not the field**. A `$70 -> $63.00` pair is a measurement of
 Ticketmaster's fee and carries no seat; *our* asking price on a named game does. The test: could
 a reader connect this number to our seats or our account?
+
+**One named exception** (ops#167, decided 2026-09-15): a per-seat season **face** is public when it
+equals `config/price_bands.json -> bands[id].avgPerGame.new x gamesInFullSeason`, because that is
+the team's own published pricing. It identifies our price *band*, which is coarse and never
+forbidden - section, row and seat stay private, and so does the seat count, since face x count is
+the invoice total. CLAUDE.md rule 1 is authoritative and states the test in full; this table follows
+it rather than restating it, because ops#21 was the two documents disagreeing.
 
 Personal data lives in the private ops repo and in the chat interface - never in this repo, and
 since ops#165, never in the browser either. The old localStorage profile, URL-fragment transfer,

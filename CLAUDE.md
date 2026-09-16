@@ -78,7 +78,15 @@ reading.
 Never write into this repo anything that ties **our seats or our account** to a value:
 
 - Seat section / row / seat numbers - never, in any form
-- Season invoice totals, or any amount paid
+- **How many seats we hold.** Not which - the count. It has never been on this list and it
+  should have been: face x seat count **is** the season invoice total, which the next bullet
+  forbids by name, so publishing the per-seat face below promotes the count to the last
+  factor guarding it. The project already scrubbed for this once without writing the rule
+  down - `config/economics.json -> resale.platforms.ticketmaster._privacy` says the fee
+  observations are deduplicated "because repeated identical pairs disclosed how many seats
+  we hold". Added 2026-09-16, found in review of ops#167.
+- Season invoice totals, or any amount **we** paid - but read the published-face carve-out
+  below before concluding a face figure is one of these
 - Exchange credit amounts per tier
 - Listing prices, payouts, or offers **attributable to our listings** - which games we
   have listed, at what price, with what net
@@ -135,10 +143,84 @@ being true. Revisit it then.
   cost more than it protects.
 - The instant-offer formula.
 - Other people's public listing prices - the whole collected market series.
-- Published team pricing, such as the section/band marketing table.
+- Published team pricing, such as the section/band marketing table - **including a
+  per-seat season face**, which is that table multiplied by the game count. Decided by
+  Wesley on 2026-09-15 (ops#167), after rule 1 was found to support both readings while
+  `scripts/validate_tier_credits.py` had already committed the figure:
+
+  > i think the per seat pricing is referring to lower attack 4 pricing or whatever my
+  > seat was right? that average price is indeed public
+
+  **The test is REPRODUCIBILITY, and it is mechanical on purpose.** A per-seat season face
+  is public iff it equals a band's published price times the game count - both numbers
+  already committed here:
+
+  ```
+  config/price_bands.json -> bands[id=<band>].avgPerGame.new x gamesInFullSeason
+  ```
+
+  Lower 4 is `92 x 44`, and that reproduces `validate_tier_credits.py`'s `FACE_PER_SEAT`
+  exactly. **Name the column.** `renew` is 88 and gives a different figure, so "the band
+  price" on its own is ambiguous enough to publish the wrong number under this rule.
+
+  A per-seat figure that lands on **no** band is ours, whatever it is labelled. It could
+  only have come from our invoice, and calling it a face does not make it reproducible.
+  That hole is the reason this test is mechanical rather than a judgement.
+
+  **Two measured properties of the test, both checked on the committed file 2026-09-16.**
+
+  Only **15 of 23** bands publish an `avgPerGame.new` at all - `club-1..5`, `glass`, `teal`
+  and `orange` do not, and the file's own `_priceNote` says absent means not published. For
+  those bands the test is **unsatisfiable, so the answer is private.** Do not substitute
+  `renew` to make it come out public: an unpublished band price is exactly the case this
+  rule is protecting, and the substitution would be the agent deciding the rule rather than
+  applying it.
+
+  And across the 15 that do publish, **every product is distinct**. So a match does not
+  merely narrow the band - it **determines** it. The residual below is exact rather than
+  conservative, and that is the honest reading.
+
+  **The checker does not implement this test, and it is in the protected set.**
+  `scripts/check_privacy.py`'s `FORBIDDEN_KEYS` rejects `perSeatSeason`, `faceValuePerSeat`,
+  `invoicePerSeat` and `seasonInvoiceTotal` in any committed JSON - including a value this
+  rule now calls public. That is **not** a contradiction to fix by deleting keys: those
+  names are ambiguous about which derivation they hold, the same limit already documented
+  for `low`, `high` and `price`. So: the face is publishable **in prose and as a named
+  constant** (which is where it lives - `validate_tier_credits.py`), and **not** under those
+  key names in a committed store. A checker that tested reproducibility instead would be
+  better and is a decision, not a drive-by - the privacy checks are protected.
+
+  **Why not "where the number came from".** The first draft of this carve-out said the
+  line was the derivation rather than the digits - that an invoice-derived figure "arrives
+  carrying the seat count". Wrong twice, and caught in review: equal numbers carry equal
+  information, and a committed constant does not record its own provenance, so nothing
+  downstream could apply the test. Reproducibility is checkable by anyone holding the repo.
+
+  **Provenance, stated accurately, since the rule above is precisely about derivation's
+  limits.** Both derivations exist and they agree: ops#13 reconciled the figure against the
+  invoice, and ops#19 found the published product matches it exactly - invoice first,
+  historically. What makes it publishable is not which came first. It is that the published
+  one exists and reproduces.
+
+  **The residual, so nobody reads this as broader than it is.** A per-seat face for OUR
+  seats does narrow which **band** we sit in - that is what the multiplication reveals, and
+  it is the price of this carve-out rather than an oversight. A band is coarse, many
+  sections share one, and rule 1 has never forbidden it. Section, row and seat numbers
+  remain **never, in any form**.
+
+  Revisit when ops#19 lands: every `sections` array in `price_bands.json` is empty today
+  (`check_price_bands.py` reports `NOT CHECKED`), so band -> section is not resolvable from
+  this repo and "coarse" is an assumption rather than a measurement. When the chart is
+  transcribed, check it.
 
 The test: could a reader connect this number to **our** seats or **our** account? If yes
 it is private, whatever field it lives in. If no, it is a market observation.
+
+**One named exception, or this sentence re-opens the question ops#167 closed.** A per-seat
+season face *is* connectable to our seats - it identifies our band - so a reader applying
+this test in isolation resolves it "private", which is the contradiction the carve-out
+above exists to end. The carve-out wins, on the reproducibility check, and it is the
+**only** exception: nothing else on the forbidden list gets one by analogy.
 
 Corollary for fixtures and examples: **plausible means real.** Use absurd values
 (`11111111`), never a realistic-looking one. That is precisely how ops#29 happened.

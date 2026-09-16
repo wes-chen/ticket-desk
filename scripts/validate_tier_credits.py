@@ -56,8 +56,14 @@ TIERS = ROOT / "config" / "tiers.json"
 LADDER = ["A+", "A", "B", "C", "D"]
 CONFIDENCES = {"measured", "measured_single_point", "assumed"}
 
-# PUBLIC constants. Both are already in the public repo - the face in CLAUDE.md, the
-# game counts in config/tiers.json - so using them here introduces nothing new.
+# PUBLIC constants, and the reason is reproducibility rather than precedent.
+# "It is already in the public repo" was the old justification here, and it is circular -
+# it is exactly the reasoning ops#167 was filed to replace, since the thing being justified
+# was one of the two call sites making the claim true. The real test, now in CLAUDE.md
+# rule 1: this figure equals published team pricing times the game count, and anyone
+# holding the repo can check it -
+#   config/price_bands.json -> bands[id="lower-4"].avgPerGame.new (92) x gamesInFullSeason (44)
+# The `new` column, specifically: `renew` is 88 and gives 3872.
 FACE_PER_SEAT = 4048.0
 FULL_SEASON_GAMES = 44
 TOLERANCE = 0.10
