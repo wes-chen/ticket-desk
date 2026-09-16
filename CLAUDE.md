@@ -225,6 +225,36 @@ above exists to end. The carve-out wins, on the reproducibility check, and it is
 Corollary for fixtures and examples: **plausible means real.** Use absurd values
 (`11111111`), never a realistic-looking one. That is precisely how ops#29 happened.
 
+### Removing a private value: two ways the removal makes it worse
+
+Both were found on 2026-09-16, in the same PR, and neither is obvious. A scrub is not
+just an edit - it is an edit **plus** everything the edit says about itself.
+
+**1. Do not explain what you removed.** The commit that takes a value out sits next to the
+value in `git log -p`, forever. So a comment saying *why* it mattered - what it was paired
+with, what it resolved to, what it would tell a reader - is a **pointer to the thing you
+just removed**, and it is strictly more than the repo said before, because previously
+nothing asserted the value meant anything. Net exposure goes **up**.
+
+Describe the **constraint**, never the value. "A fixture does not carry real values, and
+this one must be on a known ring, so it is derived" is complete and leaks nothing. "It used
+to be our section, paired with our band" is the disclosure, written by the scrub.
+
+**2. Do not let the squash write the message.** `gh pr merge --squash` **concatenates every
+commit message on the branch** into the commit that lands on `main`. So a branch whose
+first commit explains the leak and whose second explains the fix puts **both explanations
+on the primary branch's permanent history** - worse than where they sat, because a PR ref
+is a backwater and `main` is what people and tools read.
+
+Pass an explicit clean body - `gh pr merge --squash --body-file <file>` - and then **read
+the landed commit** to confirm what it says. For an ordinary change the default is fine;
+for a scrub it is wrong every time.
+
+Neither is undone by fixing it afterwards. Rewording reduces discoverability, not
+availability: the earlier text stays in the branch history and in `refs/pull/<n>/head`,
+which is the same distinction ops#169 settled about a deleted branch. Say so in the issue
+that owns the exposure, so whoever decides about history is deciding about its real size.
+
 ### Enforcement
 
 `npm run build` runs `scripts/check_privacy.py`, which checks three surfaces:
