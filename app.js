@@ -34,6 +34,20 @@
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
   }
 
+  function trendDelta(trend) {
+    // Last non-null median vs the non-null point ~7 entries earlier (or earliest).
+    // Returns {d, span} in dollars / entries, or null when there is no movement to measure.
+    var pts = [];
+    (trend || []).forEach(function (v, i) { if (v != null) pts.push([i, v]); });
+    if (pts.length < 2) return null;
+    var last = pts[pts.length - 1], first = pts[0], target = last[0] - 7;
+    for (var i = pts.length - 1; i >= 0; i--) {
+      if (pts[i][0] <= target) { first = pts[i]; break; }
+    }
+    if (first[0] === last[0]) return null;
+    return { d: last[1] - first[1], span: last[0] - first[0] };
+  }
+
   var state = { data: null, selected: null, timer: null };
 
   function nextGame(games) {
@@ -87,7 +101,7 @@
     state.timer = setInterval(tick, 1000);
   }
 
-  function renderMix(games) {
+  function renderMixCard(games) {
     var counts = { listed: 0, sold: 0, attending: 0, exchanged: 0, undecided: 0 };
     games.forEach(function (g) { counts[g.status] = (counts[g.status] || 0) + 1; });
     var decided = games.length - counts.undecided;
@@ -107,14 +121,14 @@
                     exchanged: "#fbbf24", undecided: "#5f7a83" }[s];
       return '<div><i style="background:' + color + '"></i>' + STATUS_LABEL[s] + ' · ' + counts[s] + "</div>";
     }).join("");
-    return '<div class="grid2">' +
-      '<section class="card"><h3>SEASON MIX</h3><div class="ringwrap">' +
+    return '<section class="card" id="mixcard"><h3>SEASON MIX</h3><div class="ringwrap">' +
       '<div class="ringc"><svg class="ring" width="96" height="96" viewBox="0 0 96 96">' +
       '<circle class="trk" cx="48" cy="48" r="40" fill="none" stroke-width="11"/>' + arcs + "</svg>" +
       '<div class="ctr"><b>' + decided + "</b><span>SET</span></div></div>" +
-      '<div class="rleg">' + leg + "</div></div></section>" +
-      '<section class="card" id="pulsecard"><h3>MARKET PULSE</h3><div class="bigstat" id="pulse"></div></section>' +
-      "</div>";
+      '<div class="rleg">' + leg + "</div></div></section>";
+  }
+  function renderPulseShell() {
+    return '<section class="card" id="pulsecard"><h3>MARKET PULSE</h3><div class="bigstat" id="pulse"></div></section>';
   }
 
   function tierMedians(games) {
@@ -150,11 +164,32 @@
     var rangeTxt = (g.marketMin != null && g.marketMax != null)
       ? " · range " + fmtMoney(g.marketMin) + "–" + fmtMoney(g.marketMax) : "";
     var pairsTxt = n === 1 ? "1 pair" : n + " pairs";
+    var trend = g.trend || [], tpts = [];
+    trend.forEach(function (v) { if (v != null) tpts.push(v); });
+    var spark = "";
+    if (tpts.length >= 2) {
+      var W = 140, H = 36, mn = Math.min.apply(null, tpts), mx = Math.max.apply(null, tpts);
+      var coords = tpts.map(function (v, i) {
+        var x = (i / (tpts.length - 1)) * W;
+        var y = H - 4 - ((v - mn) / ((mx - mn) || 1)) * (H - 8);
+        return x.toFixed(1) + "," + y.toFixed(1);
+      }).join(" ");
+      var dd = Math.round(tpts[tpts.length - 1] - tpts[0]);
+      var capTxt = dd === 0 ? "flat over " + tpts.length + "d"
+        : (dd > 0 ? "+$" + dd : "-$" + Math.abs(dd)) + " over " + tpts.length + "d";
+      var capCls = dd === 0 ? "" : (dd > 0 ? "up" : "down");
+      spark = '<div class="spark"><svg viewBox="0 0 ' + W + " " + H +
+        '" preserveAspectRatio="none" aria-hidden="true">' +
+        '<polyline points="' + coords + '" vector-effect="non-scaling-stroke"/></svg>' +
+        '<div class="scap' + (capCls ? " " + capCls : "") + '">' + capTxt + "</div></div>";
+    } else if (trend.length) {
+      spark = '<div class="spark"><div class="scap">trend building — new point each morning</div></div>';
+    }
     el.innerHTML =
       '<div class="gt">' + esc(g.abbrev) + " · " + esc(fmtDate(g.date)) + "</div>" +
       "<b>" + fmtMoney(med) + "</b>" +
       "<span>median" + rangeTxt + " · " + pairsTxt + "</span>" +
-      tierRow;
+      tierRow + spark;
     var credit = TIER_CREDIT[g.tier];
     var cheapest = g.marketMin;
     if (credit != null && cheapest != null) {
@@ -191,10 +226,16 @@
           "<span>" + day + "</span></button>" +
           '<span class="tcode">' + esc(tc) + "</span></span>";
       }).join("");
-      return '<div class="mrow"><div class="mlab">' + monthName(m) + '</div><div class="dots">' + dots + "</div></div>";
+      var n = byMonth[m].length, rws = Math.ceil(n / 5), cls = Math.ceil(n / rws);
+      return '<div class="mrow"><div class="mlab">' + monthName(m) + '</div><div class="dots" style="--cols:' + cls + '">' + dots + "</div></div>";
     }).join("");
-    return '<section class="card"><h3>SEASON TIMELINE</h3>' + rows +
+    var skey = [["Listed", "#2dd4bf"], ["Sold", "#4ade80"], ["Going", "#60a5fa"],
+                ["Exchanged", "#fbbf24"], ["To decide", "#5f7a83"]].map(function (s) {
+      return '<span><i style="background:' + s[1] + '"></i>' + s[0] + "</span>";
+    }).join("");
+    return '<section class="card"><h3>SEASON TIMELINE</h3><div class="tgrid">' + rows + "</div>" +
       '<div class="tlegend">Code under each date = Sharks pricing tier</div>' +
+      '<div class="skey">' + skey + "</div>" +
       '<div class="gdetail" id="gdetail"></div></section>';
   }
 
@@ -209,6 +250,35 @@
       " · Market " + fmtMoney(g.marketMedian) + "</div></div>";
   }
 
+  function renderMovers(games) {
+    var now = Date.now(), rows = [];
+    games.forEach(function (g) {
+      var puck = Date.parse(g.puckTime || g.date);
+      if (isNaN(puck) || puck <= now) return;
+      var t = trendDelta(g.trend);
+      if (t && Math.abs(t.d) >= 2) rows.push({ g: g, d: t.d, span: t.span });
+    });
+    var ups = rows.filter(function (r) { return r.d > 0; })
+      .sort(function (a, b) { return b.d - a.d; }).slice(0, 3);
+    var dns = rows.filter(function (r) { return r.d < 0; })
+      .sort(function (a, b) { return a.d - b.d; }).slice(0, 3);
+    function col(title, list) {
+      var rs = list.map(function (r) {
+        var cls = r.d > 0 ? "up" : "down";
+        var txt = (r.d > 0 ? "+$" : "-$") + Math.abs(Math.round(r.d));
+        return '<div class="mvrow"><span>' + esc(fmtDate(r.g.puckTime || r.g.date)) + " · " +
+          esc(r.g.abbrev) + '</span><span><b class="' + cls + '">' + txt +
+          "</b><em>" + r.span + "d</em></span></div>";
+      }).join("");
+      return '<div class="mvcol"><h4>' + title + "</h4>" + (rs || '<p class="qempty">—</p>') + "</div>";
+    }
+    var body = (!ups.length && !dns.length)
+      ? '<p class="qempty">Not enough market history yet — movers appear once games have two days of data.</p>'
+      : '<div class="mvgrid">' + col("HEATING UP", ups) + col("COOLING OFF", dns) + "</div>";
+    return '<section class="card"><h3>MARKET MOVERS</h3>' + body +
+      '<p class="fnote">Median of comparable pairs · moves vs 7 days of tracking</p></section>';
+  }
+
   function renderTiers(games) {
     var tm = tierMedians(games);
     var meds = Object.keys(tm).map(function (t) { return [t, tm[t]]; })
@@ -219,13 +289,22 @@
     var cols = meds.map(function (x) {
       var h = Math.max(6, Math.round((x[1] / max) * H));
       var tc = TIER_CODE[x[0]] || x[0];
-      return '<div class="vcol"><span class="vv">' + fmtMoney(x[1]) + "</span>" +
+      var ds = [];
+      games.forEach(function (g) {
+        if (g.tier !== x[0]) return;
+        var t = trendDelta(g.trend);
+        if (t) ds.push(t.d);
+      });
+      var td = ds.length ? Math.round(median(ds)) : 0;
+      var tdHtml = td === 0 ? "" : '<span class="vd ' + (td > 0 ? "up" : "down") + '">' +
+        (td > 0 ? "+" : "-") + "$" + Math.abs(td) + "</span>";
+      return '<div class="vcol"><span class="vv">' + fmtMoney(x[1]) + "</span>" + tdHtml +
         '<span class="vbar" style="height:' + h + 'px"></span>' +
         '<span class="vt">' + esc(tc) + "</span></div>";
     }).join("");
     if (!cols) cols = '<p class="sub2" style="color:var(--mut);font-size:12px">No market data yet.</p>';
     return '<section class="card"><h3>MARKET BY TIER</h3><div class="vbars">' + cols + "</div>" +
-      '<div class="sub2" style="font-size:10.5px;color:var(--dim);margin-top:8px">Median comparable resale list per tier, per seat.</div></section>';
+      '<div class="fnote">Median comparable resale list per tier, per seat · Δ vs 7d of tracking</div></section>';
   }
 
   function renderEconomics() {
@@ -236,7 +315,57 @@
     ].map(function (c) {
       return '<div class="f"><code>' + esc(c[0]) + "</code><p>" + esc(c[1]) + "</p></div>";
     }).join("");
-    return '<section class="card"><h3>THE ECONOMICS</h3><div class="snap">' + cards + "</div></section>";
+    return '<section class="card" id="econcard"><h3>THE ECONOMICS</h3><div class="snap">' + cards + "</div></section>";
+  }
+
+  function renderCheat() {
+    var tiers = ["A+", "A", "B", "C", "D", "PRESEASON"];
+    var rows = tiers.map(function (t) {
+      var c = TIER_CREDIT[t], be = c / 0.9, bt = be * 1.165;
+      return "<tr><td class=\"tc\">" + t + "</td><td>$" + c + "</td><td>$" + be.toFixed(2) +
+        "</td><td>$" + bt.toFixed(2) + "</td></tr>";
+    }).join("");
+    return '<section class="card"><h3>LISTING CHEAT SHEET</h3>' +
+      '<table class="ctable"><thead><tr><th>TIER</th><th>CREDIT</th><th>BREAK-EVEN</th><th>BUYER PAYS</th></tr></thead>' +
+      "<tbody>" + rows + "</tbody></table>" +
+      '<p class="fnote">Per seat. Break-even = credit ÷ 0.90 · buyer total = list × 1.165</p></section>';
+  }
+
+  function fmtDur(ms) {
+    if (ms < 0) return "passed";
+    var m = Math.floor(ms / 60000), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60);
+    if (d > 0) return d + "d " + h + "h";
+    if (h > 0) return h + "h " + (m % 60) + "m";
+    return m + "m";
+  }
+
+  function renderQueue() {
+    var now = Date.now(), items = [];
+    state.data.games.forEach(function (g) {
+      var puck = Date.parse(g.puckTime || g.date);
+      if (isNaN(puck) || puck <= now) return;
+      var st = g.status || "undecided";
+      if (st === "sold" || st === "attending" || st === "exchanged") return;
+      var cutoff = puck - 48 * 3600 * 1000;
+      if (cutoff - now > 14 * 24 * 3600 * 1000) return;
+      items.push({ g: g, cutoff: cutoff, listed: st === "listed" });
+    });
+    items.sort(function (a, b) { return a.cutoff - b.cutoff; });
+    var body;
+    if (!items.length) {
+      body = '<p class="qempty">Nothing needs action — every upcoming game is decided or outside the 14-day window.</p>';
+    } else {
+      body = items.slice(0, 8).map(function (it) {
+        var g = it.g, urgent = (it.cutoff - now) < 72 * 3600 * 1000;
+        var tag = it.listed ? "Listed" : "No plan yet";
+        return '<div class="qrow' + (urgent ? " urgent" : "") + '">' +
+          '<div class="qmain"><b>' + esc(g.team) + "</b><span> · " + esc(fmtDate(g.puckTime || g.date)) + "</span></div>" +
+          '<div class="qcut">cutoff ' + fmtDur(it.cutoff - now) + "</div>" +
+          '<div class="qsub">' + tag + " · " + esc(g.tier) + " tier</div></div>";
+      }).join("");
+      if (items.length > 8) body += '<p class="fnote">+' + (items.length - 8) + " more in the daily digest</p>";
+    }
+    return '<section class="card"><h3>ACTION QUEUE</h3>' + body + "</section>";
   }
 
   function renderFooter(genAt) {
@@ -280,16 +409,28 @@
     var app = $("#app");
     app.innerHTML =
       renderHero(next) +
-      renderMix(games) +
+      '<div class="grid2">' + renderQueue() + renderPulseShell() + "</div>" +
       renderTimeline(games) +
-      renderTiers(games) +
-      renderEconomics() +
+      renderMovers(games) +
+      '<div class="grid2x">' + renderTiers(games) + renderMixCard(games) + "</div>" +
+      '<div class="grid2x">' + renderCheat() + renderEconomics() + "</div>" +
       renderFooter(data.generated_at);
     var sel = null;
     games.forEach(function (g) { if (g.gameId === state.selected) sel = g; });
     if (sel) { renderPulse(sel); renderDetail(sel); }
     if (next) startCountdown(next.puckTime || next.date);
     bindTimeline();
+    snapStripToSelected();
+    if (window.addEventListener) window.addEventListener("load", snapStripToSelected);
+  }
+
+  function snapStripToSelected() {
+    if (!window.matchMedia || !window.matchMedia("(min-width:1024px)").matches) return;
+    var sdot = document.querySelector(".tgrid .dot.sel"), tgrid = document.querySelector(".tgrid");
+    if (!sdot || !tgrid) return;
+    var r = sdot.getBoundingClientRect(), gr = tgrid.getBoundingClientRect();
+    var target = tgrid.scrollLeft + (r.left - gr.left) - gr.width / 2 + r.width / 2;
+    tgrid.scrollLeft = Math.max(0, Math.min(tgrid.scrollWidth - tgrid.clientWidth, target));
   }
 
   function fail(msg) {

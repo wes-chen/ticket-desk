@@ -27,6 +27,18 @@ SCRIPTS = ROOT / "scripts"
 
 # Scripts with no self-test, and why. Anything not here and not self-testing fails.
 EXEMPT = {
+    "agent_worktree.sh": (
+        "creates git branches, worktrees and a symlink under $HOME, so a self-test would "
+        "have to do that too - and doing it in-repo IS the ops#179 bug. Tested by hand in "
+        "a throwaway clone with a fake HOME; see that issue. Listed here rather than left "
+        "undiscovered: the suffix filter excluded .sh entirely, so this file - the one "
+        "CLAUDE.md rule 0 tells agents to run - was invisible to the runner, and the "
+        "promise that an untested script cannot go unnoticed silently did not apply to it. "
+        "NOTE for whoever writes one: SELF_TEST_RE matches the literal '\"--self-test\"' "
+        "WITH double quotes, so the idiomatic bash `case $1 in --self-test)` is not "
+        "detected - a real self-test written that way would be classified untested and "
+        "then silently shielded by this very exemption."
+    ),
     "make_icons.py": "one-off asset generation, output checked by eye",
     "fetch_schedule.py": (
         "IS a validator - it cross-checks the tier table against the live NHL API on "
@@ -67,7 +79,7 @@ def discoverable() -> tuple[list[pathlib.Path], list[pathlib.Path]]:
     """
     tested, untested = [], []
     for f in sorted(SCRIPTS.iterdir()):
-        if f.name == SELF or f.name.startswith("_") or f.suffix not in (".py", ".mjs", ".mts"):
+        if f.name == SELF or f.name.startswith("_") or f.suffix not in (".py", ".mjs", ".mts", ".sh"):
             continue
         try:
             src = f.read_text()
@@ -84,6 +96,12 @@ def run_one(f: pathlib.Path) -> tuple[bool, str]:
         cmd = ["node", "--experimental-strip-types", "--no-warnings", str(f)]
     elif f.suffix == ".mjs":
         cmd = ["node", str(f)]
+    elif f.suffix == ".sh":
+        # Added with .sh in discoverable(). Widening one boundary and not the adjacent
+        # one is the exact shape of the bug this suffix was widened FOR: without this,
+        # a shell script with a self-test is handed to python3 and fails on a
+        # SyntaxError that names nothing useful.
+        cmd = ["bash", str(f)]
     else:
         cmd = [sys.executable, str(f)]
     try:
