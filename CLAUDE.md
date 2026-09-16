@@ -78,7 +78,8 @@ reading.
 Never write into this repo anything that ties **our seats or our account** to a value:
 
 - Seat section / row / seat numbers - never, in any form
-- Season invoice totals, or any amount paid
+- Season invoice totals, or any amount **we** paid - but read the published-face carve-out
+  below before concluding a face figure is one of these
 - Exchange credit amounts per tier
 - Listing prices, payouts, or offers **attributable to our listings** - which games we
   have listed, at what price, with what net
@@ -135,7 +136,26 @@ being true. Revisit it then.
   cost more than it protects.
 - The instant-offer formula.
 - Other people's public listing prices - the whole collected market series.
-- Published team pricing, such as the section/band marketing table.
+- Published team pricing, such as the section/band marketing table - **including the
+  per-seat season face for a band**, which is just that table multiplied by the game count.
+  Decided by Wesley on 2026-09-15 (ops#167), after rule 1 was found to support both
+  readings and `scripts/validate_tier_credits.py` had already committed the figure:
+
+  > i think the per seat pricing is referring to lower attack 4 pricing or whatever my
+  > seat was right? that average price is indeed public
+
+  It is the team's own number, identical for every seat in the band, and it is *derived*
+  from the published table rather than from anything of ours.
+
+  **What stays private is the INVOICE**, and the line is the derivation, not the digits:
+  our seat count, the total paid, and any per-seat figure reached by dividing our invoice
+  rather than by reading the published table. Two numbers can be equal and only one of
+  them safe, because the invoice-derived one arrives carrying the seat count.
+
+  **The honest residual, so nobody reads this as broader than it is.** Publishing a
+  per-seat season face does narrow *which band* we sit in, since the band is what the
+  multiplication reveals. A band is a coarse thing - many sections share one - and rule 1
+  has never forbidden it. Section, row and seat numbers remain **never, in any form**.
 
 The test: could a reader connect this number to **our** seats or **our** account? If yes
 it is private, whatever field it lives in. If no, it is a market observation.
