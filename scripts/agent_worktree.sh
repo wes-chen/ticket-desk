@@ -23,6 +23,12 @@
 
 set -euo pipefail
 
+# Checked up front rather than let `git check-ref-format` fail with 127 inside an `||`,
+# where it would reject a perfectly valid name and blame the name. Third time in this
+# script that a message named the wrong cause - the other two were `fatal: invalid
+# reference` reading as "no such branch", and `--help` being taken for a worktree name.
+command -v git >/dev/null || { echo "git not found on PATH" >&2; exit 127; }
+
 CANON="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECTS="$HOME/.claude/projects"
 # Claude Code's project key is the absolute path with every "/" replaced by "-".
@@ -53,6 +59,8 @@ case "${1:-}" in
     git -C "$CANON" worktree list
     exit 0 ;;
   --remove)
+    [[ $# -eq 2 ]] || { echo "--remove takes exactly one name, got $(($# - 1))" >&2
+                        usage >&2; exit 2; }
     name="${2:-}"
     # Not ${2:?...}: that exits 1 with a bash-internal message and no usage, so this
     # was a THIRD error path while the PR claimed two.
