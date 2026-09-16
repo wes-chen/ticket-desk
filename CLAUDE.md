@@ -78,6 +78,13 @@ reading.
 Never write into this repo anything that ties **our seats or our account** to a value:
 
 - Seat section / row / seat numbers - never, in any form
+- **How many seats we hold.** Not which - the count. It has never been on this list and it
+  should have been: face x seat count **is** the season invoice total, which the next bullet
+  forbids by name, so publishing the per-seat face below promotes the count to the last
+  factor guarding it. The project already scrubbed for this once without writing the rule
+  down - `config/economics.json -> resale.platforms.ticketmaster._privacy` says the fee
+  observations are deduplicated "because repeated identical pairs disclosed how many seats
+  we hold". Added 2026-09-16, found in review of ops#167.
 - Season invoice totals, or any amount **we** paid - but read the published-face carve-out
   below before concluding a face figure is one of these
 - Exchange credit amounts per tier
@@ -159,6 +166,29 @@ being true. Revisit it then.
   A per-seat figure that lands on **no** band is ours, whatever it is labelled. It could
   only have come from our invoice, and calling it a face does not make it reproducible.
   That hole is the reason this test is mechanical rather than a judgement.
+
+  **Two measured properties of the test, both checked on the committed file 2026-09-16.**
+
+  Only **15 of 23** bands publish an `avgPerGame.new` at all - `club-1..5`, `glass`, `teal`
+  and `orange` do not, and the file's own `_priceNote` says absent means not published. For
+  those bands the test is **unsatisfiable, so the answer is private.** Do not substitute
+  `renew` to make it come out public: an unpublished band price is exactly the case this
+  rule is protecting, and the substitution would be the agent deciding the rule rather than
+  applying it.
+
+  And across the 15 that do publish, **every product is distinct**. So a match does not
+  merely narrow the band - it **determines** it. The residual below is exact rather than
+  conservative, and that is the honest reading.
+
+  **The checker does not implement this test, and it is in the protected set.**
+  `scripts/check_privacy.py`'s `FORBIDDEN_KEYS` rejects `perSeatSeason`, `faceValuePerSeat`,
+  `invoicePerSeat` and `seasonInvoiceTotal` in any committed JSON - including a value this
+  rule now calls public. That is **not** a contradiction to fix by deleting keys: those
+  names are ambiguous about which derivation they hold, the same limit already documented
+  for `low`, `high` and `price`. So: the face is publishable **in prose and as a named
+  constant** (which is where it lives - `validate_tier_credits.py`), and **not** under those
+  key names in a committed store. A checker that tested reproducibility instead would be
+  better and is a decision, not a drive-by - the privacy checks are protected.
 
   **Why not "where the number came from".** The first draft of this carve-out said the
   line was the derivation rather than the digits - that an invoice-derived figure "arrives
