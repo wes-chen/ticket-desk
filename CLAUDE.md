@@ -225,6 +225,47 @@ above exists to end. The carve-out wins, on the reproducibility check, and it is
 Corollary for fixtures and examples: **plausible means real.** Use absurd values
 (`11111111`), never a realistic-looking one. That is precisely how ops#29 happened.
 
+### Removing a private value: two ways the removal makes it worse
+
+Both were found on 2026-09-16, in the same PR, and neither is obvious. A scrub is not
+just an edit - it is an edit **plus** everything the edit says about itself.
+
+**1. Do not explain what you removed.** The commit that takes a value out sits next to the
+value in `git log -p`, forever. So a comment saying *why* it mattered - what it was paired
+with, what it resolved to, what it would tell a reader - is a **pointer to the thing you
+just removed**, and it is strictly more than the repo said before, because previously
+nothing asserted the value meant anything. Net exposure goes **up**.
+
+Describe the **constraint**, never the value: *"a fixture does not carry real values, and
+this one must be on a known ring, so it is derived"* is complete and leaks nothing.
+
+**No contrasting example is given here, and that is not an omission.** An example of a bad
+sentence is a bad sentence: to show the failure you have to commit it, and the corollary
+directly above applies - plausible means real. If you must illustrate, illustrate in
+absurd values.
+
+**2. Do not let the squash write the message.** `gh pr merge --squash` **concatenates every
+commit message on the branch** into the commit that lands on `main`. So a branch whose
+first commit explains the leak and whose second explains the fix puts **both explanations
+on the primary branch's permanent history** - worse than where they sat, because a PR ref
+is a backwater and `main` is what people and tools read.
+
+Measured in this repo rather than taken from documentation: **`93cf34b` on `main` carries a
+101-line message** built from `* ` bullets, superseded rationale included. Its branch had
+**four** commits and the message has **three** bullets, because GitHub's squash **omits
+merge commits** - so a branch that merged `main` mid-review contributes one bullet fewer
+than it has commits. Check the count against the bullets rather than against the branch.
+That commit was harmless. The mechanism is not.
+
+Pass an explicit clean body - `gh pr merge --squash --body-file <file>` - and then **read
+the landed commit** to confirm what it says. For an ordinary change the default is fine;
+for a scrub it is wrong every time.
+
+Neither is undone by fixing it afterwards. Rewording reduces discoverability, not
+availability: the earlier text stays in the branch history and in `refs/pull/<n>/head`,
+which is the same distinction ops#169 settled about a deleted branch. Say so in the issue
+that owns the exposure, so whoever decides about history is deciding about its real size.
+
 ### Enforcement
 
 `npm run build` runs `scripts/check_privacy.py`, which checks three surfaces:
@@ -425,6 +466,17 @@ done
 
 Search for the **key**, never the value: you are looking for a number you do not know.
 `creditPerSeat` found what `$120` never could have.
+
+**And do not assume the thing you are sweeping for sits on one line.** Found 2026-09-16,
+sweeping every blob for a sentence known to exist: **zero hits**, because the sentence was
+line-wrapped in the source and no single line held the whole string. `git show <sha>`
+displayed it plainly. The conclusion "it is not there" was one step from being recorded.
+
+This is the same failure as the JSON-versus-prose grep above, in a second costume, so state
+it generally: **a sweep whose unit is the line cannot find anything longer than a line.**
+For a phrase, sweep on a distinctive *fragment* short enough to survive wrapping, or strip
+newlines before matching - and when a sweep returns nothing, confirm the instrument can
+find something you already know is there before believing it.
 
 And when a recovered value lands in a store, its `provenance` says **recovered, and from
 where** - never the request that went unanswered. A line claiming Wesley pasted something
