@@ -39,3 +39,50 @@ jobs:
 
       - name: Privacy gate
         run: python3 scripts/check_privacy.py
+
+      # ops#170. Since ops#165, `npm run build` is privacy + read-only + copy, so the band,
+      # tier-market and freshness checks ran NOWHERE on push or PR - only on the collector's
+      # own cron. That left an agent pushing collected data with no freshness gate at all.
+      # Option B was chosen over restoring them to `npm run build`: PR CI runs on exactly
+      # the events where collected data changes hands, and it keeps the local inner loop
+      # fast. All three are stdlib-only and read committed files, so the "no network" rule
+      # at the top of this file still holds.
+
+      - name: Did this change touch collected data?
+        id: touched
+        run: |
+          set -euo pipefail
+          # A pull_request build is a merge commit, so diff against the PR base; a push
+          # diffs against its own parent. Anything else (workflow_dispatch, a root commit)
+          # has no comparison point, and the safe default there is to GATE, not to skip -
+          # a check that silently downgrades itself is the failure mode this repo keeps
+          # rediscovering.
+          base="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base" ]; then base="$(git rev-parse --verify --quiet HEAD^ || true)"; fi
+          if [ -z "$base" ]; then
+            echo "no base to diff against - treating as a data change"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$base" HEAD | grep -q '^data/'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Price band + tier-market checks
+        run: |
+          python3 scripts/check_price_bands.py
+          python3 scripts/check_tier_market.py
+
+      - name: Data freshness
+        # --strict ONLY when this change touches data/. Staleness is measured against the
+        # wall clock, so a source outage would otherwise turn every unrelated PR red and
+        # stay red - the "a permanently red gate cannot signal the next real break" problem
+        # that .freshness-accepted exists for, re-created on every contributor's PR. Run
+        # advisory the rest of the time so findings still PRINT rather than vanishing.
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.touched.outputs.changed }}" = "true" ]; then
+            python3 scripts/check_data_freshness.py --strict
+          else
+            python3 scripts/check_data_freshness.py
+          fi
