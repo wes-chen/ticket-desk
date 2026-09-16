@@ -14,10 +14,15 @@ it, so a misread row shows up as a boundary in the wrong place instead of vanish
 
 Input format, one line per row, whitespace separated:
 
-    110  1   142.00
-    110  2   142.00
-    110  15  99.00
-    110  16  -          <- price not readable; recorded as a hole, never guessed
+    99999  1   142.00
+    99999  2   142.00
+    99999  15  99.00
+    99999  16  -        <- price not readable; recorded as a hole, never guessed
+
+`99999` is deliberately not a real section (ops#189). The PRICES here are real because
+they are published team pricing and this script reads them from `price_bands.json`
+anyway; the section id is the half that would say something about our seats. Rule 1's
+corollary - plausible means real - is about exactly this pairing.
 
 Usage:
     python3 scripts/check_row_prices.py --file paste.txt
@@ -193,43 +198,54 @@ def self_test() -> int:
 
     cfg = json.loads(CONFIG.read_text())
     px = price_index(cfg)
+    # ops#189. This file used to hardcode one real lower-bowl section throughout, paired
+    # with a real band ("Lower 4") and a real per-game price - three individually true
+    # values agreeing with each other, which is what rule 1's corollary means by
+    # "plausible means real". Since ops#167 a published face resolves to exactly one
+    # band, so a section-to-band pairing here is the other half of a link.
+    #
+    # Substituting a DIFFERENT real section would not fix it: a reader cannot tell an
+    # arbitrary pairing from a meaningful one, which is the whole problem. The section
+    # must be on a known ring for `grade()` to accept it at all, so it cannot be absurd
+    # either. So it is derived from the public ring transcription and named nowhere here.
+    SEC = sorted(str(x) for x in cfg["rings"]["lower"])[0]
     check("both price columns indexed", 141.0 in px and 148.0 in px, True)
     check("a real price maps to its band", px[92.0], ["Lower 4"])
     check("an invented price maps to nothing", 11111111.0 in px, False)
 
-    rows, probs = parse("110 1 142.00\n110 2 $142\n110 3 -\n")
+    rows, probs = parse(f"{SEC} 1 142.00\n{SEC} 2 $142\n{SEC} 3 -\n")
     check("three rows parsed", len(rows), 3)
     check("no parse problems", probs, [])
     check("dollar sign tolerated", rows[1]["price"], 142.0)
     check("dash means unpriced", rows[2]["price"], None)
-    check("comma tolerated", parse("110 1 1,142.00")[0][0]["price"], 1142.0)
+    check("comma tolerated", parse(f"{SEC} 1 1,142.00")[0][0]["price"], 1142.0)
     _, probs = parse("garbage line here\n")
     check("unparseable line reported", len(probs), 1)
     check("comments and blanks skipped", parse("# note\n\n")[0], [])
 
     # A clean paste: two bands in one section, prices falling away from the ice.
-    good = "\n".join(["110 1 92", "110 2 92", "110 3 92", "110 4 87", "110 5 87"])
+    good = "\n".join([f"{SEC} 1 92", f"{SEC} 2 92", f"{SEC} 3 92", f"{SEC} 4 87", f"{SEC} 5 87"])
     rows, _ = parse(good)
     fatal, warn, ranges = grade(rows, cfg)
     check("clean paste has no fatal findings", fatal, [])
-    check("two row ranges derived", len(ranges["110"]), 2)
+    check("two row ranges derived", len(ranges[SEC]), 2)
     check("first range spans rows 1-3",
-          (ranges["110"][0]["rowFrom"], ranges["110"][0]["rowTo"]), (1, 3))
-    check("first range names its band", ranges["110"][0]["band"], "Lower 4")
-    check("second range names its band", ranges["110"][1]["band"], "Lower 5")
+          (ranges[SEC][0]["rowFrom"], ranges[SEC][0]["rowTo"]), (1, 3))
+    check("first range names its band", ranges[SEC][0]["band"], "Lower 4")
+    check("second range names its band", ranges[SEC][1]["band"], "Lower 5")
 
     # A price that matches nothing must be fatal, not silently kept.
-    rows, _ = parse("110 1 92\n110 2 93.50")
+    rows, _ = parse(f"{SEC} 1 92\n{SEC} 2 93.50")
     fatal, _, _ = grade(rows, cfg)
     check("unmatched price is fatal", any("matches no published band price" in f for f in fatal), True)
 
     # Rows getting MORE expensive away from the ice means a transposition.
-    rows, _ = parse("110 1 87\n110 2 92")
+    rows, _ = parse(f"{SEC} 1 87\n{SEC} 2 92")
     fatal, _, _ = grade(rows, cfg)
     check("rising price is fatal", any("costs" in f and "MORE" in f for f in fatal), True)
 
     # A duplicated row.
-    rows, _ = parse("110 1 92\n110 1 92")
+    rows, _ = parse(f"{SEC} 1 92\n{SEC} 1 92")
     fatal, _, _ = grade(rows, cfg)
     check("duplicate row is fatal", any("more than once" in f for f in fatal), True)
 
@@ -239,19 +255,19 @@ def self_test() -> int:
     check("unknown section is fatal", any("not on any known ring" in f for f in fatal), True)
 
     # An absent row warns but does not block - it is a hole, not a contradiction.
-    rows, _ = parse("110 1 92\n110 3 92")
+    rows, _ = parse(f"{SEC} 1 92\n{SEC} 3 92")
     fatal, warn, ranges = grade(rows, cfg)
     check("absent row is a warning not fatal", fatal, [])
     check("absent row warned", any("absent entirely" in w for w in warn), True)
     # And it must NOT be collapsed into one range across the hole.
-    check("no range spans the hole", len(ranges["110"]), 2)
+    check("no range spans the hole", len(ranges[SEC]), 2)
 
     # A price two bands share must be reported ambiguous rather than picked.
     shared = [v for v, bs in px.items() if len(bs) > 1]
     if shared:
-        rows, _ = parse(f"110 1 {shared[0]}")
+        rows, _ = parse(f"{SEC} 1 {shared[0]}")
         _, warn, ranges = grade(rows, cfg)
-        check("shared price flagged ambiguous", ranges["110"][0]["ambiguous"], True)
+        check("shared price flagged ambiguous", ranges[SEC][0]["ambiguous"], True)
         check("ambiguity warned", any("more than one band" in w for w in warn), True)
 
     for f in fails:
