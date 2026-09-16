@@ -236,15 +236,24 @@ with, what it resolved to, what it would tell a reader - is a **pointer to the t
 just removed**, and it is strictly more than the repo said before, because previously
 nothing asserted the value meant anything. Net exposure goes **up**.
 
-Describe the **constraint**, never the value. "A fixture does not carry real values, and
-this one must be on a known ring, so it is derived" is complete and leaks nothing. "It used
-to be our section, paired with our band" is the disclosure, written by the scrub.
+Describe the **constraint**, never the value: *"a fixture does not carry real values, and
+this one must be on a known ring, so it is derived"* is complete and leaks nothing.
+
+**No contrasting example is given here, and that is not an omission.** The first draft of
+this rule illustrated the failure with a paraphrase of what the scrub had removed - which
+is the failure, committed in the file every agent reads first, four lines after naming the
+PR it came from. It also breaks the corollary directly above: plausible means real. If you
+must illustrate, illustrate in absurd values.
 
 **2. Do not let the squash write the message.** `gh pr merge --squash` **concatenates every
 commit message on the branch** into the commit that lands on `main`. So a branch whose
 first commit explains the leak and whose second explains the fix puts **both explanations
 on the primary branch's permanent history** - worse than where they sat, because a PR ref
 is a backwater and `main` is what people and tools read.
+
+Measured in this repo rather than taken from documentation: **`93cf34b` on `main` carries a
+101-line message**, concatenating all three of its branch commits as `* ` bullets,
+superseded rationale included. That one was harmless. The mechanism is not.
 
 Pass an explicit clean body - `gh pr merge --squash --body-file <file>` - and then **read
 the landed commit** to confirm what it says. For an ordinary change the default is fine;
