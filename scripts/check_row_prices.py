@@ -19,10 +19,11 @@ Input format, one line per row, whitespace separated:
     99999  15  99.00
     99999  16  -        <- price not readable; recorded as a hole, never guessed
 
-`99999` is deliberately not a real section (ops#189). The PRICES here are real because
-they are published team pricing and this script reads them from `price_bands.json`
-anyway; the section id is the half that would say something about our seats. Rule 1's
-corollary - plausible means real - is about exactly this pairing.
+`99999` is deliberately not a real section. Rule 1's corollary is that fixtures and
+examples do not carry real values. The PRICES are real because they are published team
+pricing, which rule 1 allows, and because this script reads them from
+`price_bands.json` anyway - the band derivation cannot be exercised by a price the
+config does not publish.
 
 Usage:
     python3 scripts/check_row_prices.py --file paste.txt
@@ -198,16 +199,12 @@ def self_test() -> int:
 
     cfg = json.loads(CONFIG.read_text())
     px = price_index(cfg)
-    # ops#189. This file used to hardcode one real lower-bowl section throughout, paired
-    # with a real band ("Lower 4") and a real per-game price - three individually true
-    # values agreeing with each other, which is what rule 1's corollary means by
-    # "plausible means real". Since ops#167 a published face resolves to exactly one
-    # band, so a section-to-band pairing here is the other half of a link.
-    #
-    # Substituting a DIFFERENT real section would not fix it: a reader cannot tell an
-    # arbitrary pairing from a meaningful one, which is the whole problem. The section
-    # must be on a known ring for `grade()` to accept it at all, so it cannot be absurd
-    # either. So it is derived from the public ring transcription and named nowhere here.
+    # A section id in a fixture pairs a section with a band, and rule 1's corollary is
+    # that fixtures do not carry real values. An absurd id will not do either: grade()
+    # requires a section on a known ring, so `99999` would fail the ring check instead of
+    # exercising the band derivation these cases exist to test. Hence derived rather than
+    # named - from the public ring transcription, deterministically, so it is a fact about
+    # the config and not a choice made here.
     SEC = sorted(str(x) for x in cfg["rings"]["lower"])[0]
     check("both price columns indexed", 141.0 in px and 148.0 in px, True)
     check("a real price maps to its band", px[92.0], ["Lower 4"])
