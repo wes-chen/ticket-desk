@@ -239,11 +239,10 @@ nothing asserted the value meant anything. Net exposure goes **up**.
 Describe the **constraint**, never the value: *"a fixture does not carry real values, and
 this one must be on a known ring, so it is derived"* is complete and leaks nothing.
 
-**No contrasting example is given here, and that is not an omission.** The first draft of
-this rule illustrated the failure with a paraphrase of what the scrub had removed - which
-is the failure, committed in the file every agent reads first, four lines after naming the
-PR it came from. It also breaks the corollary directly above: plausible means real. If you
-must illustrate, illustrate in absurd values.
+**No contrasting example is given here, and that is not an omission.** An example of a bad
+sentence is a bad sentence: to show the failure you have to commit it, and the corollary
+directly above applies - plausible means real. If you must illustrate, illustrate in
+absurd values.
 
 **2. Do not let the squash write the message.** `gh pr merge --squash` **concatenates every
 commit message on the branch** into the commit that lands on `main`. So a branch whose
@@ -252,8 +251,11 @@ on the primary branch's permanent history** - worse than where they sat, because
 is a backwater and `main` is what people and tools read.
 
 Measured in this repo rather than taken from documentation: **`93cf34b` on `main` carries a
-101-line message**, concatenating all three of its branch commits as `* ` bullets,
-superseded rationale included. That one was harmless. The mechanism is not.
+101-line message** built from `* ` bullets, superseded rationale included. Its branch had
+**four** commits and the message has **three** bullets, because GitHub's squash **omits
+merge commits** - so a branch that merged `main` mid-review contributes one bullet fewer
+than it has commits. Check the count against the bullets rather than against the branch.
+That commit was harmless. The mechanism is not.
 
 Pass an explicit clean body - `gh pr merge --squash --body-file <file>` - and then **read
 the landed commit** to confirm what it says. For an ordinary change the default is fine;
@@ -464,6 +466,17 @@ done
 
 Search for the **key**, never the value: you are looking for a number you do not know.
 `creditPerSeat` found what `$120` never could have.
+
+**And do not assume the thing you are sweeping for sits on one line.** Found 2026-09-16,
+sweeping every blob for a sentence known to exist: **zero hits**, because the sentence was
+line-wrapped in the source and no single line held the whole string. `git show <sha>`
+displayed it plainly. The conclusion "it is not there" was one step from being recorded.
+
+This is the same failure as the JSON-versus-prose grep above, in a second costume, so state
+it generally: **a sweep whose unit is the line cannot find anything longer than a line.**
+For a phrase, sweep on a distinctive *fragment* short enough to survive wrapping, or strip
+newlines before matching - and when a sweep returns nothing, confirm the instrument can
+find something you already know is there before believing it.
 
 And when a recovered value lands in a store, its `provenance` says **recovered, and from
 where** - never the request that went unanswered. A line claiming Wesley pasted something
