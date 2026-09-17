@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resale listings: one row per (observedDate, gameId, section, row, listingType).
+"""Resale listings: one row per (observedDate, gameId, band, seq, listingType).
 
 ops#65. `primary_store.py` deliberately holds **primary** inventory only - the team's own
 allocation and the member map. The listings that actually undercut us on the resale market
@@ -42,37 +42,90 @@ one file with one `price` column that invites exactly this diff.
 
 ## What must never be written here
 
-This is the PUBLIC repo. A row keyed `(gameId, section, row)` carrying a price is a market
-observation about *someone else's* seat. The same row for **our** seat is the linkage
-CLAUDE.md rule 1 forbids - it ties our seat to our listing price - and dropping an `isOurs`
-flag does not fix it, because section+row is itself the identifier.
+This is the PUBLIC repo, and this store carries **no section and no row** (ops#189).
 
-Our own listings go to `data/profile/snapshots.jsonl` in the private ops repo. `isOurs` is
-not a field here and must not become one; ownership is derived at read time by matching
-against the profile, which lives in the browser and in ops.
+## Why the schema is keyed on a band rather than on a seat
+
+A row keyed `(gameId, section, row)` is a market observation about someone else's seat,
+and taken alone that is legal. It does not stay legal in aggregate here. This store is
+scoped to the listings competing with ours, so keyed by seat it would span a single
+section, while `data/primary/prices.jsonl` spans 50 and `data/primary/comps.json` 48. No
+field has to say which section is ours for that to be readable: a scoped store is narrow
+by construction, and the docstring above says what the scope is. Rule 1 forbids seat
+section and row numbers in any form, and being the one narrow store is a form.
+
+So `section` and `row` are gone and `band` + `seq` replace them. A band spans many
+sections, so it is not a locator; it is also the unit that actually matters for a comp,
+because you price against seats like yours rather than against one specific section. The
+residual - that this store discloses our *band* - was already public before this change:
+ops#167 publishes the per-seat season face, and a face resolves to exactly one band.
+
+**`seq` is the price-ascending rank within `(observedDate, gameId, band, listingType)`,
+and it is derived rather than chosen** so that a same-day re-read UPSERTS rather than
+appends. An arbitrary counter would have made identity depend on capture order, which is
+the one thing a re-read does not preserve.
+
+`band` is a `config/price_bands.json` band **id**, validated against that file, so a typo
+is refused rather than stored. Note what this cannot do: every `sections` array in that
+file is empty until ops#19 lands, so band is NOT mechanically derivable from a section
+here - whoever ingests a row establishes it and says how, via `bandBasis`.
+
+## bandBasis: measured or inferred, per rule 4
+
+`measured` means the band label was read directly for that seat - the public event page
+renders the chart's own legend label in each seat's Description field. `inferred` means it
+was derived from something adjacent, such as a neighbouring row's label or a price break.
+The three rows this store was migrated with are two `inferred` and one `measured`, and
+flattening that distinction is what rule 4 exists to stop.
+
+## What must never be written here
+
+`isOurs`, `ours`, `mine`, and now `section`, `row`, `seat` are refused outright. Ownership
+is derived at read time by matching against the profile, which lives in the private ops
+repo. Our own listings go to `ops:data/profile/snapshots.jsonl`.
 
 **Note the guard does not cover this.** `check_privacy.py`'s linkage rule keys on
 OWN_PRICE_FIELDS - `list`, `net`, `payout`, and friends - so a field named `price` beside a
-`gameId` passes by design, which is what makes every market store legal. The rule above is
-therefore load-bearing judgement, not something a check will catch for you.
+`gameId` passes by design, which is what makes every market store legal. Nor is a literal
+pass any help: the section number appears legitimately in the 50-section stores, so adding
+it to `.private-patterns` would fail the build on data that is fine. The refusal list
+below is the enforcement, and it is why these field names are rejected by NAME rather than
+left to judgement.
 """
 import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from primary_store import SECTIONS, known_game_ids  # noqa: E402  - one source of truth
+from primary_store import known_game_ids  # noqa: E402  - one source of truth
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEFAULT_STORE = ROOT / "data" / "resale" / "listings.jsonl"
 ECONOMICS = ROOT / "config" / "economics.json"
+PRICE_BANDS = ROOT / "config" / "price_bands.json"
 
 LISTING_TYPES = {"resale", "primary"}
 
-# `row` is a string on purpose. Row labels are not always integers - SAP Center has
-# lettered rows in some sections, and ops#65's own ladder carries "21/23" for a pair of
-# team-held seats. Coercing to int would silently drop those.
-REQUIRED = ("observedDate", "gameId", "section", "row", "price", "allIn", "listingType")
+def band_ids():
+    """The band ids `band` is validated against - read from config, never duplicated here.
+
+    A second copy of this list would drift from price_bands.json silently, and the whole
+    point of validating the field is that a typo cannot reach the store.
+    """
+    return {b["id"] for b in json.loads(PRICE_BANDS.read_text())["bands"]}
+
+
+# Fields this store REFUSES by name. The first three have always been banned: an
+# ownership flag makes a row a statement about our seat. The last three were removed in
+# ops#189 - see the schema section of the module docstring. They are refused rather than
+# merely unused, because "do not add a section column" is not something a future ingest
+# can be expected to infer from the absence of one.
+BANNED = ("isOurs", "ours", "mine", "section", "row", "seat", "seatNumber")
+
+BAND_BASIS = {"measured", "inferred"}
+
+REQUIRED = ("observedDate", "gameId", "band", "seq", "price", "allIn", "listingType",
+            "bandBasis")
 
 
 class Invalid(Exception):
@@ -100,10 +153,10 @@ def as_int(x):
 def key(r):
     """The identity of a row. A same-day re-read UPSERTS rather than appending.
 
-    Assumes section and gameId are numeric - `validate()` skips the duplicate check for
-    any row where they are not, rather than crashing here."""
-    return (r["observedDate"], int(r["gameId"]), int(r["section"]),
-            str(r["row"]), r["listingType"])
+    Assumes gameId and seq are numeric - `validate()` skips the duplicate check for any
+    row where they are not, rather than crashing here."""
+    return (r["observedDate"], int(r["gameId"]), r["band"], int(r["seq"]),
+            r["listingType"])
 
 
 def validate(rows, game_ids=None):
@@ -115,6 +168,7 @@ def validate(rows, game_ids=None):
     """
     problems: list[str] = []
     seen: set[tuple] = set()
+    known_bands = band_ids()
 
     for i, r in enumerate(rows):
         where = f"row {i}"
@@ -123,17 +177,25 @@ def validate(rows, game_ids=None):
             problems.append(f"{where}: missing {', '.join(missing)}")
             continue
 
-        sec, gid = r["section"], r["gameId"]
-        where = f"{where} (game {gid} sec {sec} row {r['row']})"
+        band, gid = r["band"], r["gameId"]
+        where = f"{where} (game {gid} band {band} seq {r['seq']})"
 
         # Resolve the key fields FIRST. Everything below may append problems, and the
         # duplicate check at the end needs both numeric; a row that fails here is
         # reported and then skipped rather than carried into key().
-        sec_i, gid_i = as_int(sec), as_int(gid)
-        if sec_i is None:
-            problems.append(f"{where}: section must be a number, got {sec!r}")
-        elif sec_i not in SECTIONS:
-            problems.append(f"{where}: section {sec_i} is not one of the 50 real sections")
+        seq_i, gid_i = as_int(r["seq"]), as_int(gid)
+        if not isinstance(band, str) or band not in known_bands:
+            problems.append(f"{where}: band must be one of the {len(known_bands)} ids in "
+                            f"config/price_bands.json, got {band!r}")
+        if seq_i is None or seq_i < 1:
+            problems.append(f"{where}: seq must be a positive whole number - it is the "
+                            f"price-ascending rank within (observedDate, gameId, band, "
+                            f"listingType), got {r['seq']!r}")
+        if r["bandBasis"] not in BAND_BASIS:
+            problems.append(f"{where}: bandBasis must be one of {sorted(BAND_BASIS)}, got "
+                            f"{r['bandBasis']!r}. Rule 4: a band read directly off the "
+                            f"seat is not the same claim as one derived from a "
+                            f"neighbouring row, and flattening them invents precision")
         if gid_i is None:
             problems.append(f"{where}: gameId must be a number, got {gid!r}")
         elif game_ids is not None and gid_i not in game_ids:
@@ -155,19 +217,18 @@ def validate(rows, game_ids=None):
         if not isinstance(p, (int, float)) or isinstance(p, bool) or p <= 0:
             problems.append(f"{where}: price must be a positive number, got {p!r}")
 
-        if not str(r["row"]).strip():
-            problems.append(f"{where}: row label is empty - a resale row without a seat "
-                            f"is a section summary, which belongs in primary_store")
-
-        # An ownership flag must never exist here. See the module docstring: this is the
-        # public repo and the flag would make the row a statement about our seat.
-        for banned in ("isOurs", "ours", "mine"):
+        # Refused by NAME, not left to judgement. An ownership flag makes the row a
+        # statement about our seat; a section or row column re-creates the one-section
+        # scoping that ops#189 removed, and no privacy check can catch either - see the
+        # module docstring on why a literal pass cannot help here.
+        for banned in BANNED:
             if banned in r:
                 problems.append(f"{where}: '{banned}' must not be stored in the public "
-                                f"repo - ownership is derived at read time from the "
-                                f"profile, see CLAUDE.md rule 1")
+                                f"repo - this store is keyed on band + seq and carries no "
+                                f"seat locator (ops#189); ownership is derived at read "
+                                f"time from the profile, see CLAUDE.md rule 1")
 
-        if sec_i is None or gid_i is None:
+        if seq_i is None or gid_i is None:
             # Cannot form an identity for this row, so no duplicate check. Every other
             # problem with it has already been recorded above, and crashing here is what
             # review of ops#65 caught.
@@ -175,8 +236,35 @@ def validate(rows, game_ids=None):
         k = key(r)
         if k in seen:
             problems.append(f"{where}: duplicate of an earlier row with the same "
-                            f"(observedDate, gameId, section, row, listingType)")
+                            f"(observedDate, gameId, band, seq, listingType)")
         seen.add(k)
+
+    # seq is the price-ascending rank within its group, not a free counter. Checked here
+    # rather than trusted, because the whole reason it is derived is that a same-day
+    # re-read must land on the same identity; a hand-typed counter would not.
+    groups: dict[tuple, list] = {}
+    for r in rows:
+        if any(f not in r for f in REQUIRED):
+            continue
+        # A row whose seq is already refused above is skipped rather than reported
+        # twice - the same report-once-and-skip discipline as the duplicate check.
+        seq_ok = as_int(r["seq"])
+        if as_int(r["gameId"]) is None or seq_ok is None or seq_ok < 1:
+            continue
+        if not isinstance(r["price"], (int, float)) or isinstance(r["price"], bool):
+            continue
+        groups.setdefault(
+            (r["observedDate"], as_int(r["gameId"]), r["band"], r["listingType"]),
+            []).append(r)
+    for (od, gid, band, lt), grp in sorted(groups.items(), key=lambda kv: str(kv[0])):
+        want = {id(r): i for i, r in
+                enumerate(sorted(grp, key=lambda r: (r["price"], as_int(r["seq"]))), 1)}
+        for r in grp:
+            if as_int(r["seq"]) != want[id(r)]:
+                problems.append(
+                    f"game {gid} band {band} ({lt}, {od}): seq {r['seq']} at price "
+                    f"{r['price']} should be {want[id(r)]} - seq is the price-ascending "
+                    f"rank within its group, so a re-read upserts instead of appending")
 
     return problems
 
@@ -187,8 +275,8 @@ def merge(existing, new):
     for r in new:
         by[key(r)] = r
     return sorted(by.values(),
-                  key=lambda r: (r["observedDate"], int(r["gameId"]), int(r["section"]),
-                                 str(r["row"]), r["listingType"]))
+                  key=lambda r: (r["observedDate"], int(r["gameId"]), r["band"],
+                                 int(r["seq"]), r["listingType"]))
 
 
 def read_store(path=DEFAULT_STORE):
@@ -292,8 +380,13 @@ def self_test():
             fails.append(f"{name}: got {got!r}, want {want!r}")
 
     def row(**kw):
-        base = {"observedDate": "2026-09-07", "gameId": 2026010032, "section": 110,
-                "row": "20", "price": 64.13, "allIn": True, "listingType": "resale"}
+        # Absurd values throughout (CLAUDE.md rule 1: plausible means real). The band is
+        # the one field that cannot be absurd - an invented id fails the band check and
+        # would never exercise anything downstream, the same constraint check_row_prices
+        # has - so a real id is used that is deliberately NOT the one this store holds.
+        base = {"observedDate": "1999-01-01", "gameId": 11111111, "band": "upper-goal-2",
+                "seq": 1, "price": 11111111.0, "allIn": True, "listingType": "resale",
+                "bandBasis": "measured"}
         base.update(kw)
         return base
 
@@ -314,7 +407,22 @@ def self_test():
     check("isOurs is refused", len(got), 1)
     check("and cites the rule", "CLAUDE.md rule 1" in got[0], True)
 
-    check("bad section refused", len(validate([row(section=999)])), 1)
+    got = validate([row(band="not-a-band")])
+    check("an unknown band is refused", len(got), 1)
+    check("and points at price_bands.json", "price_bands.json" in got[0], True)
+
+    # ops#189: the fields this store must never carry again. Refused by NAME.
+    for banned in ("section", "row", "seat", "isOurs"):
+        got = validate([row(**{banned: 11111111})])
+        check(f"'{banned}' is refused", len(got), 1)
+        check(f"and '{banned}' cites the rule", "CLAUDE.md rule 1" in got[0], True)
+
+    check("a non-measured bandBasis is refused",
+          len(validate([row(bandBasis="probably")])), 1)
+    check("bandBasis 'inferred' is accepted", validate([row(bandBasis="inferred")]), [])
+    check("seq 0 is refused", len(validate([row(seq=0)])), 1)
+    check("a non-numeric seq is refused, not raised",
+          len(validate([row(seq="first")])), 1)
 
     # ops#65 review, F2. validate() reached key(), which cast int(), and RAISED on a
     # non-numeric value instead of refusing - escaping this module's own Invalid type.
@@ -322,46 +430,52 @@ def self_test():
     # wrong. These assert refusal, and would raise rather than fail if it regressed.
     check("a non-numeric gameId is refused, not raised",
           len(validate([row(gameId="VGK")])), 1)
-    check("a non-numeric section is refused, not raised",
-          len(validate([row(section="110A")])), 1)
-    check("a null section is refused, not raised",
-          len(validate([row(section=None)])), 1)
+    check("a null band is refused, not raised", len(validate([row(band=None)])), 1)
     # Bools are ints in Python and are never a real id.
     check("a boolean gameId is refused", len(validate([row(gameId=True)])), 1)
     # A numeric string is a transcription artefact, not an error - accept it.
-    check("a numeric-string section is accepted", validate([row(section="110")]), [])
+    check("a numeric-string seq is accepted", validate([row(seq="1")]), [])
     # Two unkeyable rows must not collide in the duplicate check either.
     check("two unkeyable rows each report once",
           len(validate([row(gameId="VGK"), row(gameId="ANA")])), 2)
     check("bad listingType refused", len(validate([row(listingType="auction")])), 1)
     check("zero price refused", len(validate([row(price=0)])), 1)
     check("boolean price refused", len(validate([row(price=True)])), 1)
-    check("empty row label refused", len(validate([row(row="  ")])), 1)
+
     check("unknown game refused",
           len(validate([row(gameId=999)], game_ids={2026010032})), 1)
 
-    # A non-integer row label must survive: ops#65's own ladder carries "21/23".
-    check("a compound row label is fine", validate([row(row="21/23")]), [])
-
     # THE acceptance criterion of ops#65: a primary row and a resale row for the same
     # seat must coexist. They differ only by listingType, so this is what the key buys.
-    both = [row(listingType="resale", price=64.13),
-            row(listingType="primary", price=82.35)]
-    check("same seat, both listing types, is valid", validate(both), [])
+    both = [row(listingType="resale", price=11111111.0),
+            row(listingType="primary", price=22222222.0)]
+    check("same band, both listing types, is valid", validate(both), [])
     check("and both survive the merge", len(merge([], both)), 2)
 
-    # Same key twice in one batch is a transcription duplicate, not an upsert.
-    check("duplicate within a batch refused", len(validate([row(), row()])), 1)
+    # Same key twice in one batch is a transcription duplicate, not an upsert. Asserted
+    # on the MESSAGE: the seq-rank check fires on the second row too, and a count of 1
+    # here would quietly start failing for the right reason and look like a regression.
+    got = validate([row(), row()])
+    check("duplicate within a batch refused",
+          any("duplicate of an earlier row" in g for g in got), True)
+
+    # The seq-rank invariant itself: a counter that does not follow price order is what
+    # makes a re-read append instead of upsert.
+    got = validate([row(seq=1, price=22222222.0), row(seq=2, price=11111111.0)])
+    check("seq out of price order is refused", len(got), 2)
+    check("and says what seq means", "price-ascending rank" in got[0], True)
+    check("seq in price order is clean",
+          validate([row(seq=1, price=11111111.0), row(seq=2, price=22222222.0)]), [])
 
     # Across batches the same key UPSERTS - a re-read corrects rather than appends.
-    merged = merge([row(price=64.13)], [row(price=61.00)])
+    merged = merge([row(price=11111111.0)], [row(price=22222222.0)])
     check("re-read upserts", len(merged), 1)
-    check("and keeps the newer price", merged[0]["price"], 61.00)
+    check("and keeps the newer price", merged[0]["price"], 22222222.0)
 
     # ingest writes NOTHING when any row is bad, even if others are fine.
     tmp = pathlib.Path(tempfile.mkdtemp()) / "listings.jsonl"
     try:
-        ingest([row(), row(row="19", allIn=None)], path=tmp)
+        ingest([row(), row(seq=2, price=22222222.0, allIn=None)], path=tmp)
         fails.append("ingest should have raised on a bad row")
     except Invalid:
         pass
@@ -370,7 +484,7 @@ def self_test():
     ingest([row()], path=tmp)
     check("a clean ingest writes", len(read_store(tmp)), 1)
     # Round-trip: what was written reads back identically.
-    check("round-trips", read_store(tmp)[0]["price"], 64.13)
+    check("round-trips", read_store(tmp)[0]["price"], 11111111.0)
 
     # A corrupt line is an ERROR, never silently skipped.
     tmp.write_text('{"observedDate":"2026-09-07"}\nnot json\n')
