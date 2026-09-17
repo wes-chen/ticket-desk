@@ -113,7 +113,7 @@ self_test() {
   # it - a cleanup path that worked only when nothing was wrong.
   ST_TMP="$(mktemp -d)"; tmp="$ST_TMP"
   # No `set -e` surprises: every invocation below captures its rc explicitly.
-  trap 'rm -rf "$ST_TMP"' EXIT
+  trap 'rm -rf "$ST_TMP"' EXIT INT TERM
 
   repo="$tmp/ticket-desk"
   home="$tmp/fakehome"
@@ -152,6 +152,19 @@ self_test() {
   # command that is expected to fail sometimes, and errexit would end the suite at the
   # first one - reporting a crash instead of a named failure and skipping the rest.
   set +e
+
+  # PRECONDITION, asserted rather than assumed. The fixture must leave .private-patterns
+  # UNTRACKED. If it is tracked, the worktree receives it through the checkout and every
+  # copy-loop assertion below passes no matter what the copy loop does - which is exactly
+  # how mutant M9 survived the first sweep. Deleting the fixture's .gitignore silently
+  # restored that blind spot and still read 53/0, so the guard against it is asserted here
+  # rather than left to a line of setup nothing checks.
+  if git -C "$repo" ls-files --error-unmatch .private-patterns >/dev/null 2>&1; then
+    st_bad "fixture leaves .private-patterns untracked (M9 precondition)" \
+           "it is TRACKED - the copy-loop assertions below would prove nothing"
+  else
+    st_ok "fixture leaves .private-patterns untracked (M9 precondition)"
+  fi
 
   run() { # run <rc-var> <out-var> args...
     local __rcvar="$1" __outvar="$2" __rc=0 __out
