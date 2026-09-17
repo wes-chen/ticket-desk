@@ -27,3 +27,30 @@
 # in staged CONTENT (the commit-msg hook only ever covered messages). The fixture
 # value is now 11111111, with a comment: plausible means real.
 c5fa7a3
+
+# 232adf9, dc02a9d, fb4fad3 - a seat locator for our own seats reached the public repo
+# through a scoped comp store and two self-test fixtures, and stayed in the tree from
+# those commits until it was keyed out (ops#189). The tree side is fixed; these SHAs
+# record that the history side was reviewed and accepted rather than rewritten.
+#
+# Accepted 2026-09-17 by Wesley, on the ops#169 reasoning that a rewrite reduces
+# discoverability and not availability: refs/pull/<n>/head survives a history rewrite on
+# GitHub, as do forks and caches, so the operation is both expensive and incomplete. main
+# additionally rejects force-pushes with enforce_admins on, so it would have needed
+# deliberate unprotection of the one control that makes the rest of rule 5 meaningful.
+#
+# READ THIS BEFORE TRUSTING A CLEAN RUN OVER THESE SHAS. Unlike every other entry in this
+# file, these are INERT today: the passes never reported them, so there is nothing here
+# to stop being fatal. The literal pass cannot carry the pattern, because the same values
+# appear legitimately in the two whole-arena stores and the build would fail on data that
+# is fine. The structural pass keys on field NAMES and these were not on its list. So the
+# entry is a record, not a suppression - and it becomes a real one the day a pattern for
+# this class exists.
+#
+# Recurrence is prevented structurally instead: resale_store.py now refuses the locator
+# fields by name, and the property that actually distinguishes a leak here is structural
+# rather than literal - a scoped store carrying exactly one of something the whole-arena
+# stores carry many of. That check is filed, not built.
+232adf9
+dc02a9d
+fb4fad3
