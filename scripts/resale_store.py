@@ -40,25 +40,16 @@ only demand. Nothing in this codebase does that comparison today (grepped
 2026-09-13); the risk is that something will, since both listing types now live in
 one file with one `price` column that invites exactly this diff.
 
-## What must never be written here
-
-This is the PUBLIC repo, and this store carries **no section and no row** (ops#189).
-
 ## Why the schema is keyed on a band rather than on a seat
 
-A row keyed `(gameId, section, row)` is a market observation about someone else's seat,
-and taken alone that is legal. It does not stay legal in aggregate here. This store is
-scoped to the listings competing with ours, so keyed by seat it would span a single
-section, while `data/primary/prices.jsonl` spans 50 and `data/primary/comps.json` 48. No
-field has to say which section is ours for that to be readable: a scoped store is narrow
-by construction, and the docstring above says what the scope is. Rule 1 forbids seat
-section and row numbers in any form, and being the one narrow store is a form.
+Rule 1 forbids seat section and row numbers in any form, and a scoped comp store is
+narrow by construction, so a seat key makes its scope legible. `band` is not a locator,
+and it is the unit a comp is actually about - you price against seats like yours rather
+than against one specific section. `seq` restores per-row uniqueness without one.
 
-So `section` and `row` are gone and `band` + `seq` replace them. A band spans many
-sections, so it is not a locator; it is also the unit that actually matters for a comp,
-because you price against seats like yours rather than against one specific section. The
-residual - that this store discloses our *band* - was already public before this change:
-ops#167 publishes the per-seat season face, and a face resolves to exactly one band.
+The residual is that this store discloses a band, and that was already public: ops#167
+publishes the per-seat season face, and a face resolves to exactly one band. It is not
+the whole picture - see ops#192, which is open.
 
 **`seq` is the price-ascending rank within `(observedDate, gameId, band, listingType)`,
 and it is derived rather than chosen** so that a same-day re-read UPSERTS rather than
@@ -115,11 +106,13 @@ def band_ids():
     return {b["id"] for b in json.loads(PRICE_BANDS.read_text())["bands"]}
 
 
-# Fields this store REFUSES by name. The first three have always been banned: an
-# ownership flag makes a row a statement about our seat. The last three were removed in
-# ops#189 - see the schema section of the module docstring. They are refused rather than
-# merely unused, because "do not add a section column" is not something a future ingest
-# can be expected to infer from the absence of one.
+# Fields this store REFUSES by name, all seven of them. `isOurs`, `ours` and `mine` have
+# always been banned: an ownership flag makes a row a statement about our seat. `section`,
+# `row`, `seat` and `seatNumber` were added in ops#189 - see the schema section of the
+# module docstring. They are refused rather than merely unused, because "do not add a
+# section column" is not something a future ingest can be expected to infer from the
+# absence of one. If you add a name here, add a case to the self-test loop too: that loop
+# tested four of these seven until a mutation sweep pointed it out.
 BANNED = ("isOurs", "ours", "mine", "section", "row", "seat", "seatNumber")
 
 BAND_BASIS = {"measured", "inferred"}
@@ -228,10 +221,12 @@ def validate(rows, game_ids=None):
                                 f"seat locator (ops#189); ownership is derived at read "
                                 f"time from the profile, see CLAUDE.md rule 1")
 
-        if seq_i is None or gid_i is None:
+        if seq_i is None or gid_i is None or not isinstance(band, str):
             # Cannot form an identity for this row, so no duplicate check. Every other
             # problem with it has already been recorded above, and crashing here is what
-            # review of ops#65 caught.
+            # review of ops#65 caught - then caught again in review of ops#189, because a
+            # band of an UNHASHABLE type raised inside key() where a string that merely
+            # is not a known id does not. Type, not membership, is what decides this.
             continue
         k = key(r)
         if k in seen:
@@ -242,27 +237,51 @@ def validate(rows, game_ids=None):
     # seq is the price-ascending rank within its group, not a free counter. Checked here
     # rather than trusted, because the whole reason it is derived is that a same-day
     # re-read must land on the same identity; a hand-typed counter would not.
+    #
+    # A group that LOST a row to any check above is not rank-checkable, and is skipped
+    # whole. Ranking a partial group blames the survivors for their neighbour's problem:
+    # drop one row of a clean pair and the other is suddenly "seq 2 where 1 was expected",
+    # which is an artefact of the drop and points at the wrong row. Found by a fixture
+    # written for a different mutant.
     groups: dict[tuple, list] = {}
+    incomplete: set[tuple] = set()
+
+    def group_key(r):
+        """The group a row ranks within, or None if that cannot be determined."""
+        gid = as_int(r.get("gameId"))
+        band_v, od, lt = r.get("band"), r.get("observedDate"), r.get("listingType")
+        if gid is None or not isinstance(band_v, str) or not isinstance(od, str):
+            return None
+        if not isinstance(lt, str):
+            return None
+        return (od, gid, band_v, lt)
+
     for r in rows:
-        if any(f not in r for f in REQUIRED):
+        gk = group_key(r)
+        seq_v = as_int(r.get("seq"))
+        usable = (
+            all(f in r for f in REQUIRED)
+            and gk is not None
+            and seq_v is not None and seq_v >= 1
+            and isinstance(r.get("price"), (int, float))
+            and not isinstance(r.get("price"), bool)
+        )
+        if not usable:
+            if gk is not None:
+                incomplete.add(gk)
             continue
-        # A row whose seq is already refused above is skipped rather than reported
-        # twice - the same report-once-and-skip discipline as the duplicate check.
-        seq_ok = as_int(r["seq"])
-        if as_int(r["gameId"]) is None or seq_ok is None or seq_ok < 1:
+        groups.setdefault(gk, []).append(r)
+
+    for gk, grp in sorted(groups.items(), key=lambda kv: str(kv[0])):
+        if gk in incomplete:
             continue
-        if not isinstance(r["price"], (int, float)) or isinstance(r["price"], bool):
-            continue
-        groups.setdefault(
-            (r["observedDate"], as_int(r["gameId"]), r["band"], r["listingType"]),
-            []).append(r)
-    for (od, gid, band, lt), grp in sorted(groups.items(), key=lambda kv: str(kv[0])):
+        od, gid, band_v, lt = gk
         want = {id(r): i for i, r in
                 enumerate(sorted(grp, key=lambda r: (r["price"], as_int(r["seq"]))), 1)}
         for r in grp:
             if as_int(r["seq"]) != want[id(r)]:
                 problems.append(
-                    f"game {gid} band {band} ({lt}, {od}): seq {r['seq']} at price "
+                    f"game {gid} band {band_v} ({lt}, {od}): seq {r['seq']} at price "
                     f"{r['price']} should be {want[id(r)]} - seq is the price-ascending "
                     f"rank within its group, so a re-read upserts instead of appending")
 
@@ -379,6 +398,37 @@ def self_test():
         if got != want:
             fails.append(f"{name}: got {got!r}, want {want!r}")
 
+    def refused(name, rows, want=1, ids=None):
+        """Assert a bad row is REFUSED, never raised - and report a raise by NAME.
+
+        validate() raising escapes this module's own Invalid type; that is the ops#65 F2
+        defect, and it recurred on an unhashable band in review of ops#189. A bare
+        `len(validate([...]))` cannot express it: the exception propagates out of
+        self_test, aborting before any FAIL prints and skipping every later assertion.
+        The mutation sweep scored five guards that way - red, but proving nothing, which
+        is ops#191's crash-kill. This turns the raise into the finding.
+        """
+        try:
+            got = validate(rows, game_ids=ids)
+        except Exception as e:                                  # noqa: BLE001
+            fails.append(f"{name}: validate() RAISED {type(e).__name__}: {e} - it must "
+                         f"refuse a bad row, never raise (ops#65 F2)")
+            return
+        if len(got) != want:
+            fails.append(f"{name}: got {len(got)} problem(s), want {want}: {got!r}")
+
+    def first(got):
+        """first(got), or "" when empty. An assertion must not RAISE when a guard is deleted.
+
+        A 22-mutant sweep in review of ops#189 found ten guards whose deletion emptied
+        `got`, so the very next `... in first(got)` raised IndexError inside this function -
+        aborting the suite before a single FAIL printed and skipping every later
+        assertion. The runner judges on return code, so each one still went red and was
+        banked as a kill while proving nothing about coverage. That is ops#191's
+        crash-kill, and it is the same defect as a shell suite running under `set -e`.
+        """
+        return got[0] if got else ""
+
     def row(**kw):
         # Absurd values throughout (CLAUDE.md rule 1: plausible means real). The band is
         # the one field that cannot be absurd - an invented id fails the band check and
@@ -393,44 +443,63 @@ def self_test():
     check("a good row is clean", validate([row()]), [])
 
     # allIn is the unit trap and the reason this store exists as its own file.
-    check("allIn missing is refused", validate([{k: v for k, v in row().items()
-                                                 if k != "allIn"}]),
-          ["row 0: missing allIn"])
+    got = None
+    try:
+        got = validate([{k: v for k, v in row().items() if k != "allIn"}])
+    except Exception as e:                                       # noqa: BLE001
+        fails.append(f"allIn missing is refused: validate() RAISED {type(e).__name__}: "
+                     f"{e} - a row missing a REQUIRED field must be refused, not raised")
+    if got is not None:
+        check("allIn missing is refused", got, ["row 0: missing allIn"])
     got = validate([row(allIn="true")])
     check("allIn as a string is refused", len(got), 1)
-    check("and explains the unit trap", "includes buyer fees" in got[0], True)
+    check("and explains the unit trap", "includes buyer fees" in first(got), True)
     # 0/1 are truthy-correct and still refused - they are what a transcription produces.
     check("allIn as 0 is refused", len(validate([row(allIn=0)])), 1)
 
     # An ownership flag must never reach the public store.
     got = validate([row(isOurs=True)])
     check("isOurs is refused", len(got), 1)
-    check("and cites the rule", "CLAUDE.md rule 1" in got[0], True)
+    check("and cites the rule", "CLAUDE.md rule 1" in first(got), True)
 
     got = validate([row(band="not-a-band")])
     check("an unknown band is refused", len(got), 1)
-    check("and points at price_bands.json", "price_bands.json" in got[0], True)
+    check("and points at price_bands.json", "price_bands.json" in first(got), True)
 
-    # ops#189: the fields this store must never carry again. Refused by NAME.
-    for banned in ("section", "row", "seat", "isOurs"):
+    # ops#189: the fields this store must never carry again. Refused by NAME, and the
+    # loop runs over BANNED itself rather than a hand-copied subset - a mutation sweep
+    # found this testing four of the seven, so three names were refused by code nothing
+    # exercised. Adding a name to BANNED now adds a case here automatically.
+    check("every BANNED name is covered by this loop", len(BANNED), 7)
+    for banned in BANNED:
         got = validate([row(**{banned: 11111111})])
         check(f"'{banned}' is refused", len(got), 1)
-        check(f"and '{banned}' cites the rule", "CLAUDE.md rule 1" in got[0], True)
+        check(f"and '{banned}' cites the rule", "CLAUDE.md rule 1" in first(got), True)
+
+    # REGRESSION (review of ops#189). An unhashable band reached key() and raised
+    # TypeError, escaping this module's own Invalid type - the ops#65 F2 bug again. The
+    # fixture that first replaced the old one used None, which is HASHABLE, so it was the
+    # wrong kind of wrong twice over. Type is what decides the skip, not membership.
+    for bad_band in ([], {}, set()):
+        refused(f"an unhashable band ({type(bad_band).__name__}) is refused, not raised",
+                [row(band=bad_band)])
+    refused("a non-string band is refused, not raised", [row(band=7)])
+    check("a string band that is merely unknown is still key-able",
+          len(validate([row(band="not-a-band"), row(band="not-a-band", seq=2,
+                            price=22222222.0)])), 2)
 
     check("a non-measured bandBasis is refused",
           len(validate([row(bandBasis="probably")])), 1)
     check("bandBasis 'inferred' is accepted", validate([row(bandBasis="inferred")]), [])
     check("seq 0 is refused", len(validate([row(seq=0)])), 1)
-    check("a non-numeric seq is refused, not raised",
-          len(validate([row(seq="first")])), 1)
+    refused("a non-numeric seq is refused, not raised", [row(seq="first")])
 
     # ops#65 review, F2. validate() reached key(), which cast int(), and RAISED on a
     # non-numeric value instead of refusing - escaping this module's own Invalid type.
     # The existing bad-section fixture used 999: numeric, and therefore the wrong KIND of
     # wrong. These assert refusal, and would raise rather than fail if it regressed.
-    check("a non-numeric gameId is refused, not raised",
-          len(validate([row(gameId="VGK")])), 1)
-    check("a null band is refused, not raised", len(validate([row(band=None)])), 1)
+    refused("a non-numeric gameId is refused, not raised", [row(gameId="VGK")])
+    refused("a null band is refused, not raised", [row(band=None)])
     # Bools are ints in Python and are never a real id.
     check("a boolean gameId is refused", len(validate([row(gameId=True)])), 1)
     # A numeric string is a transcription artefact, not an error - accept it.
@@ -463,9 +532,34 @@ def self_test():
     # makes a re-read append instead of upsert.
     got = validate([row(seq=1, price=22222222.0), row(seq=2, price=11111111.0)])
     check("seq out of price order is refused", len(got), 2)
-    check("and says what seq means", "price-ascending rank" in got[0], True)
+    check("and says what seq means", "price-ascending rank" in first(got), True)
     check("seq in price order is clean",
           validate([row(seq=1, price=11111111.0), row(seq=2, price=22222222.0)]), [])
+
+    # Tied prices: the rank is broken by seq, so EITHER assignment is consistent. Asserted
+    # rather than left implicit - this is the one case where the invariant cannot pick a
+    # winner, and the PR that introduced seq led with the invariant and never tested it.
+    check("tied prices are clean in seq order",
+          validate([row(seq=1, price=11111111.0), row(seq=2, price=11111111.0)]), [])
+    check("tied prices are clean in the other seq order",
+          validate([row(seq=2, price=11111111.0), row(seq=1, price=11111111.0)]), [])
+
+    # The rank loop must SKIP rows already refused above rather than pile a second,
+    # confusing finding onto them. One assertion per skip condition it implements.
+    refused("a row with a non-numeric price is refused once", [row(price="cheap")])
+    # TWO rows, so the rank loop actually has to COMPARE the prices. With one row sorted()
+    # never compares and the guard is unreachable - which is why this mutant survived the
+    # first sweep: the fixture could not reach the code it was meant to cover.
+    refused("a non-numeric price among siblings is refused, not raised",
+            [row(price="cheap"), row(seq=2, price=22222222.0)])
+    for gone in REQUIRED:
+        refused(f"a row missing '{gone}' is refused once, not raised",
+                [{k: v for k, v in row().items() if k != gone}])
+    refused("a row with an unknown gameId is refused once", [row(gameId=999)],
+            ids={11111111})
+    refused("a REQUIRED-incomplete row makes its whole group unrankable",
+            [{k: v for k, v in row(seq=1, price=22222222.0).items() if k != "bandBasis"},
+             row(seq=2, price=11111111.0)])
 
     # Across batches the same key UPSERTS - a re-read corrects rather than appends.
     merged = merge([row(price=11111111.0)], [row(price=22222222.0)])
