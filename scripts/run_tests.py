@@ -27,18 +27,6 @@ SCRIPTS = ROOT / "scripts"
 
 # Scripts with no self-test, and why. Anything not here and not self-testing fails.
 EXEMPT = {
-    "agent_worktree.sh": (
-        "creates git branches, worktrees and a symlink under $HOME, so a self-test would "
-        "have to do that too - and doing it in-repo IS the ops#179 bug. Tested by hand in "
-        "a throwaway clone with a fake HOME; see that issue. Listed here rather than left "
-        "undiscovered: the suffix filter excluded .sh entirely, so this file - the one "
-        "CLAUDE.md rule 0 tells agents to run - was invisible to the runner, and the "
-        "promise that an untested script cannot go unnoticed silently did not apply to it. "
-        "NOTE for whoever writes one: SELF_TEST_RE matches the literal '\"--self-test\"' "
-        "WITH double quotes, so the idiomatic bash `case $1 in --self-test)` is not "
-        "detected - a real self-test written that way would be classified untested and "
-        "then silently shielded by this very exemption."
-    ),
     "make_icons.py": "one-off asset generation, output checked by eye",
     "fetch_schedule.py": (
         "IS a validator - it cross-checks the tier table against the live NHL API on "
@@ -63,6 +51,12 @@ EXEMPT = {
 # record-splitting bug once mis-attributed findings to the wrong commit) and
 # summarize_market.py. Both were fixed rather than left documented.
 
+# Matches the literal WITH double quotes. That is a real constraint on the scripts, not
+# an implementation detail: a bash `case "$1" in --self-test)` written the idiomatic bare
+# way is NOT detected, so it would be classified untested. agent_worktree.sh quotes its
+# case pattern to satisfy this and says so at the pattern (ops#184). Deliberately not
+# loosened - a regex matching the bare flag would also match any script that merely
+# documents it in a usage string, classifying prose as a test target.
 SELF_TEST_RE = re.compile(r'"--self-test"')
 
 SELF = pathlib.Path(__file__).name
