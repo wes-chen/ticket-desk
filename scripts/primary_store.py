@@ -256,13 +256,19 @@ def self_test() -> int:
         if got != want:
             fails.append(f"{label}: got {got!r}, want {want!r}")
 
-    base = {"observedDate": "2026-09-07", "gameId": 11111111, "section": 110,
+    # Sections are DERIVED from the real list, never named (ops#189). validate() requires
+    # a real section, so an absurd id would fail that check instead of exercising the row
+    # logic - the same constraint check_row_prices.py documents for its own fixture. The
+    # point of deriving them is that the choice of example cannot be read as a statement
+    # about which section matters to us. SEC_LO < SEC_HI, which the sort check relies on.
+    SEC_LO, SEC_HI = sorted(LOWER)[0], sorted(LOWER)[1]
+    base = {"observedDate": "2026-09-07", "gameId": 11111111, "section": SEC_LO,
             "fromPrice": 49.50, "available": 88}
     ids = {11111111}
 
     check("a clean section-level row passes", validate([base], ids), [])
     check("an invented section is refused",
-          len(validate([{**base, "section": 105}], ids)), 1)
+          len(validate([{**base, "section": 105}], ids)), 1)  # 105 is not a real section
     check("an unknown gameId is refused",
           len(validate([{**base, "gameId": 22222222}], ids)), 1)
     check("a duplicate section is refused",
@@ -316,9 +322,10 @@ def self_test() -> int:
     check("a same-day re-read replaces rather than appends", len(merged), 1)
     check("and the newer value wins", merged[0]["fromPrice"], 52.0)
     check("a different section is a separate row",
-          len(merge([a], [{**base, "section": 109}])), 2)
+          len(merge([a], [{**base, "section": SEC_HI}])), 2)
     check("the sort is deterministic",
-          [r["section"] for r in merge([{**base, "section": 128}], [a])], [110, 128])
+          [r["section"] for r in merge([{**base, "section": SEC_HI}], [a])],
+          [SEC_LO, SEC_HI])
 
     print(f"self-test: {'passed' if not fails else 'FAILED'} ({len(fails)} failure(s))")
     for f in fails:
