@@ -10,7 +10,10 @@ fails if any write path or input surface reappears in the served site files:
   - backup import/export affordances (file download/upload of state)
 
 It also spot-checks that data/outcomes.json renders the timeline: 44 games,
-known statuses, and at least one `listed` game with its market fields.
+known statuses, and market fields on every game. It deliberately does NOT
+require a `listed` game: having nothing listed is a legitimate state (e.g.
+between listing windows, or after everything is exchanged), and the guard must
+stay green through it.
 """
 
 import json
@@ -74,9 +77,8 @@ def check_outcomes(path=None):
         for k in ("marketMedian", "marketCount"):
             if k not in g:
                 problems.append(f"{path.name}: game {g.get('date')}: missing {k}")
-    listed = [g for g in games if g["status"] == "listed"]
-    if not listed:
-        problems.append(f"{path.name}: no `listed` game - spot-check needs one")
+    # A `listed` game is covered by the fixture self-test below; the live tree
+    # must not require one (see module docstring).
     return problems
 
 
