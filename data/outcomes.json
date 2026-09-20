@@ -5,9 +5,9 @@
    "date": "2026-09-22",
    "gameId": 2026010032,
    "logo": "https://assets.nhle.com/logos/nhl/svg/VGK_light.svg",
-   "marketCount": 9,
-   "marketMax": 114,
-   "marketMedian": 65,
+   "marketCount": 8,
+   "marketMax": 106,
+   "marketMedian": 64,
    "marketMin": 45,
    "opponent": "Vegas Golden Knights",
    "puckTime": "2026-09-23T02:00:00Z",
@@ -19,7 +19,8 @@
     76,
     75,
     70,
-    65
+    65,
+    64
    ]
   },
   {
@@ -27,7 +28,7 @@
    "date": "2026-09-24",
    "gameId": 2026010039,
    "logo": "https://assets.nhle.com/logos/nhl/svg/ANA_light.svg",
-   "marketCount": 7,
+   "marketCount": 5,
    "marketMax": 100,
    "marketMedian": 55,
    "marketMin": 42,
@@ -41,6 +42,7 @@
     58,
     53,
     53,
+    55,
     55
    ]
   },
@@ -49,10 +51,10 @@
    "date": "2026-10-01",
    "gameId": 2026020016,
    "logo": "https://assets.nhle.com/logos/nhl/svg/FLA_light.svg",
-   "marketCount": 14,
+   "marketCount": 13,
    "marketMax": 300,
-   "marketMedian": 248,
-   "marketMin": 170,
+   "marketMedian": 250,
+   "marketMin": 180,
    "opponent": "Florida Panthers",
    "puckTime": "2026-10-02T02:00:00Z",
    "status": "undecided",
@@ -63,7 +65,8 @@
     250,
     250,
     248,
-    248
+    248,
+    250
    ]
   },
   {
@@ -71,9 +74,9 @@
    "date": "2026-10-03",
    "gameId": 2026020034,
    "logo": "https://assets.nhle.com/logos/nhl/svg/LAK_light.svg",
-   "marketCount": 10,
+   "marketCount": 11,
    "marketMax": 300,
-   "marketMedian": 157,
+   "marketMedian": 149,
    "marketMin": 120,
    "opponent": "Los Angeles Kings",
    "puckTime": "2026-10-04T02:00:00Z",
@@ -85,7 +88,8 @@
     157,
     157,
     157,
-    157
+    157,
+    149
    ]
   },
   {
@@ -107,6 +111,7 @@
     160,
     160,
     181,
+    176,
     176
    ]
   },
@@ -117,8 +122,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/BOS_light.svg",
    "marketCount": 10,
    "marketMax": 205,
-   "marketMedian": 146,
-   "marketMin": 114,
+   "marketMedian": 140,
+   "marketMin": 104,
    "opponent": "Boston Bruins",
    "puckTime": "2026-10-14T03:00:00Z",
    "status": "undecided",
@@ -129,7 +134,8 @@
     120,
     120,
     143,
-    146
+    146,
+    140
    ]
   },
   {
@@ -139,8 +145,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/BUF_light.svg",
    "marketCount": 6,
    "marketMax": 185,
-   "marketMedian": 92,
-   "marketMin": 88,
+   "marketMedian": 89,
+   "marketMin": 85,
    "opponent": "Buffalo Sabres",
    "puckTime": "2026-10-28T02:30:00Z",
    "status": "undecided",
@@ -151,7 +157,8 @@
     92,
     92,
     92,
-    92
+    92,
+    89
    ]
   },
   {
@@ -168,6 +175,7 @@
    "status": "undecided",
    "tier": "D",
    "trend": [
+    88,
     88,
     88,
     88,
@@ -195,6 +203,7 @@
     150,
     150,
     150,
+    150,
     150
    ]
   },
@@ -205,8 +214,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/CGY_light.svg",
    "marketCount": 5,
    "marketMax": 115,
-   "marketMedian": 104,
-   "marketMin": 99,
+   "marketMedian": 99,
+   "marketMin": 91,
    "opponent": "Calgary Flames",
    "puckTime": "2026-11-03T02:00:00Z",
    "status": "undecided",
@@ -217,7 +226,8 @@
     104,
     104,
     104,
-    104
+    104,
+    99
    ]
   },
   {
@@ -228,12 +238,13 @@
    "marketCount": 5,
    "marketMax": 129,
    "marketMedian": 110,
-   "marketMin": 96,
+   "marketMin": 89,
    "opponent": "New York Islanders",
    "puckTime": "2026-11-10T03:00:00Z",
    "status": "undecided",
    "tier": "D",
    "trend": [
+    110,
     110,
     110,
     110,
@@ -249,8 +260,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/PIT_light.svg",
    "marketCount": 6,
    "marketMax": 220,
-   "marketMedian": 116,
-   "marketMin": 96,
+   "marketMedian": 121,
+   "marketMin": 106,
    "opponent": "Pittsburgh Penguins",
    "puckTime": "2026-11-12T03:00:00Z",
    "status": "undecided",
@@ -261,7 +272,8 @@
     116,
     116,
     116,
-    116
+    116,
+    121
    ]
   },
   {
@@ -283,6 +295,7 @@
     130,
     130,
     130,
+    130,
     130
    ]
   },
@@ -293,8 +306,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/CGY_light.svg",
    "marketCount": 5,
    "marketMax": 105,
-   "marketMedian": 96,
-   "marketMin": 90,
+   "marketMedian": 91,
+   "marketMin": 86,
    "opponent": "Calgary Flames",
    "puckTime": "2026-11-18T03:00:00Z",
    "status": "undecided",
@@ -305,7 +318,8 @@
     96,
     96,
     96,
-    96
+    96,
+    91
    ]
   },
   {
@@ -327,6 +341,7 @@
     142,
     142,
     142,
+    142,
     142
    ]
   },
@@ -337,8 +352,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/MIN_light.svg",
    "marketCount": 6,
    "marketMax": 125,
-   "marketMedian": 116,
-   "marketMin": 106,
+   "marketMedian": 115,
+   "marketMin": 104,
    "opponent": "Minnesota Wild",
    "puckTime": "2026-11-24T03:00:00Z",
    "status": "undecided",
@@ -349,7 +364,8 @@
     116,
     116,
     116,
-    116
+    116,
+    115
    ]
   },
   {
@@ -357,9 +373,9 @@
    "date": "2026-11-27",
    "gameId": 2026020410,
    "logo": "https://assets.nhle.com/logos/nhl/svg/VGK_light.svg",
-   "marketCount": 8,
+   "marketCount": 7,
    "marketMax": 250,
-   "marketMedian": 190,
+   "marketMedian": 195,
    "marketMin": 162,
    "opponent": "Vegas Golden Knights",
    "puckTime": "2026-11-27T21:00:00Z",
@@ -371,7 +387,8 @@
     190,
     190,
     190,
-    190
+    190,
+    195
    ]
   },
   {
@@ -381,8 +398,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/SEA_light.svg",
    "marketCount": 6,
    "marketMax": 139,
-   "marketMedian": 99,
-   "marketMin": 93,
+   "marketMedian": 95,
+   "marketMin": 86,
    "opponent": "Seattle Kraken",
    "puckTime": "2026-12-09T03:00:00Z",
    "status": "undecided",
@@ -393,7 +410,8 @@
     99,
     99,
     99,
-    99
+    99,
+    95
    ]
   },
   {
@@ -415,6 +433,7 @@
     148,
     148,
     148,
+    148,
     148
    ]
   },
@@ -425,8 +444,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/VAN_light.svg",
    "marketCount": 5,
    "marketMax": 108,
-   "marketMedian": 105,
-   "marketMin": 101,
+   "marketMedian": 94,
+   "marketMin": 88,
    "opponent": "Vancouver Canucks",
    "puckTime": "2026-12-15T03:00:00Z",
    "status": "undecided",
@@ -437,7 +456,8 @@
     103,
     103,
     105,
-    105
+    105,
+    94
    ]
   },
   {
@@ -447,8 +467,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/VGK_light.svg",
    "marketCount": 6,
    "marketMax": 215,
-   "marketMedian": 188,
-   "marketMin": 181,
+   "marketMedian": 186,
+   "marketMin": 176,
    "opponent": "Vegas Golden Knights",
    "puckTime": "2026-12-27T03:00:00Z",
    "status": "undecided",
@@ -459,7 +479,8 @@
     184,
     184,
     184,
-    188
+    188,
+    186
    ]
   },
   {
@@ -476,6 +497,7 @@
    "status": "undecided",
    "tier": "A",
    "trend": [
+    158,
     158,
     158,
     158,
@@ -503,6 +525,7 @@
     176,
     169,
     179,
+    179,
     179
    ]
   },
@@ -513,8 +536,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/NJD_light.svg",
    "marketCount": 5,
    "marketMax": 190,
-   "marketMedian": 104,
-   "marketMin": 99,
+   "marketMedian": 94,
+   "marketMin": 88,
    "opponent": "New Jersey Devils",
    "puckTime": "2027-01-05T03:00:00Z",
    "status": "undecided",
@@ -525,7 +548,8 @@
     104,
     104,
     104,
-    104
+    104,
+    94
    ]
   },
   {
@@ -542,6 +566,7 @@
    "status": "undecided",
    "tier": "C",
    "trend": [
+    122,
     122,
     122,
     122,
@@ -569,6 +594,7 @@
     162,
     162,
     null,
+    169,
     169
    ]
   },
@@ -578,9 +604,9 @@
    "gameId": 2026020721,
    "logo": "https://assets.nhle.com/logos/nhl/svg/NYR_light.svg",
    "marketCount": 3,
-   "marketMax": 194,
-   "marketMedian": 187,
-   "marketMin": 183,
+   "marketMax": 192,
+   "marketMedian": 185,
+   "marketMin": 181,
    "opponent": "New York Rangers",
    "puckTime": "2027-01-10T03:00:00Z",
    "status": "undecided",
@@ -591,7 +617,8 @@
     187,
     187,
     null,
-    187
+    187,
+    185
    ]
   },
   {
@@ -601,8 +628,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/UTA_light.svg",
    "marketCount": 5,
    "marketMax": 200,
-   "marketMedian": 145,
-   "marketMin": 138,
+   "marketMedian": 143,
+   "marketMin": 135,
    "opponent": "Utah Mammoth",
    "puckTime": "2027-01-18T21:00:00Z",
    "status": "undecided",
@@ -613,7 +640,8 @@
     141,
     141,
     null,
-    145
+    145,
+    143
    ]
   },
   {
@@ -622,9 +650,9 @@
    "gameId": 2026020823,
    "logo": "https://assets.nhle.com/logos/nhl/svg/EDM_light.svg",
    "marketCount": 3,
-   "marketMax": 167,
-   "marketMedian": 161,
-   "marketMin": 157,
+   "marketMax": 165,
+   "marketMedian": 158,
+   "marketMin": 155,
    "opponent": "Edmonton Oilers",
    "puckTime": "2027-01-24T03:00:00Z",
    "status": "undecided",
@@ -635,7 +663,8 @@
     161,
     161,
     null,
-    161
+    161,
+    158
    ]
   },
   {
@@ -644,9 +673,9 @@
    "gameId": 2026020860,
    "logo": "https://assets.nhle.com/logos/nhl/svg/NSH_light.svg",
    "marketCount": 4,
-   "marketMax": 128,
-   "marketMedian": 122,
-   "marketMin": 120,
+   "marketMax": 121,
+   "marketMedian": 118,
+   "marketMin": 114,
    "opponent": "Nashville Predators",
    "puckTime": "2027-01-29T03:00:00Z",
    "status": "undecided",
@@ -657,7 +686,8 @@
     115,
     115,
     null,
-    122
+    122,
+    118
    ]
   },
   {
@@ -667,8 +697,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/CHI_light.svg",
    "marketCount": 4,
    "marketMax": 175,
-   "marketMedian": 166,
-   "marketMin": 160,
+   "marketMedian": 162,
+   "marketMin": 155,
    "opponent": "Chicago Blackhawks",
    "puckTime": "2027-01-30T21:00:00Z",
    "status": "undecided",
@@ -679,7 +709,8 @@
     166,
     166,
     null,
-    166
+    166,
+    162
    ]
   },
   {
@@ -689,8 +720,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/CHI_light.svg",
    "marketCount": 5,
    "marketMax": 195,
-   "marketMedian": 124,
-   "marketMin": 120,
+   "marketMedian": 120,
+   "marketMin": 114,
    "opponent": "Chicago Blackhawks",
    "puckTime": "2027-02-11T03:00:00Z",
    "status": "undecided",
@@ -701,7 +732,8 @@
     124,
     124,
     null,
-    124
+    124,
+    120
    ]
   },
   {
@@ -723,6 +755,7 @@
     172,
     172,
     null,
+    172,
     172
    ]
   },
@@ -732,9 +765,9 @@
    "gameId": 2026020935,
    "logo": "https://assets.nhle.com/logos/nhl/svg/WPG_light.svg",
    "marketCount": 4,
-   "marketMax": 146,
-   "marketMedian": 140,
-   "marketMin": 138,
+   "marketMax": 140,
+   "marketMedian": 124,
+   "marketMin": 119,
    "opponent": "Winnipeg Jets",
    "puckTime": "2027-02-16T00:30:00Z",
    "status": "undecided",
@@ -745,7 +778,8 @@
     136,
     136,
     null,
-    140
+    140,
+    124
    ]
   },
   {
@@ -755,8 +789,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/MTL_light.svg",
    "marketCount": 4,
    "marketMax": 130,
-   "marketMedian": 126,
-   "marketMin": 120,
+   "marketMedian": 118,
+   "marketMin": 114,
    "opponent": "Montr\u00e9al Canadiens",
    "puckTime": "2027-03-02T03:00:00Z",
    "status": "undecided",
@@ -767,7 +801,8 @@
     126,
     126,
     null,
-    126
+    126,
+    118
    ]
   },
   {
@@ -776,9 +811,9 @@
    "gameId": 2026021055,
    "logo": "https://assets.nhle.com/logos/nhl/svg/CBJ_light.svg",
    "marketCount": 4,
-   "marketMax": 109,
-   "marketMedian": 104,
-   "marketMin": 99,
+   "marketMax": 99,
+   "marketMedian": 92,
+   "marketMin": 88,
    "opponent": "Columbus Blue Jackets",
    "puckTime": "2027-03-04T03:00:00Z",
    "status": "undecided",
@@ -789,7 +824,8 @@
     104,
     104,
     null,
-    104
+    104,
+    92
    ]
   },
   {
@@ -811,6 +847,7 @@
     136,
     139,
     null,
+    140,
     140
    ]
   },
@@ -833,6 +870,7 @@
     155,
     155,
     null,
+    151,
     151
    ]
   },
@@ -855,6 +893,7 @@
     169,
     155,
     null,
+    155,
     155
    ]
   },
@@ -864,9 +903,9 @@
    "gameId": 2026021210,
    "logo": "https://assets.nhle.com/logos/nhl/svg/ANA_light.svg",
    "marketCount": 4,
-   "marketMax": 127,
-   "marketMedian": 122,
-   "marketMin": 120,
+   "marketMax": 121,
+   "marketMedian": 118,
+   "marketMin": 114,
    "opponent": "Anaheim Ducks",
    "puckTime": "2027-03-25T02:00:00Z",
    "status": "undecided",
@@ -877,7 +916,8 @@
     122,
     122,
     null,
-    122
+    122,
+    118
    ]
   },
   {
@@ -887,8 +927,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/COL_light.svg",
    "marketCount": 5,
    "marketMax": 150,
-   "marketMedian": 123,
-   "marketMin": 120,
+   "marketMedian": 120,
+   "marketMin": 114,
    "opponent": "Colorado Avalanche",
    "puckTime": "2027-03-30T02:00:00Z",
    "status": "undecided",
@@ -899,7 +939,8 @@
     123,
     123,
     null,
-    123
+    123,
+    120
    ]
   },
   {
@@ -909,8 +950,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/STL_light.svg",
    "marketCount": 5,
    "marketMax": 150,
-   "marketMedian": 124,
-   "marketMin": 120,
+   "marketMedian": 115,
+   "marketMin": 109,
    "opponent": "St. Louis Blues",
    "puckTime": "2027-04-05T01:30:00Z",
    "status": "undecided",
@@ -921,7 +962,8 @@
     124,
     124,
     null,
-    124
+    124,
+    115
    ]
   },
   {
@@ -931,8 +973,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/MIN_light.svg",
    "marketCount": 4,
    "marketMax": 150,
-   "marketMedian": 134,
-   "marketMin": 130,
+   "marketMedian": 128,
+   "marketMin": 123,
    "opponent": "Minnesota Wild",
    "puckTime": "2027-04-09T02:00:00Z",
    "status": "undecided",
@@ -943,7 +985,8 @@
     134,
     134,
     null,
-    134
+    134,
+    128
    ]
   },
   {
@@ -965,10 +1008,11 @@
     174,
     174,
     null,
+    174,
     174
    ]
   }
  ],
- "generated_at": "2026-09-19T14:59:56.694517+00:00",
+ "generated_at": "2026-09-20T14:59:20.247489+00:00",
  "season": "2026-27"
 }
