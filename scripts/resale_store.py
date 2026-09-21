@@ -365,6 +365,29 @@ def buyer_fee_problems(econ):
     check_block(tm["primaryBuyerFeeRate"]["value"],
                 tm["primaryBuyerFeeRate"]["buyerFeeObservations"], "impliedFaceValue",
                 "primaryBuyerFeeRate")
+
+    # ops#199: the SAME listing carries two different buyer totals depending on where
+    # you read it, and each rate is exact on its own surface. The failure this guards
+    # is not a typo - it is a future session "reconciling" them into one number, which
+    # would have to make one of the two exact sets stop being exact.
+    api = tm["apiBuyerFeeRate"]
+    page_rate, api_rate = tm["buyerFeeRate"]["value"], api["value"]
+    if page_rate == api_rate:
+        problems.append(
+            "buyerFeeRate and apiBuyerFeeRate are equal; they measure different surfaces "
+            "and collapsing them discards one of two independently exact measurements")
+    band = api["observedRatioBand"]
+    if not band["min"] <= 1 + api_rate <= band["max"]:
+        problems.append(
+            f"apiBuyerFeeRate {api_rate} implies a ratio of {1 + api_rate} which is outside "
+            f"its own observed band {band['min']}-{band['max']}")
+    if band["min"] > band["max"] or band["observations"] < 1:
+        problems.append("apiBuyerFeeRate's observed band is malformed")
+    gap = tm["buyerFeeSurfaceGap"]["value"]
+    if abs(round(page_rate - api_rate, 6) - gap) > 1e-9:
+        problems.append(
+            f"buyerFeeSurfaceGap says {gap} but the two rates differ by "
+            f"{round(page_rate - api_rate, 6)}; a rate was edited without the gap")
     return problems
 
 
@@ -609,6 +632,28 @@ def self_test():
     drifted2["resale"]["platforms"]["ticketmaster"]["primaryBuyerFeeRate"]["value"] = 0.30
     check("a drifted primary rate is caught",
           len(buyer_fee_problems(drifted2)) > 0, True)
+
+    # ops#199: the two surfaces must stay two.
+    collapsed = copy.deepcopy(real_econ)
+    tm_c = collapsed["resale"]["platforms"]["ticketmaster"]
+    tm_c["apiBuyerFeeRate"]["value"] = tm_c["buyerFeeRate"]["value"]
+    check("collapsing the two surface rates into one is caught",
+          any("different surfaces" in p for p in buyer_fee_problems(collapsed)), True)
+
+    out_of_band = copy.deepcopy(real_econ)
+    out_of_band["resale"]["platforms"]["ticketmaster"]["apiBuyerFeeRate"]["value"] = 0.18
+    check("an API rate outside its own observed band is caught",
+          any("outside" in p for p in buyer_fee_problems(out_of_band)), True)
+
+    stale_gap = copy.deepcopy(real_econ)
+    stale_gap["resale"]["platforms"]["ticketmaster"]["buyerFeeSurfaceGap"]["value"] = 0.01
+    check("a surface gap that no longer matches the rates is caught",
+          any("was edited without the gap" in p for p in buyer_fee_problems(stale_gap)), True)
+
+    bad_band = copy.deepcopy(real_econ)
+    bad_band["resale"]["platforms"]["ticketmaster"]["apiBuyerFeeRate"]["observedRatioBand"]["observations"] = 0
+    check("an empty observed band is caught",
+          any("malformed" in p for p in buyer_fee_problems(bad_band)), True)
 
     for f in fails:
         print("FAIL", f)
