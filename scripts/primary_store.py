@@ -46,14 +46,17 @@ reverse.
 
 THE PUBLIC PAGE CARRIES THE CHART BAND NAME, and that is what closes ops#19. Each seat's
 "Description" field on the public event page renders the Sharks365 chart's own legend
-label - section 110 reads "Club 4 - Club Access" at row 16 and "Lower 4" at rows 21 and
-23. So the (section, row) -> band map is READABLE DIRECTLY, per seat, in text, from the
-channel these tickets sell on. That is the thing extract_price_bands.py has been trying to
-infer from a JPEG at 83% mirror agreement, available authoritatively for the asking.
+label. So the (section, row) -> band map is READABLE DIRECTLY, per seat, in text, from
+the channel these tickets sell on - including the row at which a section crosses from one
+band into the next. That is the thing extract_price_bands.py has been trying to infer from
+a JPEG at 83% mirror agreement, available authoritatively for the asking.
+
+Rule 1 keeps section-to-band instances out of this repo, so the worked reading that
+demonstrates it is recorded in ops:harness/inputs/seating-chart.md instead.
 
 Two price systems appear on the same seats and must not be mixed. The member map prices
-the Lower 4 band in section 110 at $49.50; the public page prices the same band at $82.35
-all-in as a "Standard Ticket" - a 66% spread. Both are the team selling. Which one is the
+the Lower 4 band at $49.50; the public page prices the same band at $82.35 all-in as a
+"Standard Ticket" - a 66% spread. Both are the team selling. Which one is the
 right comparison depends on the question: a member deciding whether to buy more seats
 faces $49.50, while a resale buyer choosing between our listing and everything else faces
 $82.35. Comparing our resale ask against the MEMBER price understates our competitiveness;
