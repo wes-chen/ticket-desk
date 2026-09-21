@@ -59,12 +59,13 @@
         "buyerFeeRate": {
           "value": 0.21,
           "confidence": "measured",
-          "appliesTo": "RESALE listings on the public marketplace only. Primary (team-sold, face-value) inventory does NOT share this rate - see primaryBuyerFeeRate below, and do not apply this value to a data/resale/listings.jsonl row with listingType 'primary'.",
+          "appliesTo": "The all-in price shown on the PUBLIC EVENT PAGE for a resale listing, relative to the seller's list price. Two separate restrictions. (1) Inventory: resale only - primary (team-sold, face-value) inventory does NOT share this rate, see primaryBuyerFeeRate, and do not apply this value to a data/resale/listings.jsonl row with listingType 'primary'. (2) SURFACE: the event page only. Ticketmaster's Top Picks API reports a DIFFERENT total for the same listing - see apiBuyerFeeRate below. Neither is 'the' buyer fee and they must never be blended or averaged; pick the one whose surface your number came from.",
           "source": "MEASURED 2026-09-07 (ops#76) at three independent (list, all-in) pairs, all inverting to an exact whole-dollar list price at 21.00%: 85.00 -> 102.85 (our own listing; list price directly known), 59.00 -> 71.39, and 53.00 -> 64.13 (the latter two are OTHER sellers' public resale rows in data/resale/listings.jsonl - we observe only their all-in price, so their list price is INFERRED as the value that inverts the observation to a whole dollar at the candidate rate). Sellers overwhelmingly type whole-dollar list prices, so a wrong candidate rate would leave the inferred list price fractional; solving for the rate that lands all three on a whole dollar returns exactly 0.2100 for all three. Upgraded from measured_single_point once the two independent resale rows agreed with the original point.",
           "_whyItMatters": "This is the number that decides whether a listing is COMPETITIVE, and the model did not have it. We reason in list prices; a buyer chooses on all-in prices. net = (1 - sellerFeeRate) / (1 + buyerFeeRate) x buyer price = 0.7438 x buyer price, so the platform takes 25.6% of what the buyer pays. Concretely: to net more than a tier credit C, a buyer must pay C / 0.7438 all-in - about 34% more than C. Comparing our list price against a primary or comp price, as this project did until now, understates how far above the market our ask really sits.",
           "openQuestion": "Whether 21.00% is flat, tiered, or capped above $103 all-in - the top of the range measured so far - is unknown. The seller side looked flat across a 21% band before being confirmed flat across a much wider 2.14x range at $150; a similarly wider buyer-side band is worth getting. A fourth (list, all-in) pair at a materially higher price would close this.",
           "validationPlan": "Falsifier stated before the next measurement (ops#76): if a fourth resale observation fails to invert to a whole dollar at 21.00%, the rate is not exactly 0.21 and the three-point agreement was sellers choosing round ALL-IN prices rather than round LIST prices. That is distinguishable - a round all-in price would already be a whole dollar BEFORE dividing, and none of the three observed all-in prices (102.85, 71.39, 64.13) are.",
-          "_privacy": "Isolated (list, all-in) pairs only, no game, section, row or seat. Per CLAUDE.md rule 1 a (list, net) or (list, all-in) pair measures Ticketmaster's fee and says nothing about our seats; attaching the game would make it the forbidden statement about our listings. Same treatment as feeObservations, whose `game` field had to be stripped for exactly this reason. The two non-ours pairs are additionally just OTHER sellers' public resale rows already committed in data/resale/listings.jsonl - citing their price here discloses nothing new."
+          "_privacy": "Isolated (list, all-in) pairs only, no game, section, row or seat. Per CLAUDE.md rule 1 a (list, net) or (list, all-in) pair measures Ticketmaster's fee and says nothing about our seats; attaching the game would make it the forbidden statement about our listings. Same treatment as feeObservations, whose `game` field had to be stripped for exactly this reason. The two non-ours pairs are additionally just OTHER sellers' public resale rows already committed in data/resale/listings.jsonl - citing their price here discloses nothing new.",
+          "surfaceNote": "Use this rate when reasoning about what a buyer SEES while choosing between listings on the event page - which is what a competitiveness argument is about. Use apiBuyerFeeRate when inverting an API total back to a seller list price."
         },
         "buyerFeeObservations": [
           {
@@ -101,6 +102,26 @@
               "listSource": "inferred - TM does not separately display a primary face value here; 68.00 is the value that inverts the observed 82.35 all-in price to a whole dollar"
             }
           ]
+        },
+        "apiBuyerFeeRate": {
+          "value": 0.165,
+          "confidence": "measured",
+          "appliesTo": "The `total_price` returned by Ticketmaster's Top Picks API for a RESALE pick, relative to that pick's `face_value`. NOT the event-page all-in: the same listing shows a higher total there. See buyerFeeRate above. Do not apply either rate to listingType 'primary'.",
+          "source": "MEASURED over 12511 resale picks across 7 collection days (2026-09-14..2026-09-20), every one of the 44 home games. total_price / face_value spans 1.16492 to 1.16533 - five distinct values at four decimals, which is cent-rounding rather than variation - and the API's own `buyer_fee_pct` field reads 0.1649-0.1653 on every row. ZERO resale picks land near 1.21. Rows live in ops:data/tm-prices/*.jsonl (private repo; only the ratio is public, and a ratio carries no seat and no account).",
+          "observedRatioBand": {
+            "min": 1.16492,
+            "max": 1.16533,
+            "observations": 12511
+          },
+          "whyTheBaseIsTrusted": "`face_value` is the seller's typed list price: 12489 of 12511 resale picks (99.8%) are whole dollars, and the 22 exceptions look like sellers typing 79.99 or 35.29. A base that was not the typed price would not be whole-dollar-dominated.",
+          "primaryDiffers": "Primary picks on the same API span 1.107 to 1.288 across 101 distinct values at four decimals - genuinely variable, not one rate. This independently reproduces the resale/primary split that primaryBuyerFeeRate records from the event page."
+        },
+        "buyerFeeSurfaceGap": {
+          "value": 0.045,
+          "confidence": "derived",
+          "_what": "buyerFeeRate - apiBuyerFeeRate. Both are FLAT rates on the SAME base (the seller's typed list price), so the event page adds a further 4.5 points of that list price on top of what the API total shows. On an 85.00 list that is 3.82, which is exactly the difference between the two reported totals for one real listing.",
+          "_whyNotReconciled": "They are not in conflict. Each is exact on its own surface: three event-page observations invert to whole dollars at 21.00% and at no other rate, and 12511 API picks sit at 16.50% with none near 21%. A single 'true' rate would have to make one of those two sets stop being exact. ops#199.",
+          "_whatIsNotKnown": "WHY the page adds 4.5 points - fulfilment, an order fee, tax - is unmeasured, and so is what a buyer pays at CHECKOUT. Neither surface is a completed transaction. Do not name a mechanism here without measuring it."
         }
       },
       "stubhub": {
