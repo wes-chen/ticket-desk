@@ -57,6 +57,7 @@ import os
 import pathlib
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -81,6 +82,12 @@ PAGE_SIZE = 200
 
 UA = "ticket-desk/0.1 (personal season-ticket tool)"
 TIMEOUT = 30
+
+# The Discovery endpoint is flaky from datacenter IPs (measured 2026-09-23: a bare
+# 30s timeout on page 0 from a GitHub runner, two hours after a clean run from the
+# same workflow). One dropped request must not fail the whole refresh.
+SEARCH_ATTEMPTS = 3
+SEARCH_BACKOFF_S = 5  # linear: 5s, 10s between attempts
 
 # Schedule dates are venue-local; "today" must be too, or a game played tonight would
 # flip to carried-forward while Discovery still lists it.
@@ -110,29 +117,50 @@ def legacy_id(url: str | None) -> str | None:
     return m.group(1) if m else None
 
 
-def search(key: str) -> tuple[list[dict], str | None]:
-    """Fetch every hockey event at the venue. Returns (events, error)."""
-    events: list[dict] = []
-    page = 0
-    while True:
-        qs = urllib.parse.urlencode({
-            "apikey": key, "venueId": VENUE_ID, "classificationName": CLASSIFICATION,
-            "sort": "date,asc", "size": PAGE_SIZE, "page": page,
-        })
-        req = urllib.request.Request(f"{SEARCH_URL}?{qs}",
-                                     headers={"User-Agent": UA, "Accept": "application/json"})
+def fetch_page(key: str, page: int) -> tuple[dict | None, str | None]:
+    """Fetch one search page, retrying transient failures.
+
+    Only transient errors are retried: timeouts/connection drops, HTTP 429, and
+    HTTP 5xx. Any other 4xx is the caller's bug or a dead key - retrying those is
+    pointless, so they return immediately.
+    """
+    qs = urllib.parse.urlencode({
+        "apikey": key, "venueId": VENUE_ID, "classificationName": CLASSIFICATION,
+        "sort": "date,asc", "size": PAGE_SIZE, "page": page,
+    })
+    req = urllib.request.Request(f"{SEARCH_URL}?{qs}",
+                                 headers={"User-Agent": UA, "Accept": "application/json"})
+    last_err: str | None = None
+    for attempt in range(SEARCH_ATTEMPTS):
         try:
             with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-                payload = json.load(r)
+                return json.load(r), None
         except urllib.error.HTTPError as e:
             body = ""
             try:
                 body = e.read(300).decode("utf-8", "replace")
             except Exception:  # noqa: BLE001
                 pass
-            return events, f"http {e.code}: {body[:300]}"
+            err = f"http {e.code}: {body[:300]}"
+            if e.code == 429 or e.code >= 500:
+                last_err = err
+            else:
+                return None, err
         except Exception as e:  # noqa: BLE001
-            return events, f"{type(e).__name__}: {e}"
+            last_err = f"{type(e).__name__}: {e}"
+        if attempt < SEARCH_ATTEMPTS - 1:
+            time.sleep(SEARCH_BACKOFF_S * (attempt + 1))
+    return None, f"after {SEARCH_ATTEMPTS} attempts: {last_err}"
+
+
+def search(key: str) -> tuple[list[dict], str | None]:
+    """Fetch every hockey event at the venue. Returns (events, error)."""
+    events: list[dict] = []
+    page = 0
+    while True:
+        payload, err = fetch_page(key, page)
+        if err:
+            return events, err
 
         events += (payload.get("_embedded") or {}).get("events") or []
         info = payload.get("page") or {}
