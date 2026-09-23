@@ -37,6 +37,15 @@ Key 3 is what makes this a cross-check rather than an inference. It matched 42/4
 zero mismatches on capture day; a future rename or reschedule that breaks the date join
 would have to break the legacy id in the same direction to slip through.
 
+COMPLETED GAMES. Discovery drops events from search once they are played (measured
+2026-09-23: the Sep 22 VGK preseason game vanished from results the morning after,
+failing the run on "NO TM EVENT"). A completed game can no longer be re-validated
+against live data, so the run does not try: games dated before today (venue-local)
+are carried forward verbatim from the previously committed tm_events.json, where
+their ids were validated while the games were upcoming. A completed game with no
+prior resolution, or whose schedule date moved underneath the carried entry, still
+fails loudly. Re-validating the dead is noise; mis-mapping the living is the risk.
+
 Usage:
     TM_DISCOVERY_API_KEY=... python3 scripts/resolve_tm_events.py
     python3 scripts/resolve_tm_events.py --self-test    # real fixtures, no key, no network
@@ -52,6 +61,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCHEDULE = ROOT / "data" / "schedule.json"
@@ -71,6 +81,10 @@ PAGE_SIZE = 200
 
 UA = "ticket-desk/0.1 (personal season-ticket tool)"
 TIMEOUT = 30
+
+# Schedule dates are venue-local; "today" must be too, or a game played tonight would
+# flip to carried-forward while Discovery still lists it.
+PT = ZoneInfo("America/Los_Angeles")
 
 
 def load_key() -> str | None:
@@ -231,8 +245,50 @@ def join(events: list[dict], schedule: dict) -> tuple[list[dict], list[str]]:
     return out, problems
 
 
+def load_previous(dest: pathlib.Path) -> dict:
+    if dest.exists():
+        try:
+            return json.loads(dest.read_text())
+        except json.JSONDecodeError:
+            return {}
+    return {}
+
+
+def carry_forward(past_games: list[dict], prev_events: list[dict]
+                  ) -> tuple[list[dict], list[str]]:
+    """Carry forward already-resolved entries for completed games.
+
+    Discovery drops events from search once they are played, so a past game cannot be
+    re-validated against live data. Its entry was validated while the game was
+    upcoming; carrying it forward verbatim is honest. Two cases still fail loudly: a
+    past game that was never resolved while upcoming, and a past game whose schedule
+    date moved underneath the carried entry.
+    """
+    prev_by_game = {e.get("gameId"): e for e in prev_events}
+    carried, problems = [], []
+    for g in past_games:
+        prev = prev_by_game.get(g["gameId"])
+        if prev is None:
+            problems.append(
+                f"NO PRIOR RESOLUTION: {g['date']} vs {g['opponent']['abbrev']} is already "
+                f"played and was never resolved while upcoming - cannot validate"
+            )
+            continue
+        if prev.get("date") != g["date"]:
+            problems.append(
+                f"SCHEDULE MOVED UNDER CARRY: gameId {g['gameId']} was resolved for "
+                f"{prev.get('date')} but schedule.json now says {g['date']} - "
+                f"the carried id map is stale"
+            )
+            continue
+        carried.append(prev)
+    return carried, problems
+
+
 def run(key: str, dest: pathlib.Path) -> int:
     schedule = json.loads(SCHEDULE.read_text())
+    previous = load_previous(dest)
+    prev_events = previous.get("events") or []
     events, err = search(key)
     if err:
         print(f"\nDiscovery search failed: {err}", file=sys.stderr)
@@ -241,14 +297,23 @@ def run(key: str, dest: pathlib.Path) -> int:
                   "Re-run from a residential IP before concluding anything else.", file=sys.stderr)
         return 1
 
+    # Only upcoming games can be re-validated against live Discovery. Completed games
+    # are carried forward from the previous resolution (see carry_forward).
+    today = datetime.now(PT).date().isoformat()
+    upcoming = [g for g in schedule["games"] if g["date"] >= today]
+    past = [g for g in schedule["games"] if g["date"] < today]
+
     probe = price_range_probe(events)
     kept, venue_problems = home_events(events)
-    resolved, join_problems = join(kept, schedule)
-    problems = venue_problems + join_problems
+    resolved, join_problems = join(kept, {"games": upcoming})
+    carried, carry_problems = carry_forward(past, prev_events)
+    problems = venue_problems + join_problems + carry_problems
+    resolved = sorted(carried + resolved, key=lambda e: e["date"])
 
     print(f"discovery search:  {len(events)} events at venue {VENUE_ID}")
     print(f"after venue guard: {len(kept)}")
-    print(f"resolved:          {len(resolved)}/{len(schedule['games'])} home games")
+    print(f"resolved:          {len(resolved)}/{len(schedule['games'])} home games "
+          f"({len(carried)} carried forward from completed games)")
     got_legacy = sum(1 for r in resolved if r["legacyId"])
     recovered = sum(1 for r in resolved
                     if r["legacyId"] and not next(g for g in schedule["games"]
@@ -378,6 +443,26 @@ def self_test() -> int:
     dup = kept + [kept[1]]
     check("ambiguous date is caught",
           any("AMBIGUOUS" in p for p in join(dup, sched)[1]), True)
+
+    # Carry-forward for completed games (the 2026-09-23 VGK case: Discovery drops
+    # played events from search, so the past game cannot be re-validated live).
+    prev_fx = [
+        {"gameId": 0, "date": "2026-09-22", "discoveryId": "G5vYZ_CrhEyMn",
+         "legacyId": "1C0064E79B9F9DEA", "opponent": "VGK"},
+    ]
+    past = [{"gameId": 0, "date": "2026-09-22",
+             "opponent": {"abbrev": "VGK", "name": "Vegas Golden Knights"}}]
+    carried, cp = carry_forward(past, prev_fx)
+    check("past game carried forward", len(carried), 1)
+    check("carry has no problems", cp, [])
+    check("carried entry is verbatim", carried[0]["discoveryId"], "G5vYZ_CrhEyMn")
+    check("past game with no prior resolution fails loudly",
+          any("NO PRIOR RESOLUTION" in p for p in carry_forward(past, [])[1]), True)
+    moved = [{"gameId": 0, "date": "2026-09-23",
+              "opponent": {"abbrev": "VGK", "name": "Vegas Golden Knights"}}]
+    check("schedule date moved under carried entry fails loudly",
+          any("SCHEDULE MOVED UNDER CARRY" in p for p in carry_forward(moved, prev_fx)[1]),
+          True)
 
     # And the probe must notice if priceRanges ever comes back.
     check("probe detects a populated priceRanges",
