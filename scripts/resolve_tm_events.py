@@ -46,6 +46,15 @@ their ids were validated while the games were upcoming. A completed game with no
 prior resolution, or whose schedule date moved underneath the carried entry, still
 fails loudly. Re-validating the dead is noise; mis-mapping the living is the risk.
 
+UNREACHABLE. If Discovery itself is unreachable after retries, the run keeps the
+previously validated map and succeeds with a loud warning instead of failing: a
+wrong id map is worse than a stale one, and the next reachable run re-validates
+every upcoming game. (Measured 2026-09-23: the runner's route to Discovery flapped
+between clean 43-event searches and total timeouts within two hours, while the
+same endpoint answered in 0.6s from elsewhere.) Only a live contradiction - data
+that disagrees with the map - fails the run. With no previous map at all there is
+nothing to keep, so the run still fails.
+
 Usage:
     TM_DISCOVERY_API_KEY=... python3 scripts/resolve_tm_events.py
     python3 scripts/resolve_tm_events.py --self-test    # real fixtures, no key, no network
@@ -319,8 +328,17 @@ def run(key: str, dest: pathlib.Path) -> int:
     prev_events = previous.get("events") or []
     events, err = search(key)
     if err:
+        if previous.get("events"):
+            # Unreachable is not a contradiction. Keep the last validated map and
+            # say so loudly; the next reachable run re-validates every upcoming
+            # game. See UNREACHABLE in the module docstring.
+            print(f"\nWARNING: Discovery search failed: {err}", file=sys.stderr)
+            print("Discovery is unreachable - keeping the previously validated "
+                  f"event map ({len(previous['events'])} events). Nothing written; "
+                  "the next reachable run re-validates.", file=sys.stderr)
+            return 0
         print(f"\nDiscovery search failed: {err}", file=sys.stderr)
-        if err.startswith("http 403"):
+        if "http 403" in err:
             print("403 is the ops#4 signature - a datacenter block reaching the API. "
                   "Re-run from a residential IP before concluding anything else.", file=sys.stderr)
         return 1
@@ -495,6 +513,29 @@ def self_test() -> int:
     # And the probe must notice if priceRanges ever comes back.
     check("probe detects a populated priceRanges",
           price_range_probe([{"priceRanges": [{"min": 1, "max": 2}]}])["withPriceRanges"], 1)
+
+    # UNREACHABLE: a dead Discovery search keeps the previously validated map and
+    # succeeds with a warning; with no previous map there is nothing to keep, so
+    # the run still fails. (unittest.mock is stdlib; the network stays untouched.)
+    from unittest.mock import patch  # noqa: E402
+    import tempfile  # noqa: E402
+    dead = ([], "after 3 attempts: TimeoutError: timed out")
+    with tempfile.TemporaryDirectory() as td:
+        dest = pathlib.Path(td) / "tm_events.json"
+        prev = {"venueId": VENUE_ID, "generatedAt": "2026-09-01T00:00:00Z",
+                "events": [{"gameId": 0, "date": "2026-09-22", "discoveryId": "G5vYZ_CrhEyMn",
+                            "legacyId": "1C0064E79B9F9DEA", "opponent": "VGK"}]}
+        dest.write_text(json.dumps(prev))
+        with patch(f"{__name__}.search", return_value=dead):
+            check("unreachable search keeps previous map", run("dummy-key", dest), 0)
+        check("previous map untouched by degrade path",
+              json.loads(dest.read_text()), prev)
+
+        dest.unlink()
+        with patch(f"{__name__}.search", return_value=dead):
+            check("unreachable search with no previous map still fails",
+                  run("dummy-key", dest), 1)
+        check("no map written on hard failure", dest.exists(), False)
 
     for f in fails:
         print(f"  FAIL {f}", file=sys.stderr)
