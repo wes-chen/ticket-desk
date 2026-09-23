@@ -51,6 +51,7 @@ import re
 import sys
 import time
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import market_store as ms  # noqa: E402
@@ -117,9 +118,60 @@ def offer(ev: dict) -> dict:
 
 # ------------------------------------------------------------------- resolving
 
+# Schedule dates are venue-local; "today" must be too, or a game played tonight would
+# flip to carried-forward while the sitemap still lists it.
+PT = ZoneInfo("America/Los_Angeles")
+
+
+def load_previous_map() -> dict:
+    if EVENT_MAP.exists():
+        try:
+            return json.loads(EVENT_MAP.read_text())
+        except json.JSONDecodeError:
+            return {}
+    return {}
+
+
+def carry_forward(past_games: list[dict], prev_events: list[dict]
+                  ) -> tuple[list[dict], list[str]]:
+    """Carry forward already-resolved TickPick entries for completed games.
+
+    TickPick drops played events from its sitemap (measured 2026-09-23: the Sep 22
+    VGK game vanished the morning after), so a completed game can no longer be
+    re-resolved from live data. Its entry was validated while the game was upcoming;
+    carrying it forward verbatim is honest. A past game with no prior resolution, or
+    whose schedule date moved underneath the carried entry, still fails loudly.
+    """
+    prev_by_game = {e.get("gameId"): e for e in prev_events}
+    carried, problems = [], []
+    for g in past_games:
+        prev = prev_by_game.get(g["gameId"])
+        if prev is None:
+            problems.append(
+                f"NO PRIOR RESOLUTION: {g['date']} vs {g['opponent']['abbrev']} is already "
+                f"played and was never resolved while upcoming - cannot validate"
+            )
+            continue
+        if prev.get("date") != g["date"]:
+            problems.append(
+                f"SCHEDULE MOVED UNDER CARRY: gameId {g['gameId']} was resolved for "
+                f"{prev.get('date')} but schedule.json now says {g['date']} - "
+                f"the carried event map is stale"
+            )
+            continue
+        carried.append(prev)
+    return carried, problems
+
+
 def resolve() -> int:
     schedule = json.loads(SCHEDULE.read_text())
-    games = {g["date"]: g for g in schedule["games"]}
+    # Only upcoming games can be re-resolved from the live sitemap. Completed games
+    # are carried forward from the previous resolution (see carry_forward).
+    today = datetime.now(PT).date().isoformat()
+    past = [g for g in schedule["games"] if g["date"] < today]
+    upcoming = {g["date"]: g for g in schedule["games"] if g["date"] >= today}
+    previous = load_previous_map()
+    carried, carry_problems = carry_forward(past, previous.get("events") or [])
 
     print(f"fetching {SITEMAP} (robots.txt advertises it; ~7.4MB and growing)")
     body, err = ms.get(SITEMAP, ms.MAX_BODY_SITEMAP)
@@ -143,9 +195,10 @@ def resolve() -> int:
         if len(entries) > 1:
             problems.append(f"AMBIGUOUS: {date} matched {len(entries)} TickPick events "
                             f"({', '.join(e['eventId'] for e in entries)})")
+    problems += carry_problems
 
-    out = []
-    for date, g in sorted(games.items()):
+    out = list(carried)
+    for date, g in sorted(upcoming.items()):
         entries = by_date.get(date)
         if not entries:
             problems.append(f"NO TICKPICK EVENT: {date} vs {g['opponent']['abbrev']}")
@@ -161,19 +214,21 @@ def resolve() -> int:
         out.append({"gameId": g["gameId"], "date": date, "gameType": g["gameType"],
                     "opponent": g["opponent"]["abbrev"], "eventId": e["eventId"],
                     "url": e["url"]})
+    out.sort(key=lambda e: e["date"])
 
     for date in by_date:
-        if date not in games:
+        if date >= today and date not in upcoming:
             problems.append(f"ORPHAN TICKPICK EVENT: {date} matches no scheduled home game")
 
     print(f"sitemap body: {len(body):,}B  urls: {len(locs)}  "
           f"sharks@sap: {len(cands)}  parsed: {len(parsed)}")
-    print(f"resolved: {len(out)}/{len(games)} home games")
-    if len(cands) < len(games):
+    print(f"resolved: {len(out)}/{len(schedule['games'])} home games "
+          f"({len(carried)} carried forward from completed games)")
+    if len(cands) < len(upcoming):
         problems.append(
-            f"COVERAGE: sitemap yielded {len(cands)} Sharks/SAP urls for {len(games)} home "
-            f"games. Before believing TickPick is missing games, check the fetch: a "
-            f"truncated sitemap looks exactly like this."
+            f"COVERAGE: sitemap yielded {len(cands)} Sharks/SAP urls for {len(upcoming)} "
+            f"upcoming home games. Before believing TickPick is missing games, check "
+            f"the fetch: a truncated sitemap looks exactly like this."
         )
 
     if problems:
@@ -196,12 +251,6 @@ def resolve() -> int:
         "source": SITEMAP,
         "events": out,
     }
-    previous = {}
-    if EVENT_MAP.exists():
-        try:
-            previous = json.loads(EVENT_MAP.read_text())
-        except json.JSONDecodeError:
-            previous = {}
     if previous.get("events") == out and previous.get("source") == SITEMAP:
         payload["generatedAt"] = previous.get("generatedAt")
         print(f"unchanged: {ms.rel(EVENT_MAP, ROOT)} already current")
@@ -218,7 +267,11 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None, limit: int | None
     if not EVENT_MAP.exists():
         print(f"No {ms.rel(EVENT_MAP, ROOT)} - run --resolve first.", file=sys.stderr)
         return 2
-    events = json.loads(EVENT_MAP.read_text())["events"]
+    # A completed game has no market left to observe; its price series ends with its
+    # last pre-game observation. Fetching its page daily would just accrue dead
+    # requests (and they grow: one more per game played).
+    today = datetime.now(PT).date().isoformat()
+    events = [e for e in json.loads(EVENT_MAP.read_text())["events"] if e["date"] >= today]
     if limit:
         events = events[:limit]
 
@@ -340,6 +393,24 @@ def self_test() -> int:
     check("long venue variant parses", p["date"] if p else None, "2026-10-01")
     check("an away game must not parse",
           parse_event_url("/buy-anaheim-ducks-vs-san-jose-sharks-tickets-honda-center-9-20-26-1pm/8075153/"), None)
+
+    # Carry-forward for completed games (the 2026-09-23 VGK case: TickPick drops
+    # played events from its sitemap, so the past game cannot be re-resolved live).
+    prev_fx = [{"gameId": 2026010032, "date": "2026-09-22", "gameType": "preseason",
+                "opponent": "VGK", "eventId": "8075165", "url": "https://example/u"}]
+    past = [{"gameId": 2026010032, "date": "2026-09-22",
+             "opponent": {"abbrev": "VGK", "name": "Vegas Golden Knights"}}]
+    carried, cp = carry_forward(past, prev_fx)
+    check("past game carried forward", len(carried), 1)
+    check("carry has no problems", cp, [])
+    check("carried entry is verbatim", carried[0]["eventId"], "8075165")
+    check("past game with no prior resolution fails loudly",
+          any("NO PRIOR RESOLUTION" in p for p in carry_forward(past, [])[1]), True)
+    moved = [{"gameId": 2026010032, "date": "2026-09-23",
+              "opponent": {"abbrev": "VGK", "name": "Vegas Golden Knights"}}]
+    check("schedule date moved under carried entry fails loudly",
+          any("SCHEDULE MOVED UNDER CARRY" in p for p in carry_forward(moved, prev_fx)[1]),
+          True)
 
     # Upsert semantics. Covered more thoroughly in market_store.py's own self-test;
     # kept here as a smoke check that this collector is wired to the shared store.
