@@ -133,8 +133,19 @@ def home_events(events: list[dict]) -> dict[str, dict]:
     return uniq
 
 
-def join(events: dict[str, dict], schedule: dict) -> tuple[list[dict], list[str], list[str]]:
+def join(events: dict[str, dict], schedule: dict, today: str
+         ) -> tuple[list[dict], list[str], list[str]]:
     """Returns (rows, problems, notes). Problems are fatal; notes are expected coverage.
+
+    `today` is the venue-local date (ms.venue_today()), passed in rather than read from the
+    clock so the self-test's fixed fixture dates never change meaning as the season passes.
+
+    PLAYED GAMES (ops#351). A marketplace delists a game once it has been played. The
+    horizon is the LATEST matched game, so every played game sits inside it, and a played
+    game's absence was read as a GAP INSIDE COVERAGE - which refused the whole run every
+    day from 2026-09-23. A played game now leaves the required set before the horizon is
+    consulted: no row, no invented price, just a note. A game NOT yet played that is
+    missing inside the horizon still refuses the run. A played game still listed joins.
 
     THE HORIZON RULE. This source publishes a rolling window, so a late-season game simply
     not being listed is normal. But a game missing from INSIDE the covered window is a
@@ -179,6 +190,9 @@ def join(events: dict[str, dict], schedule: dict) -> tuple[list[dict], list[str]
         key = g["startTimeUTC"]
         e = events.get(key)
         if e is None:
+            if ms.is_played(g, today):
+                notes.append(f"already played: {g['date']} vs {g['opponent']['abbrev']}")
+                continue
             if horizon and key <= horizon:
                 problems.append(f"GAP INSIDE COVERAGE: {g['date']} vs "
                                 f"{g['opponent']['abbrev']} is missing but earlier and "
@@ -231,7 +245,7 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None) -> int:
 
     events = sports_events(html)
     home = home_events(events)
-    rows, problems, notes = join(home, schedule)
+    rows, problems, notes = join(home, schedule, ms.venue_today())
 
     now = datetime.now(timezone.utc)
     observed_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -243,8 +257,13 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None) -> int:
     print(f"page: {len(html):,}B  ld+json events: {len(events)}  "
           f"at {VENUE_PREFIX} after dedupe: {len(home)}")
     print(f"joined: {len(rows)}/{len(schedule['games'])} home games")
-    if notes:
-        print(f"coverage horizon: {len(notes)} game(s) not yet listed (rolling window, "
+    played = [n for n in notes if n.startswith("already played")]
+    beyond = [n for n in notes if n.startswith("beyond horizon")]
+    if played:
+        print(f"already played: {len(played)} game(s) delisted after being played "
+              f"(expected - no longer required)")
+    if beyond:
+        print(f"coverage horizon: {len(beyond)} game(s) not yet listed (rolling window, "
               f"expected - see module docstring)")
 
     if problems:
@@ -306,7 +325,10 @@ def self_test() -> int:
         {"gameId": 2, "date": "2026-09-24", "startTimeUTC": "2026-09-25T02:00:00Z",
          "opponent": {"name": "Anaheim Ducks", "abbrev": "ANA"}},
     ]}
-    rows, problems, notes = join(home, sched)
+    # Fixture games are 2026-09-22 and 2026-09-24, so "today" is pinned before both;
+    # the played-game cases below move it explicitly.
+    T0 = "2026-09-01"
+    rows, problems, notes = join(home, sched, T0)
     check("both games join", len(rows), 2)
     check("clean join has no problems", problems, [])
     check("row carries the source", rows[0]["source"], "ticketnetwork")
@@ -318,7 +340,7 @@ def self_test() -> int:
     far["games"] = sched["games"] + [
         {"gameId": 3, "date": "2027-04-10", "startTimeUTC": "2027-04-11T02:00:00Z",
          "opponent": {"name": "Anaheim Ducks", "abbrev": "ANA"}}]
-    rows, problems, notes = join(home, far)
+    rows, problems, notes = join(home, far, T0)
     check("beyond the horizon is a note", (len(problems), len(notes)), (0, 1))
 
     # A game missing from INSIDE the covered window is a real gap and must be fatal.
@@ -328,33 +350,60 @@ def self_test() -> int:
                        "startTimeUTC": "2026-09-24T02:00:00Z",
                        "opponent": {"name": "Los Angeles Kings", "abbrev": "LAK"}},
                       sched["games"][1]]
-    rows, problems, notes = join(home, inner)
+    rows, problems, notes = join(home, inner, T0)
     check("a gap inside coverage is fatal", len(problems), 1)
     check("and it says which game", "2026-09-23" in problems[0], True)
 
     # An event at the venue matching no home game means the join is wrong, not partial.
-    rows, problems, notes = join(home, {"games": [sched["games"][0]]})
+    rows, problems, notes = join(home, {"games": [sched["games"][0]]}, T0)
     check("orphan event is fatal", any("ORPHAN" in p for p in problems), True)
 
     # Opponent disagreement must fail loudly rather than storing a wrong attribution.
     wrong = {"games": [dict(sched["games"][0],
                             opponent={"name": "Boston Bruins", "abbrev": "BOS"})]}
     rows, problems, notes = join({k: v for k, v in home.items()
-                                  if k == "2026-09-23T02:00:00Z"}, wrong)
+                                  if k == "2026-09-23T02:00:00Z"}, wrong, T0)
     check("opponent mismatch is fatal", any("MISMATCH" in p for p in problems), True)
 
     # ---- parser robustness ----
 
+    # ---- played games (ops#351) ----
+    # The live failure, reproduced: the 2026-09-22 game has been played and delisted, the
+    # 2026-09-24 game is still listed, so the played game sits INSIDE the horizon and read
+    # as a gap - refusing the whole run. Played games must leave the required set.
+    delisted = {k: v for k, v in home.items() if k != "2026-09-23T02:00:00Z"}
+    rows, problems, notes = join(delisted, sched, "2026-09-27")
+    check("a played-and-delisted game does not refuse the run", problems, [])
+    check("the remaining game still joins", [r["gameId"] for r in rows], [2])
+    check("the played game is a note, not a horizon note",
+          [n.split(":")[0] for n in notes], ["already played"])
+    # The same page before that game is played: a real gap, still fatal.
+    rows, problems, notes = join(delisted, sched, "2026-09-01")
+    check("an unplayed missing game inside coverage still refuses the run",
+          any("GAP INSIDE COVERAGE" in p and "2026-09-22" in p for p in problems), True)
+    # Game DAY is not "played": the boundary is the day after.
+    rows, problems, notes = join(delisted, sched, "2026-09-22")
+    check("a game missing on its own game day still refuses the run",
+          any("GAP INSIDE COVERAGE" in p for p in problems), True)
+    # Played games leaving must not mask a real gap between later, unplayed games.
+    rows, problems, notes = join(delisted, inner, "2026-09-23")
+    check("an unplayed gap is still caught once earlier games are played",
+          any("GAP INSIDE COVERAGE" in p and "2026-09-23" in p for p in problems), True)
+    # A played game the source still lists joins normally - exclusion never drops data.
+    rows, problems, notes = join(home, sched, "2026-09-27")
+    check("a played game still listed still joins", (len(rows), problems, notes),
+          (2, [], []))
+
     # ---- total-failure guard (found by review) ----
     # An empty events dict means the horizon is None, which routed every game to "beyond
     # horizon" and exited 0 - a complete scrape failure reported as healthy coverage.
-    rows, problems, notes = join({}, sched)
+    rows, problems, notes = join({}, sched, T0)
     check("a total scrape failure is fatal", len(problems), 1)
     check("and it says so plainly", "TOTAL FAILURE" in problems[0], True)
     check("no notes are emitted that would read as expected coverage", notes, [])
     check("and no rows are produced", rows, [])
     # An empty SCHEDULE is not a failure - there is simply nothing to match.
-    rows, problems, notes = join({}, {"games": []})
+    rows, problems, notes = join({}, {"games": []}, T0)
     check("an empty schedule is not a scrape failure", problems, [])
 
     check("a malformed block does not discard the page",

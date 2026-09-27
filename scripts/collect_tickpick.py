@@ -51,7 +51,6 @@ import re
 import sys
 import time
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import market_store as ms  # noqa: E402
@@ -119,8 +118,9 @@ def offer(ev: dict) -> dict:
 # ------------------------------------------------------------------- resolving
 
 # Schedule dates are venue-local; "today" must be too, or a game played tonight would
-# flip to carried-forward while the sitemap still lists it.
-PT = ZoneInfo("America/Los_Angeles")
+# flip to carried-forward while the sitemap still lists it. The definition now lives in
+# market_store (ms.venue_today / ms.is_played) so the other three collectors share it
+# (ops#351) instead of each writing their own.
 
 
 def load_previous_map() -> dict:
@@ -167,9 +167,9 @@ def resolve() -> int:
     schedule = json.loads(SCHEDULE.read_text())
     # Only upcoming games can be re-resolved from the live sitemap. Completed games
     # are carried forward from the previous resolution (see carry_forward).
-    today = datetime.now(PT).date().isoformat()
-    past = [g for g in schedule["games"] if g["date"] < today]
-    upcoming = {g["date"]: g for g in schedule["games"] if g["date"] >= today}
+    today = ms.venue_today()
+    past = [g for g in schedule["games"] if ms.is_played(g, today)]
+    upcoming = {g["date"]: g for g in schedule["games"] if not ms.is_played(g, today)}
     previous = load_previous_map()
     carried, carry_problems = carry_forward(past, previous.get("events") or [])
 
@@ -270,8 +270,9 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None, limit: int | None
     # A completed game has no market left to observe; its price series ends with its
     # last pre-game observation. Fetching its page daily would just accrue dead
     # requests (and they grow: one more per game played).
-    today = datetime.now(PT).date().isoformat()
-    events = [e for e in json.loads(EVENT_MAP.read_text())["events"] if e["date"] >= today]
+    today = ms.venue_today()
+    events = [e for e in json.loads(EVENT_MAP.read_text())["events"]
+              if not ms.is_played(e, today)]
     if limit:
         events = events[:limit]
 

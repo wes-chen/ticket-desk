@@ -61,6 +61,7 @@ jobs:
       # secondary source's bad day - the summariser and the gap check both cope with one
       # source missing, and a red run still surfaces it.
       - name: Collect Gametime
+        id: gametime
         run: python3 scripts/collect_gametime.py
         continue-on-error: true
 
@@ -81,10 +82,12 @@ jobs:
       # Both are single-page fetches covering their whole window, so this is one request
       # each per day - the cheapest sources in the project.
       - name: Collect TicketNetwork
+        id: ticketnetwork
         run: python3 scripts/collect_ticketnetwork.py
         continue-on-error: true
 
       - name: Collect ScoreBig
+        id: scorebig
         run: python3 scripts/collect_scorebig.py
         continue-on-error: true
 
@@ -122,6 +125,32 @@ jobs:
       # (static site since ops#165), so stale data cannot block the deploy that ships a fix.
       - name: Check for gaps
         run: python3 scripts/check_data_freshness.py --strict
+
+      # continue-on-error above keeps a secondary source's bad day from costing the
+      # primary series - but it also makes the failing step report SUCCESS, so the run
+      # stays quiet about which collector refused. ops#351: three collectors wrote nothing
+      # for five days, their steps were green, and the only red was the gap check below,
+      # whose message pointed at a disabled workflow rather than at the collector. This
+      # step names each refusing collector and fails the run. It runs `always()` so it
+      # reports even when the gap check has already failed, and it sits after the
+      # aggregate commit, so it can never cost a day of data.
+      - name: Secondary collectors must not refuse silently
+        if: always()
+        env:
+          GAMETIME: ${{ steps.gametime.outcome }}
+          TICKETNETWORK: ${{ steps.ticketnetwork.outcome }}
+          SCOREBIG: ${{ steps.scorebig.outcome }}
+        run: |
+          bad=0
+          for src in GAMETIME TICKETNETWORK SCOREBIG; do
+            outcome="${!src}"
+            echo "- ${src,,}: ${outcome:-not run}" >> "$GITHUB_STEP_SUMMARY"
+            if [[ "$outcome" == "failure" ]]; then
+              echo "::error title=${src,,} collector refused::collect_${src,,}.py exited non-zero and wrote nothing today - read its step log for the PROBLEM(S) list"
+              bad=1
+            fi
+          done
+          exit $bad
 
       # Not hidden-file-prefixed: upload-artifact@v4 silently excludes dotted paths and
       # uploaded nothing at all in ops#4, emitting only a warning.

@@ -109,9 +109,23 @@ def home_events(events: list[dict]) -> dict[str, dict]:
     return uniq
 
 
-def join(events: dict[str, dict], schedule: dict) -> tuple[list[dict], list[str]]:
+def join(events: dict[str, dict], schedule: dict, today: str
+         ) -> tuple[list[dict], list[str], list[str]]:
+    """Returns (rows, problems, notes). Problems are fatal; notes are expected absences.
+
+    `today` is the venue-local date (ms.venue_today()). It is a required argument rather
+    than read from the clock here, so the self-test's fixed fixture dates never silently
+    change meaning as the real season passes them.
+
+    PLAYED GAMES (ops#351). Gametime delists a game once it has been played, so a played
+    game missing from the page is the season running forward, not a join failure. It leaves
+    the required set - it is not carried forward, and no price is invented for it. A game
+    NOT yet played that is missing still refuses the whole run. A played game that is
+    still listed joins like any other.
+    """
     games = schedule["games"]
     problems: list[str] = []
+    notes: list[str] = []
     out = []
     matched = set()
 
@@ -119,6 +133,9 @@ def join(events: dict[str, dict], schedule: dict) -> tuple[list[dict], list[str]
         key = g["startTimeUTC"].replace("Z", "")
         e = events.get(key)
         if e is None:
+            if ms.is_played(g, today):
+                notes.append(f"already played: {g['date']} vs {g['opponent']['abbrev']}")
+                continue
             problems.append(f"NO GAMETIME EVENT: {g['date']} vs {g['opponent']['abbrev']} "
                             f"(startTimeUTC {g['startTimeUTC']})")
             continue
@@ -147,7 +164,7 @@ def join(events: dict[str, dict], schedule: dict) -> tuple[list[dict], list[str]
         if key not in matched:
             problems.append(f"ORPHAN GAMETIME EVENT at {key} "
                             f"({(events[key].get('name') or '')[:50]!r}) matches no home game")
-    return out, problems
+    return out, problems, notes
 
 
 def collect(store: pathlib.Path, raw_dir: pathlib.Path | None) -> int:
@@ -163,7 +180,7 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None) -> int:
 
     events = sports_events(html)
     home = home_events(events)
-    rows, problems = join(home, schedule)
+    rows, problems, notes = join(home, schedule, ms.venue_today())
 
     now = datetime.now(timezone.utc)
     observed_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -175,6 +192,9 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None) -> int:
     print(f"page: {len(html):,}B  ld+json events: {len(events)}  "
           f"at {VENUE} after dedupe: {len(home)}")
     print(f"joined: {len(rows)}/{len(schedule['games'])} home games")
+    if notes:
+        print(f"already played: {len(notes)} game(s) delisted after being played "
+              f"(expected - no longer required)")
 
     if problems:
         print(f"\n{len(problems)} PROBLEM(S):", file=sys.stderr)
@@ -230,7 +250,9 @@ def self_test() -> int:
         {"gameId": 2, "date": "2026-10-01", "startTimeUTC": "2026-10-02T02:00:00Z",
          "opponent": {"abbrev": "FLA", "name": "Florida Panthers"}},
     ]}
-    rows, probs = join(home, sched)
+    # Fixture games are 2026-09-22 and 2026-10-01, so "today" is pinned before both.
+    T0 = "2026-09-01"
+    rows, probs, notes = join(home, sched, T0)
     check("clean join has no problems", probs, [])
     check("both games joined", len(rows), 2)
     check("row carries the game date, not the UTC date", rows[0]["date"], "2026-09-22")
@@ -240,15 +262,38 @@ def self_test() -> int:
     bad = json.loads(json.dumps(sched))
     bad["games"][0]["opponent"] = {"abbrev": "BOS", "name": "Boston Bruins"}
     check("opponent mismatch caught",
-          any("OPPONENT MISMATCH" in p for p in join(home, bad)[1]), True)
+          any("OPPONENT MISMATCH" in p for p in join(home, bad, T0)[1]), True)
 
     bad = json.loads(json.dumps(sched))
     bad["games"][0]["startTimeUTC"] = "2026-09-22T02:00:00Z"  # local date, the wrong key
     check("a local-date join key is caught as a missing event",
-          any("NO GAMETIME EVENT" in p for p in join(home, bad)[1]), True)
+          any("NO GAMETIME EVENT" in p for p in join(home, bad, T0)[1]), True)
 
     check("orphan event caught",
-          any("ORPHAN" in p for p in join(home, {"games": [sched["games"][0]]})[1]), True)
+          any("ORPHAN" in p for p in join(home, {"games": [sched["games"][0]]}, T0)[1]), True)
+
+    # ---- played games (ops#351) ----
+    # The live failure: a game already played has been delisted, and the whole run was
+    # refused as though the join were broken. Model it as the real page did - the played
+    # game's event is simply gone.
+    delisted = {k: v for k, v in home.items() if k != "2026-09-23T02:00:00"}
+    rows, probs, notes = join(delisted, sched, "2026-09-27")
+    check("a played-and-delisted game does not refuse the run", probs, [])
+    check("the remaining game still joins", [r["gameId"] for r in rows], [2])
+    check("the played game is reported as a note", len(notes), 1)
+    check("and the note names it", "2026-09-22" in notes[0], True)
+    # The same page, but the game has NOT been played yet: that is a real gap and the
+    # refuse-the-whole-run guard must still fire.
+    rows, probs, notes = join(delisted, sched, "2026-09-01")
+    check("an unplayed missing game still refuses the run",
+          any("NO GAMETIME EVENT" in p and "2026-09-22" in p for p in probs), True)
+    # Game DAY is not "played": the boundary is the day after.
+    rows, probs, notes = join(delisted, sched, "2026-09-22")
+    check("a game missing on its own game day still refuses the run",
+          any("NO GAMETIME EVENT" in p for p in probs), True)
+    # A played game the source still lists joins normally - exclusion never drops data.
+    rows, probs, notes = join(home, sched, "2026-09-27")
+    check("a played game still listed still joins", (len(rows), probs, notes), (2, [], []))
 
     # ld+json extraction must survive a junk sibling block.
     noisy = ('<script type="application/ld+json">{"@type":"WebSite"}</script>'
