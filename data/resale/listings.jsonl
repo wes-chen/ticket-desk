@@ -1,3 +1,3 @@
-{"allIn": true, "band": "lower-4", "bandBasis": "measured", "description": "Standard Ticket", "gameId": 2026010032, "listingType": "primary", "observedDate": "2026-09-07", "price": 82.35, "seq": 1}
+{"allIn": true, "band": "lower-4", "bandBasis": "measured", "gameId": 2026010032, "listingType": "primary", "observedDate": "2026-09-07", "price": 82.35, "seq": 1, "ticketType": "Standard Ticket"}
 {"allIn": true, "band": "lower-4", "bandBasis": "inferred", "gameId": 2026010032, "listingType": "resale", "observedDate": "2026-09-07", "price": 64.13, "seq": 1}
 {"allIn": true, "band": "lower-4", "bandBasis": "inferred", "gameId": 2026010032, "listingType": "resale", "observedDate": "2026-09-07", "price": 71.39, "seq": 2}
