@@ -1,9 +1,14 @@
 # Accepted market-data outage days.
 #
-# Two line forms, both reviewed findings that have been consciously accepted:
+# Three line forms, all reviewed findings that have been consciously accepted:
 #
-#   2026-09-09                  an outage day whose data is unrecoverable
+#   2026-09-09                  an outage day, for EVERY source, whose data is unrecoverable
+#   2026-09-23 gametime         the same, for the NAMED sources only (ops#351)
 #   coverage ticketnetwork 16   a low coverage mode a flapping rolling source returns to
+#
+# Prefer the per-source form whenever the outage did not take every source. A bare date
+# excuses all four, including any source that happened to miss the same day for a
+# different, unexplained reason - and that would record a false cause for it.
 #
 # Everything after `#` is a comment and is the place to record WHY.
 #
@@ -34,6 +39,24 @@
 # Accepted 2026-09-13 by Wesley: "i guess outages are somewhat expected from time to time".
 2026-09-09
 2026-09-10
+
+# 2026-09-23 .. 2026-09-27 - Gametime, TicketNetwork and ScoreBig only (ops#351).
+#
+# Cause, understood: the 2026-09-22 and 2026-09-24 games were played and delisted, and
+# each of the three collectors' refuse-the-whole-run guard read "played and delisted" as a
+# missing game or a gap inside coverage, so every run wrote nothing. Fixed in public PR #34
+# (688aa3d): a played game now leaves the required set. The first run after the merge wrote
+# 2026-09-28 rows for all three.
+#
+# Unrecoverable: none of the three has a historical price endpoint.
+#
+# NOT TickPick. TickPick is also missing 2026-09-23, and these lines deliberately do not
+# name it: that day is outside this accept, stays reported, and is not explained here.
+2026-09-23 gametime ticketnetwork scorebig  # played games refused the run, ops#351
+2026-09-24 gametime ticketnetwork scorebig  # played games refused the run, ops#351
+2026-09-25 gametime ticketnetwork scorebig  # played games refused the run, ops#351
+2026-09-26 gametime ticketnetwork scorebig  # played games refused the run, ops#351
+2026-09-27 gametime ticketnetwork scorebig  # played games refused the run, ops#351
 
 # ---------------------------------------------------------------------------
 # Accepted coverage floor: TicketNetwork, 16 games.
