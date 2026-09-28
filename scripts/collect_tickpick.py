@@ -445,7 +445,8 @@ def self_test() -> int:
              patch.object(time, "sleep"):
             check("collect succeeds with one upcoming event", collect(store_path, None, None), 0)
             check("collect requests only the upcoming event", fetch.call_count, 1)
-            check("collect uses the upcoming URL", fetch.call_args.args[0], upcoming_url)
+            check("collect uses the upcoming URL",
+                  fetch.call_args.args[0] if fetch.call_args else None, upcoming_url)
         saved = ms.read_store(store_path)
         check("collect writes only the upcoming game", [r["gameId"] for r in saved], [2])
 

@@ -44,6 +44,7 @@ import json
 import pathlib
 import re
 import sys
+import tempfile
 from datetime import datetime, timezone
 from unittest.mock import patch
 
@@ -411,10 +412,29 @@ def self_test() -> int:
     rows, problems, notes = join({}, sched, "2026-09-27")
     check("an empty page after the season is not a scrape failure", problems, [])
     check("played games are still reported", len(notes), 2)
-    with patch.object(ms, "venue_today", return_value="9999-01-01"), \
-         patch.object(ms, "get", return_value=("", "synthetic outage")) as fetch:
-        check("the collector exits cleanly after the season", collect(STORE, None), 0)
-        check("the season-end collector skips the fetch", fetch.call_count, 0)
+    with tempfile.TemporaryDirectory() as td:
+        schedule_path = pathlib.Path(td) / "schedule.json"
+        store_path = pathlib.Path(td) / "market.jsonl"
+        schedule_path.write_text(json.dumps(sched))
+        with patch.dict(globals(), {"SCHEDULE": schedule_path}):
+            with patch.object(ms, "venue_today", return_value="9999-01-01"), \
+                 patch.object(ms, "get", return_value=("", "synthetic outage")) as fetch:
+                check("the collector exits cleanly after the season", collect(store_path, None), 0)
+                check("the season-end collector skips the fetch", fetch.call_count, 0)
+            # One game is played; the last game is still required on its own date.
+            for today in ("2026-09-23", sched["games"][-1]["date"]):
+                with patch.object(ms, "venue_today", return_value=today), \
+                     patch.object(ms, "get", return_value=("", "synthetic outage")) as fetch:
+                    check(f"outage with unplayed game on {today} fails",
+                          collect(store_path, None) != 0, True)
+                    check(f"outage with unplayed game on {today} fetches once",
+                          fetch.call_count, 1)
+            schedule_path.write_text(json.dumps({"games": []}))
+            with patch.object(ms, "venue_today", return_value="9999-01-01"), \
+                 patch.object(ms, "get", return_value=("", "synthetic outage")) as fetch:
+                check("empty schedule does not take the season-end exit",
+                      collect(store_path, None) != 0, True)
+                check("empty schedule still fetches once", fetch.call_count, 1)
 
     check("a malformed block does not discard the page",
           len(sports_events('<script type="application/ld+json">{bad</script>'
