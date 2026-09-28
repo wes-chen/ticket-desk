@@ -382,9 +382,11 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     # The credit is ONLY games that ACTUALLY LEFT and were PLAYED IN THE INTERVAL: served on
     # `ref`, dated `ref <= day < d` - so upcoming on `ref` and played by `d`, by the same
     # "played" test the departure diff below uses (a game dated before the observation day,
-    # which is market_store.is_played) - and NOT served on `d`. It is not a floor that
-    # decays with the season: `ref` is an adjacent observation day for a departure, and the
-    # gate's three-day lookback base for the coverage check, and the lower bound on the
+    # which is market_store.is_played) - and NOT attempted on `d`. An ok=False row means
+    # the collector still asked for that game; a failed fetch cannot prove attrition.
+    # The floor does not decay with the season: `ref` is an adjacent observation day for
+    # departures and the gate's three-day lookback base for the coverage check. The lower
+    # bound on the
     # game's date is what confines the credit to games played between the two. A game that
     # is still upcoming and missing earns nothing, so a real collapse below the floor stays
     # fatal exactly as before.
@@ -403,11 +405,10 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     # is ALREADY counted in ok_by_day[d]. Crediting it as well counted it twice, lowering
     # the effective floor by one for every played game still listed - reproduced as three
     # 29-game days then five 15-game days with one played game listed throughout and 14
-    # upcoming games leaving together, which went fully green at floor 16. `served`, not
-    # `attempted`, because ok_by_day counts the same rows served_by_day does, so this
-    # credits exactly the games missing from the count it is added to.
+    # upcoming games leaving together, which went fully green at floor 16. Excluding all
+    # attempts also prevents a failed fetch of a played game from earning calendar credit.
     def played_since(ref: str, d: str) -> int:
-        return len({g for g in served_by_day[ref] - served_by_day[d]
+        return len({g for g in served_by_day[ref] - attempted_by_day[d]
                     if g in game_day and ref <= game_day[g] < d})
 
     def at_floor(d: str, ref: str) -> bool:
@@ -481,11 +482,12 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     # that day's horizon and nothing could have priced them. A game entering the window is
     # not a hole in it.
     #
-    # Deliberately narrow: a day is neutral only while the game has NEVER yet been served
-    # AND lies beyond that day's horizon. So a game inside the window that is missing is
-    # still a hole, and a game that was served and then vanishes - including from the far
-    # edge, where its own departure would pull the horizon in behind it - is still counted
-    # from its first absence, because by then it has been seen.
+    # Deliberately narrow: a day is neutral only while the game has NEVER yet been served,
+    # was NOT attempted that day, and lies beyond that day's horizon. An ok=False row is
+    # evidence that the collector asked for the game, so it is a failed fetch rather than
+    # a window entry. A game inside the window that is missing is still a hole, and a game
+    # that was served and then vanishes - including from the far edge, where its own
+    # departure would pull the horizon in behind it - is counted from its first absence.
     day_horizon: dict[str, str | None] = {
         d: max((game_day[g] for g in served_by_day[d] if g in game_day), default=None)
         for d in days}
@@ -519,7 +521,8 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         for d in days:
             if g["gameId"] in flap_exempt[d]:
                 continue
-            if (rolling and d < first_seen and day_horizon[d] is not None
+            if (rolling and d < first_seen and g["gameId"] not in attempted_by_day[d]
+                    and day_horizon[d] is not None
                     and g["date"] > day_horizon[d]):
                 continue  # not yet listed that day - see EACH DAY'S OWN HORIZON above
             if d in got:
@@ -1452,12 +1455,10 @@ def self_test() -> int:
     check("...and leaves an unnamed source's same day reported",
           any("missing inside the series" in m for _, m in a_other["findings"]), True)
 
-    # THE COMMITTED FILE, not a fixture: TickPick's 09-23 has no cause recorded here, so
-    # nothing in the shipped file may excuse it. Pinned so that "tidying" the ops#351 lines
-    # into bare dates is a failing test rather than a silent re-scoping of the accept.
-    # TickPick's 09-23 IS excused, but by its OWN line with its own cause (the collector run
-    # refused at "Re-resolve event ids" on the played, delisted 09-22 game), not by the
-    # three-source ops#351 lines and not by a bare date. Pinned three ways so that
+    # THE COMMITTED FILE, not a fixture: TickPick's 09-23 is excused by its OWN line with
+    # its own cause (the collector refused at "Re-resolve event ids" on the played,
+    # delisted 09-22 game), not by the three-source ops#351 lines or a bare date. Pinned
+    # three ways so that
     # "tidying" these into bare dates is a failing test rather than a silent re-scoping:
     # the global set is exactly the two reviewed days; TickPick's own days are exactly the
     # one; and the three-source lines do not name TickPick.
@@ -1516,6 +1517,21 @@ def self_test() -> int:
     check("...and the floor is not reported as applied", a["acceptedFloor"], None)
     check("...matching the same rows with that game upcoming",
           holes(played_listed_fixture(played=False)), 14)
+
+    # A played game attempted on the low day but failing to price has not been shown to
+    # leave the window. Crediting it would let 15 successful games meet a floor of 16 and
+    # excuse 14 upcoming games that departed together.
+    dd = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(8)]
+    gl = [{"gameId": i, "date": (dd[2] if i == 0
+                                 else (date(2026, 11, 1) + timedelta(days=i)).isoformat()),
+           "opponent": {"abbrev": "XXX"}} for i in range(30)]
+    rr = (sum([rows([x], list(range(30))) for x in dd[:3]], [])
+          + sum([rows([x], list(range(1, 16))) + rows([x], [0], ok=False)
+                 for x in dd[3:]], []))
+    a = analyse(rr, gl, date.fromisoformat(dd[-1]), rolling=True, coverage_floor=16)
+    check("a failed attempt of a played game earns no floor credit (14 upcoming leave)",
+          holes(a), 14)
+    check("...and failed-attempt credit does not apply the floor", a["acceptedFloor"], None)
 
     # REGRESSION (second PR review of ops#351): the credit counts only games played IN THE
     # INTERVAL. Three 29-game days, then five 11-game days, floor 16. Five of the 29 were
@@ -1594,6 +1610,22 @@ def self_test() -> int:
           + sum([rows([x], list(range(18))) for x in ed[2:]], []))
     check("a game dropped from the far edge is still a hole",
           holes(analyse(rr, eg, date.fromisoformat(ed[-1]), rolling=True)), 1)
+
+    # REGRESSION (additional PR review of ops#351): a failed attempt before the first
+    # success is a hole even when the game's date lies beyond the successful horizon.
+    # Nineteen other games succeed on every day; the later game fails on the first three
+    # days, then succeeds on days four and five. Its failed rows prove it was in scope.
+    ad = ed[:5]
+    ag = games(20, "2026-11-01")
+    ar = (rows(ad, list(range(19))) + rows(ad[:3], [19], ok=False)
+          + rows(ad[3:], [19]))
+    a = analyse(ar, ag, date.fromisoformat(ad[-1]), rolling=True)
+    check("an attempted failed fetch beyond the horizon is a fatal three-day hole",
+          holes(a), 1)
+    check("...and it is fatal rather than only a warning",
+          len(fatals(a)), 1)
+    check("the same failed fetch remains fatal without rolling neutrality",
+          holes(analyse(ar, ag, date.fromisoformat(ad[-1]), rolling=False)), 1)
 
     for f in fails:
         print(f"  FAIL {f}", file=sys.stderr)
