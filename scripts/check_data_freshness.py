@@ -379,13 +379,24 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     # and on 09-28 it served the same window minus those two: 15, with nothing else lost.
     # Comparing 15 to a floor of 16 reported the calendar as a collapse below the floor.
     #
-    # The credit is ONLY games that ACTUALLY LEFT: served on `ref`, played by `d` - the same
+    # The credit is ONLY games that ACTUALLY LEFT and were PLAYED IN THE INTERVAL: served on
+    # `ref`, dated `ref <= day < d` - so upcoming on `ref` and played by `d`, by the same
     # "played" test the departure diff below uses (a game dated before the observation day,
     # which is market_store.is_played) - and NOT served on `d`. It is not a floor that
     # decays with the season: `ref` is an adjacent observation day for a departure, and the
-    # gate's three-day lookback base for the coverage check, so the credit is bounded by
-    # the games played in that interval. A game that is still upcoming and missing earns
-    # nothing, so a real collapse below the floor stays fatal exactly as before.
+    # gate's three-day lookback base for the coverage check, and the lower bound on the
+    # game's date is what confines the credit to games played between the two. A game that
+    # is still upcoming and missing earns nothing, so a real collapse below the floor stays
+    # fatal exactly as before.
+    #
+    # The `ref <=` half was missing from the second version and is load-bearing too (PR
+    # review of ops#351): a rolling source may keep games listed long after they were
+    # played. Without the lower bound, a batch of such stale games leaving at the same
+    # moment as a real loss of upcoming games was credited as if the calendar had just
+    # taken them - they were never part of the upcoming low mode the floor counts.
+    # Reproduced as three 29-game days then five 11-game days, with five games played
+    # before the series began served on every high day and leaving alongside 13 upcoming
+    # ones: at floor 16 it went fully green, where the same rows unfloored give 13 holes.
     #
     # The "not served on `d`" half was missing from the first version and is load-bearing
     # (PR review of ops#351): TicketNetwork may keep a played game listed, and such a game
@@ -397,7 +408,7 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     # credits exactly the games missing from the count it is added to.
     def played_since(ref: str, d: str) -> int:
         return len({g for g in served_by_day[ref] - served_by_day[d]
-                    if g in game_day and game_day[g] < d})
+                    if g in game_day and ref <= game_day[g] < d})
 
     def at_floor(d: str, ref: str) -> bool:
         return ok_by_day[d] + played_since(ref, d) >= coverage_floor
@@ -1505,6 +1516,35 @@ def self_test() -> int:
     check("...and the floor is not reported as applied", a["acceptedFloor"], None)
     check("...matching the same rows with that game upcoming",
           holes(played_listed_fixture(played=False)), 14)
+
+    # REGRESSION (second PR review of ops#351): the credit counts only games played IN THE
+    # INTERVAL. Three 29-game days, then five 11-game days, floor 16. Five of the 29 were
+    # played nine days before the first observation and stay listed on every high day; they
+    # then leave together with 13 upcoming games. Those five were never in the upcoming low
+    # mode, so 11 is a collapse below the floor and all 13 upcoming departures are holes.
+    # Without the `ref <=` bound the stale five were credited, 11 + 5 reached 16, and the
+    # whole run went green.
+    def stale_played_fixture(stale_day, floor):
+        dd = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(8)]
+        gl = [{"gameId": i, "date": (stale_day if i < 5
+                                     else (date(2026, 11, 1) + timedelta(days=i)).isoformat()),
+               "opponent": {"abbrev": "XXX"}} for i in range(30)]
+        rr = (sum([rows([x], list(range(29))) for x in dd[:3]], [])
+              + sum([rows([x], list(range(5, 16))) for x in dd[3:]], []))
+        return analyse(rr, gl, date.fromisoformat(dd[-1]), rolling=True,
+                       coverage_floor=floor)
+
+    a = stale_played_fixture("2026-08-23", 16)
+    check("games played BEFORE the reference day earn no floor credit (13 fatal)",
+          len(fatals(a)), 13)
+    check("...all of them per-game holes", holes(a), 13)
+    check("...and the floor is not reported as applied", a["acceptedFloor"], None)
+    check("...matching the same rows with no floor",
+          holes(stale_played_fixture("2026-08-23", None)), 13)
+    # CONTROL: the same five games played on the last high day DID leave to the calendar in
+    # the interval, 11 + 5 = 16 is at the floor, and the credit still applies.
+    check("the same five played INSIDE the interval still earn the credit",
+          fatals(stale_played_fixture("2026-09-03", 16)), [])
 
     # And the coverage finding on day two names the credit rather than hiding it.
     a = played_fixture(2, played=True)
