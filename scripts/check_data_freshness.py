@@ -379,15 +379,25 @@ def analyse(rows: list[dict], games: list[dict], today: date,
     # and on 09-28 it served the same window minus those two: 15, with nothing else lost.
     # Comparing 15 to a floor of 16 reported the calendar as a collapse below the floor.
     #
-    # The credit is ONLY games served on `ref` and played by `d` - the same "played" test
-    # the departure diff below uses (a game dated before the observation day, which is
-    # market_store.is_played). It is not a floor that decays with the season: `ref` is an
-    # adjacent observation day for a departure, and the gate's three-day lookback base for
-    # the coverage check, so the credit is bounded by the games played in that interval. A
-    # game that is still upcoming and missing earns nothing, so a real collapse below the
-    # floor stays fatal exactly as before.
+    # The credit is ONLY games that ACTUALLY LEFT: served on `ref`, played by `d` - the same
+    # "played" test the departure diff below uses (a game dated before the observation day,
+    # which is market_store.is_played) - and NOT served on `d`. It is not a floor that
+    # decays with the season: `ref` is an adjacent observation day for a departure, and the
+    # gate's three-day lookback base for the coverage check, so the credit is bounded by
+    # the games played in that interval. A game that is still upcoming and missing earns
+    # nothing, so a real collapse below the floor stays fatal exactly as before.
+    #
+    # The "not served on `d`" half was missing from the first version and is load-bearing
+    # (PR review of ops#351): TicketNetwork may keep a played game listed, and such a game
+    # is ALREADY counted in ok_by_day[d]. Crediting it as well counted it twice, lowering
+    # the effective floor by one for every played game still listed - reproduced as three
+    # 29-game days then five 15-game days with one played game listed throughout and 14
+    # upcoming games leaving together, which went fully green at floor 16. `served`, not
+    # `attempted`, because ok_by_day counts the same rows served_by_day does, so this
+    # credits exactly the games missing from the count it is added to.
     def played_since(ref: str, d: str) -> int:
-        return len({g for g in served_by_day[ref] if g in game_day and game_day[g] < d})
+        return len({g for g in served_by_day[ref] - served_by_day[d]
+                    if g in game_day and game_day[g] < d})
 
     def at_floor(d: str, ref: str) -> bool:
         return ok_by_day[d] + played_since(ref, d) >= coverage_floor
@@ -1434,8 +1444,20 @@ def self_test() -> int:
     # THE COMMITTED FILE, not a fixture: TickPick's 09-23 has no cause recorded here, so
     # nothing in the shipped file may excuse it. Pinned so that "tidying" the ops#351 lines
     # into bare dates is a failing test rather than a silent re-scoping of the accept.
-    check("the committed file does not excuse TickPick's 2026-09-23",
-          "2026-09-23" in accepted_days_for("tickpick", real_days, real_src), False)
+    # TickPick's 09-23 IS excused, but by its OWN line with its own cause (the collector run
+    # refused at "Re-resolve event ids" on the played, delisted 09-22 game), not by the
+    # three-source ops#351 lines and not by a bare date. Pinned three ways so that
+    # "tidying" these into bare dates is a failing test rather than a silent re-scoping:
+    # the global set is exactly the two reviewed days; TickPick's own days are exactly the
+    # one; and the three-source lines do not name TickPick.
+    check("the committed global (bare-date) accepts are exactly the reviewed ones",
+          sorted(real_days), ["2026-09-09", "2026-09-10"])
+    check("the committed file excuses TickPick's 2026-09-23 by a TickPick-only entry",
+          sorted(real_src.get("tickpick", set())), ["2026-09-23"])
+    check("...and the three-source outage lines stay separate from it",
+          {k: sorted(v) for k, v in real_src.items() if k != "tickpick"},
+          {k: [f"2026-09-{x}" for x in range(23, 28)]
+           for k in ("gametime", "ticketnetwork", "scorebig")})
     check("the committed per-source days name only real sources",
           sorted(set(real_src) - {n for n, *_ in STORES}), [])
 
@@ -1461,6 +1483,28 @@ def self_test() -> int:
         # games. The credit is for the calendar only, so this stays a collapse below floor.
         check(f"the same drop without played games is still fatal ({n_low}-day)",
               bool(fatals(played_fixture(n_low, played=False))), True)
+
+    # REGRESSION (PR review of ops#351): the credit counts only played games that LEFT.
+    # Three 29-game days, then five 15-game days. One played game stays listed throughout,
+    # so it is already inside the 15; the other 14 served that day are upcoming, and 14
+    # upcoming games depart together. 15 < 16 with nothing played having left, so this is
+    # a collapse below the floor and must be fatal. The first version credited the listed
+    # played game a second time, reached 16, excused all 14 departures and went green.
+    def played_listed_fixture(played):
+        dd = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(8)]
+        gl = [{"gameId": i, "date": (dd[2] if (played and i == 0)
+                                     else (date(2026, 11, 1) + timedelta(days=i)).isoformat()),
+               "opponent": {"abbrev": "XXX"}} for i in range(30)]
+        rr = (sum([rows([x], list(range(29))) for x in dd[:3]], [])
+              + sum([rows([x], list(range(15))) for x in dd[3:]], []))
+        return analyse(rr, gl, date.fromisoformat(dd[-1]), rolling=True, coverage_floor=16)
+
+    a = played_listed_fixture(played=True)
+    check("a played game still listed earns no floor credit (14 upcoming leave, fatal)",
+          holes(a), 14)
+    check("...and the floor is not reported as applied", a["acceptedFloor"], None)
+    check("...matching the same rows with that game upcoming",
+          holes(played_listed_fixture(played=False)), 14)
 
     # And the coverage finding on day two names the credit rather than hiding it.
     a = played_fixture(2, played=True)

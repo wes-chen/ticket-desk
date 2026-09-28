@@ -51,12 +51,26 @@
 # Unrecoverable: none of the three has a historical price endpoint.
 #
 # NOT TickPick. TickPick is also missing 2026-09-23, and these lines deliberately do not
-# name it: that day is outside this accept, stays reported, and is not explained here.
+# name it: its day has its own cause and its own entry, below.
 2026-09-23 gametime ticketnetwork scorebig  # played games refused the run, ops#351
 2026-09-24 gametime ticketnetwork scorebig  # played games refused the run, ops#351
 2026-09-25 gametime ticketnetwork scorebig  # played games refused the run, ops#351
 2026-09-26 gametime ticketnetwork scorebig  # played games refused the run, ops#351
 2026-09-27 gametime ticketnetwork scorebig  # played games refused the run, ops#351
+
+# 2026-09-23 - TickPick only. A separate entry, because it is a separate failure.
+#
+# Cause, understood: the scheduled collector run 35906155347 (2026-09-23T18:58Z) failed at
+# its "Re-resolve event ids" step, before any collection, with
+# "NO TICKPICK EVENT: 2026-09-22 vs VGK" - the already-played game had been delisted, and
+# the resolver treated it as an unresolvable event. The same class as ops#351 (a played,
+# delisted game refusing the run), but in TickPick's resolver rather than in the three
+# collectors above, and fixed separately and earlier: f3e0aae (2026-09-23T19:59Z) carries
+# completed games forward in the resolve and skips them in collection. TickPick wrote rows
+# again from 2026-09-24.
+#
+# Unrecoverable: TickPick has no historical price endpoint.
+2026-09-23 tickpick  # re-resolve refused on the played 09-22 game; fixed in f3e0aae
 
 # ---------------------------------------------------------------------------
 # Accepted coverage floor: TicketNetwork, 16 games.

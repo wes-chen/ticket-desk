@@ -973,8 +973,9 @@ every source as a bare ISO date, an outage day for named sources only as `<date>
 ...`, and a flapping rolling source's accepted low coverage mode as `coverage <source>
 <n>` - with the reason in a `#` comment. **Use the per-source form unless the outage took
 every source**: a bare date also excuses any source that missed the same day for another,
-unexplained reason (ops#351, where TickPick's own 09-23 gap had to stay open while three
-other sources' 09-23..27 were accepted). It is **committed**, unlike
+unexplained reason. ops#351 is the example: three sources' 09-23..27 share one cause, and
+TickPick's 09-23 has a different one (its own resolver, fixed in `f3e0aae`), so it has its
+own `2026-09-23 tickpick` line and reason. It is **committed**, unlike
 `.private-patterns`, because the run that needs it is the collector's own `--strict` run
 on the runner, which has no local state.
 
