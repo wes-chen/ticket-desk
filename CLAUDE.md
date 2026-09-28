@@ -968,9 +968,14 @@ than appends; deterministic sort so a daily commit diffs cleanly; and a read tha
 size cap is an ERROR, never data - that last rule exists because this project has produced
 the same silent-truncation bug three times.
 
-`.freshness-accepted` records reviewed findings in two line forms - an outage day as a
-bare ISO date, and a flapping rolling source's accepted low coverage mode as `coverage
-<source> <n>` - with the reason in a `#` comment. It is **committed**, unlike
+`.freshness-accepted` records reviewed findings in three line forms - an outage day for
+every source as a bare ISO date, an outage day for named sources only as `<date> <source>
+...`, and a flapping rolling source's accepted low coverage mode as `coverage <source>
+<n>` - with the reason in a `#` comment. **Use the per-source form unless the outage took
+every source**: a bare date also excuses any source that missed the same day for another,
+unexplained reason. ops#351 is the example: three sources' 09-23..27 share one cause, and
+TickPick's 09-23 has a different one (its own resolver, fixed in `f3e0aae`), so it has its
+own `2026-09-23 tickpick` line and reason. It is **committed**, unlike
 `.private-patterns`, because the run that needs it is the collector's own `--strict` run
 on the runner, which has no local state.
 
