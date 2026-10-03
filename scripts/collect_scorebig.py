@@ -46,7 +46,9 @@ import json
 import pathlib
 import re
 import sys
+import tempfile
 from datetime import datetime, timezone
+from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -197,11 +199,9 @@ def join(events: dict[str, dict], schedule: dict, today: str
     # total-failure check; the horizon mechanism introduced this blind spot only for the
     # rolling sources, so it is fixed where the horizon lives.
     #
-    # Deliberately unconditional on the schedule having future games: if there are games to
-    # match and we matched nothing, that is a failure whatever the calendar says. A false
-    # alarm here costs one red run and is trivially checkable by hand; the silent version
-    # costs a season of missing data nobody noticed.
-    if games and not events:
+    # Once all games have been played, an empty page is expected. Until then, an empty
+    # page still means the scrape failed rather than that its horizon moved.
+    if any(not ms.is_played(g, today) for g in games) and not events:
         problems.append("TOTAL FAILURE: the page parsed but yielded no usable events at "
                         "all, so nothing could be matched. This is a scrape failure, not "
                         "a coverage horizon - re-run the probe before assuming the source "
@@ -256,6 +256,10 @@ def join(events: dict[str, dict], schedule: dict, today: str
 
 def collect(store: pathlib.Path, raw_dir: pathlib.Path | None) -> int:
     schedule = json.loads(SCHEDULE.read_text())
+    today = ms.venue_today()
+    if schedule["games"] and all(ms.is_played(g, today) for g in schedule["games"]):
+        print("season over: all scheduled home games have been played; nothing to collect")
+        return 0
     html, err = ms.get(EVENT_URL)
     if err:
         print(f"\nScoreBig fetch failed: {err}", file=sys.stderr)
@@ -269,7 +273,7 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None) -> int:
 
     events = sports_events(html)
     home = home_events(events)
-    rows, problems, notes = join(home, schedule, ms.venue_today())
+    rows, problems, notes = join(home, schedule, today)
 
     now = datetime.now(timezone.utc)
     observed_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -442,12 +446,38 @@ def self_test() -> int:
     # horizon" and exited 0 - a complete scrape failure reported as healthy coverage.
     rows, problems, notes = join({}, sched, T0)
     check("a total scrape failure is fatal", len(problems), 1)
-    check("and it says so plainly", "TOTAL FAILURE" in problems[0], True)
+    check("and it says so plainly", bool(problems) and "TOTAL FAILURE" in problems[0], True)
     check("no notes are emitted that would read as expected coverage", notes, [])
     check("and no rows are produced", rows, [])
     # An empty SCHEDULE is not a failure - there is simply nothing to match.
     rows, problems, notes = join({}, {"games": []}, T0)
     check("an empty schedule is not a scrape failure", problems, [])
+    rows, problems, notes = join({}, sched, "2026-09-27")
+    check("an empty page after the season is not a scrape failure", problems, [])
+    check("played games are still reported", len(notes), 2)
+    with tempfile.TemporaryDirectory() as td:
+        schedule_path = pathlib.Path(td) / "schedule.json"
+        store_path = pathlib.Path(td) / "market.jsonl"
+        schedule_path.write_text(json.dumps(sched))
+        with patch.dict(globals(), {"SCHEDULE": schedule_path}):
+            with patch.object(ms, "venue_today", return_value="9999-01-01"), \
+                 patch.object(ms, "get", return_value=("", "synthetic outage")) as fetch:
+                check("the collector exits cleanly after the season", collect(store_path, None), 0)
+                check("the season-end collector skips the fetch", fetch.call_count, 0)
+            # One game is played; the last game is still required on its own date.
+            for today in ("2026-09-23", sched["games"][-1]["date"]):
+                with patch.object(ms, "venue_today", return_value=today), \
+                     patch.object(ms, "get", return_value=("", "synthetic outage")) as fetch:
+                    check(f"outage with unplayed game on {today} fails",
+                          collect(store_path, None) != 0, True)
+                    check(f"outage with unplayed game on {today} fetches once",
+                          fetch.call_count, 1)
+            schedule_path.write_text(json.dumps({"games": []}))
+            with patch.object(ms, "venue_today", return_value="9999-01-01"), \
+                 patch.object(ms, "get", return_value=("", "synthetic outage")) as fetch:
+                check("empty schedule does not take the season-end exit",
+                      collect(store_path, None) != 0, True)
+                check("empty schedule still fetches once", fetch.call_count, 1)
 
     check("a malformed block does not discard the page",
           len(sports_events('<script type="application/ld+json">{bad</script>'

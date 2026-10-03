@@ -38,8 +38,10 @@ import json
 import pathlib
 import re
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import market_store as ms  # noqa: E402
@@ -169,6 +171,10 @@ def join(events: dict[str, dict], schedule: dict, today: str
 
 def collect(store: pathlib.Path, raw_dir: pathlib.Path | None) -> int:
     schedule = json.loads(SCHEDULE.read_text())
+    today = ms.venue_today()
+    if schedule["games"] and all(ms.is_played(g, today) for g in schedule["games"]):
+        print("season over: all scheduled home games have been played; nothing to collect")
+        return 0
     html, err = ms.get(PERFORMER_URL)
     if err:
         print(f"\nGametime fetch failed: {err}", file=sys.stderr)
@@ -180,7 +186,7 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None) -> int:
 
     events = sports_events(html)
     home = home_events(events)
-    rows, problems, notes = join(home, schedule, ms.venue_today())
+    rows, problems, notes = join(home, schedule, today)
 
     now = datetime.now(timezone.utc)
     observed_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -281,7 +287,7 @@ def self_test() -> int:
     check("a played-and-delisted game does not refuse the run", probs, [])
     check("the remaining game still joins", [r["gameId"] for r in rows], [2])
     check("the played game is reported as a note", len(notes), 1)
-    check("and the note names it", "2026-09-22" in notes[0], True)
+    check("and the note names it", bool(notes) and "2026-09-22" in notes[0], True)
     # The same page, but the game has NOT been played yet: that is a real gap and the
     # refuse-the-whole-run guard must still fire.
     rows, probs, notes = join(delisted, sched, "2026-09-01")
@@ -294,6 +300,32 @@ def self_test() -> int:
     # A played game the source still lists joins normally - exclusion never drops data.
     rows, probs, notes = join(home, sched, "2026-09-27")
     check("a played game still listed still joins", (len(rows), probs, notes), (2, [], []))
+    rows, probs, notes = join({}, sched, "2026-10-02")
+    check("an empty page after the season has no join problems", probs, [])
+    check("played games are still reported", len(notes), 2)
+    with tempfile.TemporaryDirectory() as td:
+        schedule_path = pathlib.Path(td) / "schedule.json"
+        store_path = pathlib.Path(td) / "market.jsonl"
+        schedule_path.write_text(json.dumps(sched))
+        with patch.dict(globals(), {"SCHEDULE": schedule_path}):
+            with patch.object(ms, "venue_today", return_value="9999-01-01"), \
+                 patch.object(ms, "get", return_value=("", "synthetic outage")) as fetch:
+                check("the collector exits cleanly after the season", collect(store_path, None), 0)
+                check("the season-end collector skips the fetch", fetch.call_count, 0)
+            # One game is played; the last game is still required on its own date.
+            for today in ("2026-09-27", sched["games"][-1]["date"]):
+                with patch.object(ms, "venue_today", return_value=today), \
+                     patch.object(ms, "get", return_value=("", "synthetic outage")) as fetch:
+                    check(f"outage with unplayed game on {today} fails",
+                          collect(store_path, None) != 0, True)
+                    check(f"outage with unplayed game on {today} fetches once",
+                          fetch.call_count, 1)
+            schedule_path.write_text(json.dumps({"games": []}))
+            with patch.object(ms, "venue_today", return_value="9999-01-01"), \
+                 patch.object(ms, "get", return_value=("", "synthetic outage")) as fetch:
+                check("empty schedule does not take the season-end exit",
+                      collect(store_path, None) != 0, True)
+                check("empty schedule still fetches once", fetch.call_count, 1)
 
     # ld+json extraction must survive a junk sibling block.
     noisy = ('<script type="application/ld+json">{"@type":"WebSite"}</script>'
