@@ -257,6 +257,16 @@ def join(events: dict[str, dict], schedule: dict, today: str
 def collect(store: pathlib.Path, raw_dir: pathlib.Path | None) -> int:
     schedule = json.loads(SCHEDULE.read_text())
     today = ms.venue_today()
+    # SEASON-OVER EXIT, and what it does to PLAYOFFS (ops#371). "Season" here means
+    # data/schedule.json, which holds whatever club-schedule-season listed at the last
+    # fetch - today 42 regular and 2 preseason home games, NO playoff games, because none
+    # are scheduled. So this exit fires from the day after the last regular-season home
+    # game and stops collection THROUGH any playoff home games: playoff listings are not
+    # collected. Written down rather than changed - collecting playoff games is a
+    # separate question and was out of scope where this was found. If the NHL API
+    # ever lists playoff home games, fetch_schedule.py writes them as gameType "playoff"
+    # with no tier and exits non-zero (NO TIER), and this exit would then wait for them -
+    # unmeasured, so check the collectors' joins before relying on it.
     if schedule["games"] and all(ms.is_played(g, today) for g in schedule["games"]):
         print("season over: all scheduled home games have been played; nothing to collect")
         return 0
@@ -472,6 +482,32 @@ def self_test() -> int:
                           collect(store_path, None) != 0, True)
                     check(f"outage with unplayed game on {today} fetches once",
                           fetch.call_count, 1)
+            # ops#371: which date collect() hands to join(). Every join() test above
+            # passes a date by hand, so collect() could pass any date at all and they
+            # would stay green. A far-future one makes every missing game read as
+            # "already played" - a mid-season hole passing silently, the ops#351 class -
+            # and a far-past one refuses every run once a game has been delisted. So
+            # drive collect() itself over a page with game 1 delisted, on both sides of
+            # its date, and also record the date join() actually receives.
+            page = "".join(
+                f'<script type="application/ld+json">{json.dumps(e)}</script>'
+                for e in evs if wall_key(e.get("startDate")) != "2026-09-22T19:00")
+            seen = []
+            real_join = join
+
+            def spy(ev, sc, today):
+                seen.append(today)
+                return real_join(ev, sc, today)
+
+            for today, want_ok in (("2026-09-01", False), ("2026-09-23", True)):
+                seen.clear()
+                with patch.dict(globals(), {"join": spy}), \
+                     patch.object(ms, "venue_today", return_value=today), \
+                     patch.object(ms, "get", return_value=(page, None)):
+                    rc = collect(store_path, None)
+                check(f"collect() passes its own run date to join on {today}", seen, [today])
+                check(f"collect() with game 1 delisted on {today} "
+                      f"{'succeeds' if want_ok else 'refuses the run'}", rc == 0, want_ok)
             schedule_path.write_text(json.dumps({"games": []}))
             with patch.object(ms, "venue_today", return_value="9999-01-01"), \
                  patch.object(ms, "get", return_value=("", "synthetic outage")) as fetch:
