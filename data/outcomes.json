@@ -19,6 +19,7 @@
     null,
     null,
     null,
+    null,
     null
    ]
   },
@@ -37,6 +38,7 @@
    "status": "exchanged",
    "tier": "PRESEASON",
    "trend": [
+    null,
     null,
     null,
     null,
@@ -62,7 +64,6 @@
     250,
     250,
     250,
-    250,
     248,
     247,
     248,
@@ -72,6 +73,7 @@
     226,
     226,
     226,
+    null,
     null
    ]
   },
@@ -80,9 +82,9 @@
    "date": "2026-10-03",
    "gameId": 2026020034,
    "logo": "https://assets.nhle.com/logos/nhl/svg/LAK_light.svg",
-   "marketCount": 8,
+   "marketCount": 5,
    "marketMax": 200,
-   "marketMedian": 154,
+   "marketMedian": 190,
    "marketMin": 125,
    "marketWithheld": false,
    "opponent": "Los Angeles Kings",
@@ -94,7 +96,8 @@
     185,
     185,
     167,
-    154
+    154,
+    190
    ]
   },
   {
@@ -102,9 +105,9 @@
    "date": "2026-10-10",
    "gameId": 2026020072,
    "logo": "https://assets.nhle.com/logos/nhl/svg/EDM_light.svg",
-   "marketCount": 6,
+   "marketCount": 5,
    "marketMax": 201,
-   "marketMedian": 154,
+   "marketMedian": 155,
    "marketMin": 147,
    "marketWithheld": false,
    "opponent": "Edmonton Oilers",
@@ -112,7 +115,6 @@
    "status": "attending",
    "tier": "B",
    "trend": [
-    176,
     176,
     176,
     183,
@@ -125,7 +127,8 @@
     161,
     161,
     155,
-    154
+    154,
+    155
    ]
   },
   {
@@ -135,7 +138,7 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/BOS_light.svg",
    "marketCount": 12,
    "marketMax": 225,
-   "marketMedian": 124,
+   "marketMedian": 122,
    "marketMin": 89,
    "marketWithheld": false,
    "opponent": "Boston Bruins",
@@ -146,7 +149,6 @@
     140,
     140,
     140,
-    140,
     125,
     125,
     124,
@@ -156,7 +158,8 @@
     124,
     124,
     124,
-    124
+    124,
+    122
    ]
   },
   {
@@ -175,12 +178,12 @@
    "tier": "D",
    "trend": [
     89,
-    89,
     88,
     90,
     94,
     94,
     90,
+    86,
     86,
     86,
     86,
@@ -195,9 +198,9 @@
    "date": "2026-10-29",
    "gameId": 2026020213,
    "logo": "https://assets.nhle.com/logos/nhl/svg/VAN_light.svg",
-   "marketCount": 8,
+   "marketCount": 9,
    "marketMax": 150,
-   "marketMedian": 91,
+   "marketMedian": 94,
    "marketMin": 80,
    "marketWithheld": false,
    "opponent": "Vancouver Canucks",
@@ -205,7 +208,6 @@
    "status": "attending",
    "tier": "D",
    "trend": [
-    88,
     94,
     102,
     102,
@@ -218,7 +220,8 @@
     94,
     94,
     94,
-    91
+    91,
+    94
    ]
   },
   {
@@ -228,7 +231,7 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/OTT_light.svg",
    "marketCount": 6,
    "marketMax": 220,
-   "marketMedian": 146,
+   "marketMedian": 128,
    "marketMin": 89,
    "marketWithheld": false,
    "opponent": "Ottawa Senators",
@@ -238,7 +241,6 @@
    "trend": [
     150,
     150,
-    150,
     146,
     146,
     146,
@@ -249,7 +251,8 @@
     133,
     133,
     133,
-    146
+    146,
+    128
    ]
   },
   {
@@ -257,9 +260,9 @@
    "date": "2026-11-02",
    "gameId": 2026020235,
    "logo": "https://assets.nhle.com/logos/nhl/svg/CGY_light.svg",
-   "marketCount": 5,
-   "marketMax": 115,
-   "marketMedian": 99,
+   "marketCount": 6,
+   "marketMax": 155,
+   "marketMedian": 104,
    "marketMin": 93,
    "marketWithheld": false,
    "opponent": "Calgary Flames",
@@ -269,7 +272,6 @@
    "trend": [
     99,
     99,
-    99,
     97,
     97,
     97,
@@ -280,7 +282,8 @@
     99,
     99,
     99,
-    99
+    99,
+    104
    ]
   },
   {
@@ -288,10 +291,10 @@
    "date": "2026-11-09",
    "gameId": 2026020285,
    "logo": "https://assets.nhle.com/logos/nhl/svg/NYI_light.svg",
-   "marketCount": 5,
+   "marketCount": 4,
    "marketMax": 129,
-   "marketMedian": 110,
-   "marketMin": 89,
+   "marketMedian": 115,
+   "marketMin": 91,
    "marketWithheld": false,
    "opponent": "New York Islanders",
    "puckTime": "2026-11-10T03:00:00Z",
@@ -311,7 +314,7 @@
     110,
     110,
     110,
-    110
+    115
    ]
   },
   {
@@ -330,7 +333,6 @@
    "tier": "C",
    "trend": [
     121,
-    121,
     126,
     126,
     126,
@@ -342,6 +344,7 @@
     121,
     121,
     124,
+    126,
     126
    ]
   },
@@ -352,7 +355,7 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/NSH_light.svg",
    "marketCount": 7,
    "marketMax": 185,
-   "marketMedian": 126,
+   "marketMedian": 135,
    "marketMin": 111,
    "marketWithheld": false,
    "opponent": "Nashville Predators",
@@ -369,11 +372,11 @@
     130,
     130,
     130,
-    130,
     126,
     126,
     126,
-    126
+    126,
+    135
    ]
   },
   {
@@ -381,8 +384,8 @@
    "date": "2026-11-17",
    "gameId": 2026020343,
    "logo": "https://assets.nhle.com/logos/nhl/svg/CGY_light.svg",
-   "marketCount": 6,
-   "marketMax": 105,
+   "marketCount": 7,
+   "marketMax": 150,
    "marketMedian": 96,
    "marketMin": 90,
    "marketWithheld": false,
@@ -393,11 +396,11 @@
    "trend": [
     91,
     91,
-    91,
     93,
     93,
     93,
     93,
+    96,
     96,
     96,
     96,
@@ -429,7 +432,7 @@
     142,
     142,
     142,
-    142,
+    139,
     139,
     139,
     139,
@@ -455,17 +458,17 @@
    "trend": [
     115,
     115,
+    110,
+    110,
+    110,
+    110,
+    110,
+    110,
+    110,
+    110,
+    110,
+    110,
     115,
-    110,
-    110,
-    110,
-    110,
-    110,
-    110,
-    110,
-    110,
-    110,
-    110,
     115
    ]
   },
@@ -474,17 +477,16 @@
    "date": "2026-11-27",
    "gameId": 2026020410,
    "logo": "https://assets.nhle.com/logos/nhl/svg/VGK_light.svg",
-   "marketCount": 8,
+   "marketCount": 9,
    "marketMax": 225,
-   "marketMedian": 188,
-   "marketMin": 166,
+   "marketMedian": 180,
+   "marketMin": 160,
    "marketWithheld": false,
    "opponent": "Vegas Golden Knights",
    "puckTime": "2026-11-27T21:00:00Z",
    "status": "undecided",
    "tier": "A+",
    "trend": [
-    195,
     195,
     195,
     195,
@@ -497,7 +499,8 @@
     188,
     188,
     188,
-    188
+    188,
+    180
    ]
   },
   {
@@ -516,7 +519,7 @@
    "tier": "D",
    "trend": [
     95,
-    95,
+    99,
     99,
     99,
     99,
@@ -536,9 +539,9 @@
    "date": "2026-12-11",
    "gameId": 2026020513,
    "logo": "https://assets.nhle.com/logos/nhl/svg/LAK_light.svg",
-   "marketCount": 4,
-   "marketMax": 157,
-   "marketMedian": 148,
+   "marketCount": 5,
+   "marketMax": 230,
+   "marketMedian": 150,
    "marketMin": 141,
    "marketWithheld": false,
    "opponent": "Los Angeles Kings",
@@ -559,7 +562,7 @@
     148,
     148,
     148,
-    148
+    150
    ]
   },
   {
@@ -567,9 +570,9 @@
    "date": "2026-12-14",
    "gameId": 2026020535,
    "logo": "https://assets.nhle.com/logos/nhl/svg/VAN_light.svg",
-   "marketCount": 5,
-   "marketMax": 108,
-   "marketMedian": 94,
+   "marketCount": 6,
+   "marketMax": 155,
+   "marketMedian": 100,
    "marketMin": 88,
    "marketWithheld": false,
    "opponent": "Vancouver Canucks",
@@ -590,7 +593,7 @@
     94,
     94,
     94,
-    94
+    100
    ]
   },
   {
@@ -614,12 +617,12 @@
     186,
     186,
     186,
-    186,
     183,
     183,
     183,
     178,
     178,
+    176,
     176,
     176
    ]
@@ -639,7 +642,6 @@
    "status": "undecided",
    "tier": "A",
    "trend": [
-    158,
     162,
     162,
     162,
@@ -651,6 +653,7 @@
     158,
     158,
     158,
+    155,
     155,
     155
    ]
@@ -677,7 +680,7 @@
     179,
     179,
     179,
-    179,
+    178,
     178,
     178,
     178,
@@ -767,7 +770,7 @@
     169,
     169,
     169,
-    169,
+    175,
     175,
     175,
     175,
@@ -797,10 +800,10 @@
     185,
     185,
     185,
-    185,
     171,
     171,
     171,
+    170,
     170,
     170,
     170,
@@ -828,8 +831,8 @@
     143,
     143,
     143,
-    143,
     128,
+    136,
     136,
     136,
     136,
@@ -847,16 +850,15 @@
    "gameId": 2026020823,
    "logo": "https://assets.nhle.com/logos/nhl/svg/EDM_light.svg",
    "marketCount": 2,
-   "marketMax": 133,
-   "marketMedian": 132,
-   "marketMin": 131,
+   "marketMax": 158,
+   "marketMedian": 156,
+   "marketMin": 155,
    "marketWithheld": false,
    "opponent": "Edmonton Oilers",
    "puckTime": "2027-01-24T03:00:00Z",
    "status": "undecided",
    "tier": "A",
    "trend": [
-    158,
     158,
     158,
     158,
@@ -869,7 +871,8 @@
     133,
     133,
     132,
-    132
+    132,
+    156
    ]
   },
   {
@@ -894,11 +897,11 @@
     118,
     118,
     118,
-    118,
     106,
     106,
     106,
     106,
+    102,
     102,
     102
    ]
@@ -921,7 +924,6 @@
     162,
     162,
     162,
-    162,
     158,
     158,
     158,
@@ -930,6 +932,7 @@
     158,
     133,
     133,
+    153,
     153,
     153
    ]
@@ -960,7 +963,7 @@
     120,
     120,
     120,
-    120,
+    117,
     117,
     117
    ]
@@ -1034,8 +1037,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/MTL_light.svg",
    "marketCount": 4,
    "marketMax": 130,
-   "marketMedian": 93,
-   "marketMin": 89,
+   "marketMedian": 105,
+   "marketMin": 101,
    "marketWithheld": false,
    "opponent": "Montr\u00e9al Canadiens",
    "puckTime": "2027-03-02T03:00:00Z",
@@ -1051,11 +1054,11 @@
     118,
     118,
     118,
-    118,
     95,
     95,
     105,
-    93
+    93,
+    105
    ]
   },
   {
@@ -1096,8 +1099,8 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/COL_light.svg",
    "marketCount": 4,
    "marketMax": 145,
-   "marketMedian": 128,
-   "marketMin": 123,
+   "marketMedian": 124,
+   "marketMin": 119,
    "marketWithheld": false,
    "opponent": "Colorado Avalanche",
    "puckTime": "2027-03-06T03:00:00Z",
@@ -1113,11 +1116,11 @@
     140,
     140,
     140,
-    140,
     138,
     138,
     130,
-    128
+    128,
+    124
    ]
   },
   {
@@ -1157,9 +1160,9 @@
    "gameId": 2026021185,
    "logo": "https://assets.nhle.com/logos/nhl/svg/CAR_light.svg",
    "marketCount": 2,
-   "marketMax": 155,
-   "marketMedian": 154,
-   "marketMin": 152,
+   "marketMax": 164,
+   "marketMedian": 162,
+   "marketMin": 161,
    "marketWithheld": false,
    "opponent": "Carolina Hurricanes",
    "puckTime": "2027-03-21T02:30:00Z",
@@ -1168,7 +1171,6 @@
    "trend": [
     155,
     155,
-    155,
     154,
     154,
     154,
@@ -1179,7 +1181,8 @@
     154,
     154,
     154,
-    154
+    154,
+    162
    ]
   },
   {
@@ -1208,7 +1211,7 @@
     118,
     118,
     118,
-    118,
+    122,
     122,
     122
    ]
@@ -1295,7 +1298,7 @@
     128,
     128,
     128,
-    128,
+    124,
     124,
     124,
     124,
@@ -1338,6 +1341,6 @@
    ]
   }
  ],
- "generated_at": "2026-10-02T14:59:29.451340+00:00",
+ "generated_at": "2026-10-03T15:01:21.775825+00:00",
  "season": "2026-27"
 }
