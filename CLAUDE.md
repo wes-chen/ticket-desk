@@ -913,7 +913,7 @@ npm, so a collector missing from `package.json` is not breakage. Verified by run
 of these on 2026-09-15, after the ops#165 rewrite.
 
 ```bash
-npm run build          # privacy + read-only checks, then copy the static site into dist/
+npm run build          # scripts/build.py: fresh dist/ from sources, THEN privacy + read-only checks
 npm run check:privacy  # the three privacy passes alone
 npm run check:readonly # assert the site ships no input path - see check_readonly.py
 npm test               # the self-test suite (offline; does NOT run the privacy passes)
@@ -942,8 +942,12 @@ node scripts/probe_browser.mjs --label local    # source reachability (needs loc
 
 **`npm run build` is a smaller gate than it used to be, and rule 5 leans on it.** Before
 the ops#165 rewrite it chained the band, tier-market and freshness checks behind a
-type-check. It no longer does: it runs the privacy passes, the read-only check, and copies
-files. Nothing was deleted - every one of those checks still exists and CI still runs the
+type-check. It no longer does: it assembles a fresh `dist/` and then runs the privacy
+passes and the read-only check over it, removing `dist/` if either fails. That order is
+ops#374 - the checks used to run first, so the literal pass scanned the *previous* build's
+`dist/` and failed outright on a fresh worktree. `npm run check:privacy` on its own still
+has the old dependency: with `.private-patterns` present it needs a built `dist/`.
+Nothing was deleted - every one of those checks still exists and CI still runs the
 freshness and tier-market ones directly - but a clean local `npm run build` now proves
 less than the sentence in rule 5 implies. Run the freshness check yourself before a push
 that touches collected data. Whether they belong back in the build chain is an open
