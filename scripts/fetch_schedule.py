@@ -40,11 +40,31 @@ def tm_event_id(link: str | None) -> str | None:
 # would let the guard watch a file this script does not write (mutant M4b).
 DEST = ROOT / "data" / "schedule.json"
 
+# The key under which excluded playoff home games are written to DEST, beside "games"
+# and never inside it. Read by scripts/resolve_tm_events.py - see join() below for why.
+EXCLUDED_KEY = "excludedPlayoffGames"
+
+
+def shown(p: pathlib.Path):
+    """A path for log lines: repo-relative when it is in the repo, as-is otherwise.
+
+    The self-test points DEST at a temp directory to exercise the write path, and a bare
+    relative_to(ROOT) raises on that.
+    """
+    return p.relative_to(ROOT) if p.is_relative_to(ROOT) else p
+
+
+def exclusion_line(e: dict) -> str:
+    return (f"EXCLUDED: {e['date']} vs {e['opponent']} (gameId {e['gameId']}) is a playoff "
+            f"home game - kept out of the games list in {shown(DEST)}, because collecting playoff "
+            f"games is undecided (ops#377)")
+
 
 def join(raw: dict, tiers: dict) -> tuple[list, list, list]:
     """Join the NHL schedule to the tier table. Returns (games, problems, excluded).
 
     Pure - no fetch, no file - so the self-test can drive it with captured responses.
+    `excluded` is a list of records ({gameId, date, gameType, opponent}), no tier.
     """
     by_date = {g["date"]: g for g in tiers["games"]}
     home = [g for g in raw.get("games", []) if g.get("homeTeam", {}).get("abbrev") == TEAM]
@@ -67,9 +87,18 @@ def join(raw: dict, tiers: dict) -> tuple[list, list, list]:
         # None - and then the tier-count print crashed on sort_keys comparing None with a
         # str. So the run died on a TypeError, BEFORE the NO TIER line was printed and
         # before the write, the schedule workflow's first step went red, and the commit
-        # step never ran. Every later schedule and TM-id refresh would have been frozen
-        # from the day the NHL published a playoff home game - at season's end, which is
+        # step never ran. Every later schedule and TM-id refresh was set to freeze from
+        # the day the NHL published a playoff home game - at season's end, which is
         # exactly when nobody is watching.
+        #
+        # Excluding the game here does NOT by itself unfreeze that refresh. The next
+        # workflow step, scripts/resolve_tm_events.py, flags every Discovery hockey event
+        # at the venue whose date has no game in schedule.json as a fatal ORPHAN TM
+        # EVENT, and a Sharks playoff home game is exactly such an event once it is
+        # excluded - so the freeze would only have moved one step down (review of PR #38).
+        # That is why the exclusions are WRITTEN, under EXCLUDED_KEY beside "games": the
+        # resolver reads them and skips orphans on exactly those dates, with a logged
+        # reason. Public NHL schedule fields only - gameId, date, opponent - and no tier.
         #
         # Why exclude rather than commit them untiered: every consumer of
         # data/schedule.json treats its games as the games to collect. The three rolling
@@ -82,10 +111,8 @@ def join(raw: dict, tiers: dict) -> tuple[list, list, list]:
         # tier check and fails loudly; widening this to "anything not regular" would let
         # a misfiled regular-season game vanish from the schedule without a red run.
         if gtype == "playoff":
-            excluded.append(
-                f"EXCLUDED: {date} vs {opp} (gameId {g['id']}) is a playoff home game - "
-                f"not written to {DEST.relative_to(ROOT)}, because collecting playoff "
-                f"games is undecided (ops#377)")
+            excluded.append({"gameId": g["id"], "date": date, "gameType": gtype,
+                             "opponent": opp})
             continue
 
         if gtype == "preseason":
@@ -174,7 +201,7 @@ def main(write: bool = True):
     # Printed on every run, not once: exclusion is a standing choice, and a log that
     # mentioned it only on the day it started would hide it from every later reader.
     for e in excluded:
-        print(e)
+        print(exclusion_line(e))
 
     if problems:
         print(f"\n{len(problems)} PROBLEM(S):", file=sys.stderr)
@@ -183,11 +210,15 @@ def main(write: bool = True):
 
     dest = DEST
     if write:
-        dest.write_text(json.dumps({"season": SEASON, "team": TEAM, "games": out}, indent=2) + "\n")
-        print(f"\nwrote {dest.relative_to(ROOT)}")
+        doc = {"season": SEASON, "team": TEAM, "games": out}
+        # Always written, empty or not, so the resolver never has to tell "no playoff
+        # games" from "an older writer that did not record them".
+        doc[EXCLUDED_KEY] = excluded
+        dest.write_text(json.dumps(doc, indent=2) + "\n")
+        print(f"\nwrote {shown(dest)}")
     else:
         # Wording asserted by summarize_market.py's guard; keep DEST in it.
-        print(f"\n--dry-run: would write {dest.relative_to(ROOT)} ({len(out)} games)")
+        print(f"\n--dry-run: would write {shown(dest)} ({len(out)} games)")
 
     return 1 if problems else 0
 
@@ -219,23 +250,32 @@ def self_test() -> int:
         r["games"].append(game)
         return r
 
-    def run_main(raw, tiers_doc):
-        """main(write=False) with fetch and the tier table swapped; returns (rc, stdout, error)."""
-        global fetch, TIERS
-        saved = fetch, TIERS
+    written = {}
+
+    def run_main(raw, tiers_doc, write=False):
+        """main() with fetch, the tier table AND DEST swapped; returns (rc, stdout, error).
+
+        DEST is swapped on both paths, so write=True exercises the real write - which is
+        what CI runs - against a temp file, never data/schedule.json. Whatever it wrote
+        is left in `written["doc"]` (None when nothing was written).
+        """
+        global fetch, TIERS, DEST
+        saved = fetch, TIERS, DEST
         with tempfile.TemporaryDirectory() as d:
             t = pathlib.Path(d) / "tiers.json"
             t.write_text(json.dumps(tiers_doc))
-            fetch, TIERS = (lambda: raw), t
+            dest = pathlib.Path(d) / "schedule.json"
+            fetch, TIERS, DEST = (lambda: raw), t, dest
             buf_out, buf_err = io.StringIO(), io.StringIO()
             try:
                 with contextlib.redirect_stdout(buf_out), contextlib.redirect_stderr(buf_err):
-                    rc = main(write=False)
+                    rc = main(write=write)
                 return rc, buf_out.getvalue(), None
             except Exception as e:  # a crash is a finding here, not a test-harness error
                 return None, buf_out.getvalue(), f"{type(e).__name__}: {e}"
             finally:
-                fetch, TIERS = saved
+                written["doc"] = json.loads(dest.read_text()) if dest.exists() else None
+                fetch, TIERS, DEST = saved
 
     playoff = copy.deepcopy(fx["playoffGame"])
     check("fixture playoff game is gameType 3", playoff["gameType"], 3)
@@ -248,6 +288,10 @@ def self_test() -> int:
     check("A baseline: problems", problems, [])
     check("A baseline: nothing excluded", excluded, [])
     check("A baseline: preseason tier", tier_counts(out).get("PRESEASON"), 2)
+    rc, _, err = run_main(resp, tiers, write=True)
+    check("A baseline write: main exits 0", (rc, err), (0, None))
+    check("A baseline write: exclusions written, empty",
+          (written["doc"] or {}).get(EXCLUDED_KEY), [])
 
     # B. A playoff home game: excluded, logged, and NOT a failure (ops#377).
     out, problems, excluded = join(with_extra(playoff), tiers)
@@ -256,13 +300,40 @@ def self_test() -> int:
           playoff["id"] in {g["gameId"] for g in out}, False)
     check("B playoff: regular games all still there", len(out), 44)
     check("B playoff: exclusion recorded once", len(excluded), 1)
-    check("B playoff: exclusion names the game",
-          bool(excluded) and str(playoff["id"]) in excluded[0], True)
-    rc, stdout, err = run_main(with_extra(playoff), tiers)
-    check("B playoff: main does not crash", err, None)
-    check("B playoff: main exits 0", rc, 0)
-    check("B playoff: exclusion is printed by main",
-          f"gameId {playoff['id']}" in stdout and "EXCLUDED" in stdout, True)
+    # The exact record, which is what resolve_tm_events.py keys on: public schedule
+    # fields only, and no tier.
+    check("B playoff: exclusion record", excluded,
+          [{"gameId": playoff["id"], "date": playoff["gameDate"], "gameType": "playoff",
+            "opponent": playoff["awayTeam"]["abbrev"]}])
+    for write in (False, True):
+        rc, stdout, err = run_main(with_extra(playoff), tiers, write=write)
+        check(f"B playoff write={write}: main does not crash", err, None)
+        check(f"B playoff write={write}: main exits 0", rc, 0)
+        # Asserted on BOTH paths: CI runs write=True, and a print that happened only on
+        # --dry-run would hide the exclusion from every log anyone reads (mutant M11).
+        check(f"B playoff write={write}: exclusion is printed by main",
+              f"gameId {playoff['id']}" in stdout and "EXCLUDED" in stdout, True)
+    doc = written["doc"] or {}
+    check("B playoff write: playoff game not in written games",
+          playoff["id"] in {g["gameId"] for g in doc.get("games", [])}, False)
+    check("B playoff write: regular games all written", len(doc.get("games", [])), 44)
+    check("B playoff write: exclusion written beside games", doc.get(EXCLUDED_KEY), excluded)
+
+    # B2. A playoff game must not satisfy the tier table. Put one on the date of a real
+    # tier entry whose regular game is missing from the response: the tier entry is
+    # still an orphan. (Mutant M12 marked the playoff date matched and hid this; no real
+    # calendar does this, which is why only a constructed case can check it.)
+    gone = next(g for g in resp["games"] if g["homeTeam"]["abbrev"] == TEAM
+                and g["gameType"] == 2)
+    r = copy.deepcopy(resp)
+    r["games"] = [g for g in r["games"] if g["id"] != gone["id"]]
+    on_tier_date = copy.deepcopy(playoff)
+    on_tier_date["gameDate"] = gone["gameDate"]
+    r["games"].append(on_tier_date)
+    _, problems, excluded = join(r, tiers)
+    check("B2 playoff on a tier date: still excluded", len(excluded), 1)
+    check("B2 playoff on a tier date: tier entry still orphaned",
+          any(p.startswith(f"ORPHAN TIER ENTRY: {gone['gameDate']}") for p in problems), True)
 
     # C. The exclusion is keyed on gameType 3 ONLY. A game of a type this script does not
     # know must still fail loudly, and its message must not call it regular-season.

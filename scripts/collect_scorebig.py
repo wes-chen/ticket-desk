@@ -264,7 +264,8 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None) -> int:
     # game and stops collection THROUGH any playoff home games: playoff listings are not
     # collected. Written down rather than changed - collecting playoff games is a
     # separate question and was out of scope where this was found. When the NHL API
-    # lists playoff home games, fetch_schedule.py EXCLUDES them from data/schedule.json,
+    # lists playoff home games, fetch_schedule.py EXCLUDES them from data/schedule.json "games"
+    # (recording them under "excludedPlayoffGames", which nothing here reads),
     # logs each one, and exits 0 (ops#377, measured against a captured response), so the
     # schedule never gains them and this exit still fires after the last regular-season
     # game. Making it wait for playoffs means committing them, which is the collection

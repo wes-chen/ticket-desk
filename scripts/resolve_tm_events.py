@@ -83,6 +83,12 @@ SCHEDULE = ROOT / "data" / "schedule.json"
 DEST = ROOT / "data" / "tm_events.json"
 FIXTURES = ROOT / "tests" / "fixtures"
 
+# Playoff home games that scripts/fetch_schedule.py deliberately keeps out of
+# schedule["games"] and records under this key instead (ops#377). Must equal
+# fetch_schedule.EXCLUDED_KEY; the self-test asserts that rather than importing it, so this
+# script keeps running stand-alone.
+EXCLUDED_KEY = "excludedPlayoffGames"
+
 SEARCH_URL = "https://app.ticketmaster.com/discovery/v2/events.json"
 
 # SAP Center at San Jose. Filtering server-side by venue is deliberate: the same search
@@ -241,6 +247,11 @@ def clearly_not_nhl(event: dict) -> bool:
 
 def join(events: list[dict], schedule: dict) -> tuple[list[dict], list[str]]:
     games = schedule["games"]
+    # Dates of playoff home games fetch_schedule.py excluded on purpose. A Discovery event
+    # on one of these is the excluded game itself, not a corrupt id map - see the orphan
+    # loop below. Absent key (an older schedule.json) means no exclusions, so nothing is
+    # skipped that was not skipped before.
+    excluded = {x["date"]: x for x in schedule.get(EXCLUDED_KEY) or []}
     by_date: dict[str, list[dict]] = {}
     for e in events:
         ld = ((e.get("dates") or {}).get("start") or {}).get("localDate")
@@ -309,6 +320,19 @@ def join(events: list[dict], schedule: dict) -> tuple[list[dict], list[str]]:
                 # Benign venue sharing (2026-09-29: PWHL at SAP Center). Warn loudly,
                 # skip, keep going - a benign orphan is not a corrupt id map.
                 print(f"  skipping non-NHL venue event: {date} ({e.get('name')!r})")
+                continue
+            if date in excluded:
+                # A Sharks playoff home game. fetch_schedule.py keeps it out of "games"
+                # because collecting playoffs is undecided (ops#377, ops#379), so without
+                # this branch it is a fatal orphan, the run exits 1, and the schedule
+                # workflow's commit step is skipped - freezing schedule.json and this map
+                # (review of PR #38). Skipped on EXACTLY the excluded dates, and printed
+                # on every run, never silently: any other unmatched hockey date still
+                # fails closed. Nothing about it is written to the id map.
+                x = excluded[date]
+                print(f"  skipping excluded playoff home game: {date} vs {x.get('opponent')} "
+                      f"(gameId {x.get('gameId')}, TM {e.get('name')!r}) - kept out of "
+                      f"schedule.json games by fetch_schedule.py, playoffs undecided (ops#377)")
                 continue
             problems.append(
                 f"ORPHAN TM EVENT: {date} ({e.get('name')!r}) matches no scheduled home game"
@@ -386,7 +410,8 @@ def run(key: str, dest: pathlib.Path) -> int:
 
     probe = price_range_probe(events)
     kept, venue_problems = home_events(events)
-    resolved, join_problems = join(kept, {"games": upcoming})
+    resolved, join_problems = join(kept, {"games": upcoming,
+                                          EXCLUDED_KEY: schedule.get(EXCLUDED_KEY) or []})
     carried, carry_problems = carry_forward(past, prev_events)
     problems = venue_problems + join_problems + carry_problems
     resolved = sorted(carried + resolved, key=lambda e: e["date"])
@@ -541,6 +566,46 @@ def self_test() -> int:
     check("unlabeled hockey orphan still fails closed",
           any("ORPHAN TM EVENT" in p for p in join(kept + [mystery], sched)[1]), True)
 
+    # Excluded playoff home games (ops#377, review of PR #38). The event is the captured
+    # Sharks home event with only its name and date changed - the real Discovery shape,
+    # Sports / Hockey / NHL - on an invented future date. Its classification is what a
+    # real Sharks playoff game would carry, which is why clearly_not_nhl() cannot save it.
+    import contextlib  # noqa: E402
+    import copy  # noqa: E402
+    import io  # noqa: E402
+    playoff_ev = copy.deepcopy(kept[1])
+    playoff_ev["name"] = "Western Conference First Round: Home Game 1 - Absurd Opponents at San Jose Sharks"
+    playoff_ev["dates"]["start"]["localDate"] = "2027-04-30"
+    check("playoff-shaped event is not clearly_not_nhl", clearly_not_nhl(playoff_ev), False)
+    x_rec = {"gameId": 11111111, "date": "2027-04-30", "gameType": "playoff",
+             "opponent": "XXX"}
+    with_x = dict(sched, **{EXCLUDED_KEY: [x_rec]})
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        res, probs = join(kept + [playoff_ev], with_x)
+    check("excluded playoff date: orphan skipped, not a problem", probs, [])
+    check("excluded playoff date: nothing resolved for it", len(res), 2)
+    check("excluded playoff date: skip is logged with its gameId",
+          "skipping excluded playoff home game: 2027-04-30" in buf.getvalue()
+          and "gameId 11111111" in buf.getvalue(), True)
+    # Fails closed off those exact dates: the same event with no exclusion, or with an
+    # exclusion on another date, is still a fatal orphan.
+    with contextlib.redirect_stdout(io.StringIO()):
+        check("playoff-shaped orphan with no exclusions still fails closed",
+              any("ORPHAN TM EVENT: 2027-04-30" in p for p in join(kept + [playoff_ev], sched)[1]),
+              True)
+        other = dict(sched, **{EXCLUDED_KEY: [dict(x_rec, date="2027-05-01")]})
+        check("playoff-shaped orphan on a non-excluded date still fails closed",
+              any("ORPHAN TM EVENT: 2027-04-30" in p
+                  for p in join(kept + [playoff_ev], other)[1]), True)
+    # One key, two files: the writer's name must be the one read here.
+    import importlib.util  # noqa: E402
+    spec = importlib.util.spec_from_file_location(
+        "fetch_schedule", pathlib.Path(__file__).resolve().parent / "fetch_schedule.py")
+    fs = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fs)
+    check("EXCLUDED_KEY matches fetch_schedule.py", fs.EXCLUDED_KEY, EXCLUDED_KEY)
+
     dup = kept + [kept[1]]
     check("ambiguous date is caught",
           any("AMBIGUOUS" in p for p in join(dup, sched)[1]), True)
@@ -586,7 +651,21 @@ def self_test() -> int:
         check("previous map untouched by degrade path",
               json.loads(dest.read_text()), prev)
 
-        dest.unlink()
+        # run() must hand the exclusions to join(): a schedule whose only home event at
+        # the venue is an excluded playoff game resolves cleanly and exits 0.
+        sched_path = pathlib.Path(td) / "schedule.json"
+        sched_path.write_text(json.dumps({"games": [], EXCLUDED_KEY: [x_rec]}))
+        dest.unlink(missing_ok=True)
+        with patch(f"{__name__}.search", return_value=([playoff_ev], None)), \
+                patch.dict(globals(), {"SCHEDULE": sched_path}), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            rc = run("dummy-key", dest)
+        check("run: excluded playoff event does not fail the refresh", rc, 0)
+        check("run: map written with no entry for the playoff game",
+              json.loads(dest.read_text())["events"] if dest.exists() else None, [])
+
+        dest.unlink(missing_ok=True)
         with patch(f"{__name__}.search", return_value=dead):
             check("unreachable search with no previous map still fails",
                   run("dummy-key", dest), 1)
