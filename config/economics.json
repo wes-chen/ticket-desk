@@ -1,5 +1,5 @@
 {
-  "_comment": "PUBLIC model constants only. Nothing here identifies a seat, a price paid, or an account. Anything personal - seat location, season invoice, tier credit amounts, list prices - lives in the user's browser profile and is never committed or served. See src/lib/profile.ts.",
+  "_comment": "PUBLIC model constants only. Nothing here identifies a seat, a price paid, or an account. Anything personal - seat location, season invoice, tier credit amounts, our own list prices - lives in the private ops repo (ops:data/profile/snapshots.jsonl) and in the chat interface, and is never committed here or served by the site. See CLAUDE.md rule 1.",
   "resale": {
     "primaryPlatform": "ticketmaster",
     "platforms": {

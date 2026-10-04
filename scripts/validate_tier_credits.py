@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Grade a pasted block of regular-season tier credits, and emit the store line for it.
 
-WHY THIS EXISTS. The five regular-season tier credits (A+, A, B, C, D) live only in
-browser localStorage, so every regular-season break-even is blocked on a manual paste
-(ops#139). CLAUDE.md is blunt about what an input contract without a validator is - a
+WHY THIS EXISTS. The five regular-season tier credits (A+, A, B, C, D) are personal, so
+they live only in ops:data/profile/snapshots.jsonl and never in this repo. When ops#139 was
+filed they had survived only in the browser profile that ops#165 later deleted, so every
+regular-season break-even was blocked on a manual paste. CLAUDE.md is blunt about what an input contract without a validator is - a
 wish - so this is the grader that makes ops#139 a contract. Filed as ops#140.
 
 WHAT IT REFUSES, AND WHY EACH ONE. A missing or duplicated tier silently prices a whole
