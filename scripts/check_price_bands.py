@@ -29,6 +29,8 @@ import json
 import pathlib
 import sys
 
+from price_band_asymmetry import remaining_pairs
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "config" / "price_bands.json"
 
@@ -221,7 +223,22 @@ def check_placement(cfg: dict) -> tuple[list[str], list[str]]:
 
         got = arcs(ring, set(b["sections"]))
         want = b.get("expectedArcs")
-        if want is not None and len(got) != want:
+        # GLASS/TEAL terminate at the tunnel corner. Arc lengths there need not
+        # match; compare every other long-axis pair instead, so a stray section
+        # away from the measured corner remains fatal.
+        is_corner_band = b["id"] in ("glass", "teal") and ring_name == "lower"
+        if is_corner_band:
+            if "101" not in ring or "115" not in ring:
+                problems.append(f"band {b['id']}: lower ring lacks mirror anchors")
+            else:
+                ia, ib, n = ring.index("101"), ring.index("115"), len(ring)
+                pairs = [(ring[i], ring[(ia + ib - i) % n]) for i in range(n)
+                         if i < (ia + ib - i) % n]
+                members = set(b["sections"])
+                for x, y in remaining_pairs(pairs):
+                    if (x in members) != (y in members):
+                        problems.append(f"band {b['id']}: non-exempt mirror pair {x}/{y} disagrees")
+        elif want is not None and len(got) != want:
             problems.append(
                 f"band {b['id']}: sections form {len(got)} contiguous arc(s), expected {want} "
                 f"- {[a for a in got]}. A band should occupy whole arcs; a stray section "
@@ -230,7 +247,7 @@ def check_placement(cfg: dict) -> tuple[list[str], list[str]]:
         # The arena is symmetric, so a two-arc band's halves must match in size. This is
         # what catches a section taken from one side and given to the neighbouring band:
         # coverage still passes, arc count still passes, lengths do not.
-        elif want == 2 and len(got) == 2 and len(got[0]) != len(got[1]):
+        elif not is_corner_band and want == 2 and len(got) == 2 and len(got[0]) != len(got[1]):
             problems.append(
                 f"band {b['id']}: arcs are asymmetric, {len(got[0])} vs {len(got[1])} "
                 f"sections ({got[0]} / {got[1]}) - expected mirror halves"
@@ -372,6 +389,18 @@ def self_test() -> int:
     pr, _ = check_placement(misfiled)
     check("misfiled section is caught", len(pr) > 0, True)
     check("asymmetry is named", any("asymmetric" in x or "arc(s)" in x for x in pr), True)
+
+    # The corner may differ, but a section moved in any other pair still fails.
+    corner = {"rings": {"lower": good_lower}, "bands": [
+        band("glass", ring="lower", sections=["104", "106", "102", "114"]),
+        band("other", ring="lower", sections=[s for s in good_lower
+             if s not in {"104", "106", "102", "114"}], expectedArcs=None),
+    ]}
+    check("measured corner asymmetry accepted", check_placement(corner)[0], [])
+    corner["bands"][0]["sections"].remove("114")
+    corner["bands"][1]["sections"].append("114")
+    check("non-exempt glass misfile fails", any("non-exempt mirror pair" in p
+          for p in check_placement(corner)[0]), True)
 
     dup = {"rings": {"r": ring}, "bands": [
         band("a", sections=["1", "2"]), band("b", sections=["2", "3"]),

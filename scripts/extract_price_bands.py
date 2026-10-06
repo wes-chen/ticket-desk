@@ -196,16 +196,20 @@ no JPEG decoder on this machine other than Chromium.
 """
 
 import argparse
+import hashlib
 import json
 import math
 import pathlib
 import sys
 from collections import Counter, deque
 
+from price_band_asymmetry import remaining_pairs, verify_chart_hash
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent / "lib"))
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "config" / "price_bands.json"
+MIN_AGREEMENT = 0.95
 
 # Clockwise-adjacent section order per level. Direction is irrelevant to the checks;
 # adjacency is what matters. Sourced from config/price_bands.json rings.
@@ -572,6 +576,13 @@ def agreement(extracted, pairs):
     return (ok / len(pairs) if pairs else 0.0), ok, len(pairs), bad
 
 
+def score_mirrors(extracted, order, axis, ring_name):
+    pairs = mirror_pairs(order, *axis)
+    if ring_name == "lower":
+        pairs = remaining_pairs(pairs)
+    return agreement(extracted, pairs)
+
+
 def self_test() -> int:
     fails = []
 
@@ -750,6 +761,20 @@ def self_test() -> int:
     check("agreement counts matching pairs", (ok, tot), (1, 2))
     check("agreement fraction", round(frac, 2), 0.5)
     check("disagreement is reported", bad[0][0], "103")
+    # A genuine corner exception cannot hide a transcription error elsewhere.
+    lower = mirror_pairs(rings()["lower"], "101", "115")
+    kept = remaining_pairs(lower)
+    check("only two measured lower pairs exempt", len(kept), 9)
+    check("ordinary pair remains", ("101", "115") in kept, True)
+    check("95 percent floor unchanged", MIN_AGREEMENT, 0.95)
+    check("remaining 22 pairs set denominator", len(kept) + 13, 22)
+    check("one miss in 22 still meets floor", 21 / 22 >= MIN_AGREEMENT, True)
+    check("two misses in 22 fail floor", 20 / 22 >= MIN_AGREEMENT, False)
+    bad_map = {s: [{"band": "X"}] for pair in kept for s in pair}
+    bad_map["101"] = [{"band": "Y"}]
+    _, _, total, bad = score_mirrors(bad_map, rings()["lower"], ("101", "115"), "lower")
+    check("production score uses remaining pairs", total, 9)
+    check("non-exempt misfile fails agreement", len(bad), 1)
 
     # coverage(): the guard against buying agreement by discarding data.
     pal3 = {"A": (1, 1, 1), "B": (2, 2, 2), "C": (3, 3, 3)}
@@ -789,7 +814,7 @@ def main() -> int:
                     help="search the bowl centre +/- PX and keep the best-scoring one")
     ap.add_argument("--tol", type=int, default=14,
                     help="max-channel colour tolerance; raise for a JPEG-derived image")
-    ap.add_argument("--min-agreement", type=float, default=0.95,
+    ap.add_argument("--min-agreement", type=float, default=MIN_AGREEMENT,
                     help="refuse to write a map below this mirror agreement")
     ap.add_argument("--sample-step", type=float, default=0.0, metavar="PX",
                     help="target sample spacing in PIXELS for the final extraction. "
@@ -841,6 +866,15 @@ def main() -> int:
         args.sample_step = 1.0
     if not args.image:
         print("--image is required", file=sys.stderr)
+        return 2
+
+    # The exemption was measured on one raster. A different chart needs its own
+    # measurement, even if it happens to preserve the same section numbering.
+    image_hash = hashlib.sha256(args.image.read_bytes()).hexdigest()
+    try:
+        verify_chart_hash(image_hash)
+    except ValueError as e:
+        print(e, file=sys.stderr)
         return 2
 
     import minipng
@@ -910,7 +944,7 @@ def main() -> int:
                 ex = sector_bands(im, anchor(ring, seq, axis[0]), ccx, ccy, a, b,
                                   lo, hi, pal, margin=args.sector_margin,
                                   tol=args.tol, step=sample_step, coherent=coh)
-                _, o, n, bad = agreement(ex, mirror_pairs(seq, *axis))
+                _, o, n, bad = score_mirrors(ex, seq, axis, label)
                 if best is None or o > best[0]:
                     best = (o, n, ex, dname, bad)
             if verbose:
