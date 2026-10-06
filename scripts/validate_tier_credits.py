@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Grade a pasted block of regular-season tier credits, and emit the store line for it.
 
-WHY THIS EXISTS. The five regular-season tier credits (A+, A, B, C, D) are personal, so
-they live only in ops:data/profile/snapshots.jsonl and never in this repo. When ops#139 was
+WHY THIS EXISTS. The five regular-season tier credits (A+, A, B, C, D) are RECORDED in
+ops:data/profile/snapshots.jsonl, which holds them with their confidence and provenance
+and is append-only, so a correction supersedes rather than overwrites. The dashboard's
+`TIER_CREDIT` table in app.js is a display copy, not that record. When ops#139 was
 filed they had survived only in the browser profile that ops#165 later deleted, so every
 regular-season break-even was blocked on a manual paste. CLAUDE.md is blunt about what an input contract without a validator is - a
 wish - so this is the grader that makes ops#139 a contract. Filed as ops#140.
@@ -22,16 +24,17 @@ rejected by a wrong table.
 THE CROSS-CHECK, AND ITS HONEST LIMIT. Season face is $4,048/seat over 44 games
 (ops#19: Lower 4 at $92 x 44; reconciled against the invoice in ops#13). This paste
 covers the 42 REGULAR-SEASON games, so the sum of count x credit should land below that
-face by whatever the 2 preseason games are worth. The preseason credit is a per-tier
-exchange credit and therefore PRIVATE (CLAUDE.md rule 1), so it is not in this file: it
-is read from the private snapshots store when --snapshots points at one. Without it the
+face by whatever the 2 preseason games are worth. The preseason credit is not a constant
+in this file because its record, with provenance, is the snapshots store: it is read from
+there when --snapshots points at one. Without it the
 check falls back to a BRACKET - the sum must lie between 42/44 of face and all of face -
 which is weaker and says so rather than inventing the missing number.
 
-PRIVACY. This script is in the PUBLIC repo; the values it grades are PRIVATE. So no real
-credit appears here, in the fixtures, or in the self-test - fixtures are absurd on
-purpose, because ops#29 is what plausible fixtures cost. It also refuses to write
-anywhere inside this repo: the emitted line belongs in ops:data/profile/snapshots.jsonl.
+FIXTURES AND DESTINATION. This script is in the PUBLIC repo. No real credit appears here,
+in the fixtures, or in the self-test - fixtures are absurd on purpose (CLAUDE.md rule 1:
+plausible means real), because ops#29 is what plausible fixtures cost. It also refuses to
+write anywhere inside this repo: the emitted line is a snapshot record, and its one home
+is ops:data/profile/snapshots.jsonl.
 
 Usage:
     python3 scripts/validate_tier_credits.py --file paste.txt
@@ -154,10 +157,11 @@ def parse(text: str) -> dict[str, dict]:
 
 
 def preseason_credit(snapshots: pathlib.Path | None) -> float | None:
-    """Latest preseason per-seat credit from the PRIVATE snapshots store, or None.
+    """Latest preseason per-seat credit from the ops snapshots store, or None.
 
-    Deliberately read at runtime rather than hardcoded: CLAUDE.md rule 1 forbids an
-    exchange credit amount per tier from appearing in this repo at all.
+    Deliberately read at runtime rather than hardcoded: the snapshots store is the
+    record of this value, with its provenance, and a second hardcoded copy here would
+    drift from it silently when a correction supersedes the stored line.
     """
     if snapshots is None or not snapshots.exists():
         return None
@@ -263,8 +267,8 @@ def store_line(rows: dict[str, dict], captured_by: str,
         # Deliberately says nothing about WHERE the values came from. `provenance` is
         # the single field that answers that, and duplicating it here is how a line ends
         # up asserting two different origins once one of them is overridden.
-        "_what": "The five regular-season tier credits, per seat. PRIVATE: this repo "
-                 "only, never ticket-desk. See `provenance` for where they came from.",
+        "_what": "The five regular-season tier credits, per seat. This store is their "
+                 "record; see `provenance` for where they came from.",
         "_why": "They were in no structured store, so no session could compute "
                 "a break-even for any of the 42 regular-season games "
                 "(break-even = credit / (1 - feeRate)). Recorded in a STORE rather than "
@@ -311,8 +315,9 @@ def run(args) -> int:
     if args.append:
         dest = pathlib.Path(args.append).resolve()
         if dest == ROOT or ROOT in dest.parents:
-            # Rule 1 is not a style preference: a credit amount inside this repo is a
-            # published personal value, and git never forgets it.
+            # The snapshot line carries capturedBy and provenance, and its record is the
+            # append-only ops store. A copy committed here would be a second record that
+            # nothing supersedes, and git never forgets it.
             print(f"REFUSED: {dest} is inside the PUBLIC repo at {ROOT}. Tier credits "
                   f"belong in ops:data/profile/snapshots.jsonl.", file=sys.stderr)
             return 1
