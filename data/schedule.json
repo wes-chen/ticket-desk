@@ -662,5 +662,6 @@
       "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79B989DC5?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM42&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM42",
       "tmEventId": "1C0064E79B989DC5"
     }
-  ]
+  ],
+  "excludedPlayoffGames": []
 }
