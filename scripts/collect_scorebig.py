@@ -263,10 +263,13 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None) -> int:
     # are scheduled. So this exit fires from the day after the last regular-season home
     # game and stops collection THROUGH any playoff home games: playoff listings are not
     # collected. Written down rather than changed - collecting playoff games is a
-    # separate question and was out of scope where this was found. If the NHL API
-    # ever lists playoff home games, fetch_schedule.py writes them as gameType "playoff"
-    # with no tier and exits non-zero (NO TIER), and this exit would then wait for them -
-    # unmeasured, so check the collectors' joins before relying on it.
+    # separate question and was out of scope where this was found. When the NHL API
+    # lists playoff home games, fetch_schedule.py EXCLUDES them from data/schedule.json "games"
+    # (recording them under "excludedPlayoffGames", which nothing here reads),
+    # logs each one, and exits 0 (ops#377, measured against a captured response), so the
+    # schedule never gains them and this exit still fires after the last regular-season
+    # game. Making it wait for playoffs means committing them, which is the collection
+    # decision - not a fix to this exit.
     if schedule["games"] and all(ms.is_played(g, today) for g in schedule["games"]):
         print("season over: all scheduled home games have been played; nothing to collect")
         return 0

@@ -28,10 +28,6 @@ SCRIPTS = ROOT / "scripts"
 # Scripts with no self-test, and why. Anything not here and not self-testing fails.
 EXEMPT = {
     "make_icons.py": "one-off asset generation, output checked by eye",
-    "fetch_schedule.py": (
-        "IS a validator - it cross-checks the tier table against the live NHL API on "
-        "date and opponent and exits non-zero on disagreement. Its 'test' is running it."
-    ),
     "jpeg_to_png.mjs": (
         "needs a real Chromium, which is also the only JPEG decoder on this machine, so "
         "a self-test could not verify the conversion without the very dependency under "
@@ -49,7 +45,9 @@ EXEMPT = {
 # Formerly listed here as acknowledged GAPS and since closed: check_privacy.py (now
 # self-tested against a real temp git repo, covering the history pass whose
 # record-splitting bug once mis-attributed findings to the wrong commit) and
-# summarize_market.py. Both were fixed rather than left documented.
+# summarize_market.py. Both were fixed rather than left documented. fetch_schedule.py
+# was exempt as "a validator whose test is running it" until ops#377 found that running
+# it could not exercise a playoff game, and that its NO TIER path crashed.
 
 # Matches the literal WITH double quotes. That is a real constraint on the scripts, not
 # an implementation detail: a bash `case "$1" in --self-test)` written the idiomatic bare

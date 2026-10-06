@@ -899,8 +899,11 @@ successes cannot be audited.
 - **Gametime, TicketNetwork and ScoreBig stop collecting after the last scheduled home
   game, playoffs included.** Their season-over exit fires once every game in
   `data/schedule.json` is played, and that file holds no playoff games (none are
-  scheduled; measured 2026-10-03: 42 regular, 2 preseason). So from the day after the last
-  regular-season home game those collectors print `season over` and exit 0, even if a
+  scheduled; measured 2026-10-03: 42 regular, 2 preseason - and once they are,
+  `fetch_schedule.py` keeps them out of `games` with a logged line and exits 0, recording
+  them under `excludedPlayoffGames` so `resolve_tm_events.py` skips their Discovery events
+  on exactly those dates instead of failing on them as orphans, ops#377). So from
+  the day after the last regular-season home game those collectors print `season over` and exit 0, even if a
   playoff run is selling. That is the documented behaviour, not an outage - and do not
   "fix" it by adding playoff games without deciding to collect them (ops#371). The
   reasoning is in a comment at the exit in each collector.
