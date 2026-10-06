@@ -237,9 +237,9 @@ def monotone_warnings(rows: dict[str, dict]) -> list[str]:
 
 
 DEFAULT_PROVENANCE = (
-    "Manual paste by Wesley into ops#139, graded by "
-    "scripts/validate_tier_credits.py (ops#140). Values read off the app profile "
-    "screen, which reads browser localStorage."
+    "Recovered from the 2026-09-03 ops repository git history; graded by "
+    "scripts/validate_tier_credits.py (ops#140) and recorded in the private "
+    "append-only ops:data/profile/snapshots.jsonl store."
 )
 
 
@@ -417,7 +417,11 @@ def self_test() -> int:
     check("preseason_credit tolerates absence", preseason_credit(None) is None)
 
     line = store_line(good_rows, "self-test", captured_at="2026-01-01T00:00:00Z")
-    check("store line carries provenance", "ops#139" in line["provenance"])
+    check("store line names the recovered source",
+          "recovered from the 2026-09-03 ops repository git history" in
+          line["provenance"].lower())
+    check("store line names the private append-only store",
+          "append-only ops:data/profile/snapshots.jsonl" in line["provenance"])
     custom = store_line(good_rows, "self-test", captured_at="2026-01-01T00:00:00Z",
                         provenance="recovered from commit deadbeef")
     check("provenance is overridable",
