@@ -72,7 +72,7 @@ control is Enterprise-only. So this repo is deliberately **empty of personal dat
 | --- | --- |
 | NHL schedule, 44 home games | Seat section / row / numbers |
 | Tier assignment per game (from the public marketing graphic) | Season invoice total |
-| Seller fee rate, 48h deadline, the model itself | Exchange credit amounts per tier |
+| Seller fee rate, 48h deadline, the model itself, per-tier exchange credits | |
 | Collected market prices - other sellers, whole arena | **Our** list prices, nets, and offers |
 | Isolated (list, net) pairs, as fee measurements | Which games we have listed, and at what |
 | Published team pricing, e.g. the section/band table | Account, listing, and order identifiers |
@@ -82,6 +82,10 @@ control is Enterprise-only. So this repo is deliberately **empty of personal dat
 The line is the **linkage, not the field**. A `$70 -> $63.00` pair is a measurement of
 Ticketmaster's fee and carries no seat; *our* asking price on a named game does. The test: could
 a reader connect this number to our seats or our account?
+
+The tier-only exchange credit table is public under CLAUDE.md rule 1. A credit tied to
+our seats for a named game remains private. The idea that every holder in a band gets
+the same credit is unverified; the committed table alone cannot establish that claim.
 
 **One named exception** (ops#167, decided 2026-09-15): a per-seat season **face** is public when it
 equals `config/price_bands.json -> bands[id].avgPerGame.new x gamesInFullSeason`, because that is

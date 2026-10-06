@@ -103,6 +103,13 @@ the credit reveals no more than the band, is **unverified**. The committed `app.
 `TIER_CREDIT` table has one value per tier, but does not establish what other holders
 receive; no published team source was verified for that claim.
 
+This permits the tier-only `app.js` `TIER_CREDIT` table; it does not permit a credit
+attributable to our seats for a named game. The latter is the per-seat credit linkage
+forbidden below. The structural check in `scripts/check_privacy.py` still rejects
+`creditPerSeat` and `exchangeCreditPerSeat` keys in committed JSON, even when a value
+would be tier-only. Keep the permitted table as a named code constant, not under those
+JSON keys; changing the protected checker requires a separate decision and review.
+
 **Not in the browser either, since ops#165.** This used to read "browser `localStorage`,
 entered through the app's setup screen". Both are gone: the site is display-only and Rumi
 (chat -> git) is the input interface. `scripts/check_readonly.py` **fails the build** if a
@@ -229,7 +236,9 @@ it is private, whatever field it lives in. If no, it is a market observation.
 season face *is* connectable to our seats - it identifies our band - so a reader applying
 this test in isolation resolves it "private", which is the contradiction the carve-out
 above exists to end. The carve-out wins, on the reproducibility check, and it is the
-**only** exception: nothing else on the forbidden list gets one by analogy.
+**only** exception for an item on the forbidden list: nothing else on that list gets
+one by analogy. The tier-only credit table described above is outside the list; this
+face-price exception does not authorize a game-specific credit tied to our seats.
 
 Corollary for fixtures and examples: **plausible means real.** Use absurd values
 (`11111111`), never a realistic-looking one. That is precisely how ops#29 happened.
