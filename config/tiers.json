@@ -1,6 +1,6 @@
 {
   "_comment": "PUBLIC tier assignments, transcribed from the official Sharks 2026-27 Game Tiers graphic (public marketing material). Dates are LOCAL game dates at SAP Center. Validated against the live NHL schedule by scripts/fetch_schedule.py - if a date or opponent is wrong, the build fails loudly rather than silently mispricing a game.",
-  "_privacy": "Tier CREDIT AMOUNTS are deliberately not here. They depend on seat location and are therefore personal - they live in the browser profile only.",
+  "_privacy": "Tier CREDIT AMOUNTS are deliberately not here. They depend on seat location and are therefore personal - they live only in the private ops repo (ops:data/profile/snapshots.jsonl) and in the chat interface, never in this repo or on the site. See CLAUDE.md rule 1.",
   "_counts": { "A+": 7, "A": 8, "B": 7, "C": 11, "D": 9, "_total": 42 },
 
   "games": [
