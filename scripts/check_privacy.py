@@ -176,9 +176,16 @@ def structural(root: pathlib.Path = ROOT) -> list[str]:
                 continue
             for path, key, _ in walk(data):
                 if key in FORBIDDEN_KEYS:
+                    # This message is an instruction, read at the moment someone is
+                    # holding a personal value and looking for where to put it. It once
+                    # said "the browser profile", which ops#165 deleted and
+                    # check_readonly.py now rejects - so following it would trip a second
+                    # gate (ops#187). Self-tests assert on the key name, never this prose.
                     problems.append(
                         f"{label}: forbidden key '{key}' at {path or '<root>'} "
-                        f"- personal values belong in the browser profile, not the repo"
+                        f"- personal values belong in the private ops store "
+                        f"(ops:data/profile/snapshots.jsonl) or the chat interface, "
+                        f"not this public repo"
                     )
             for msg in linkages(data):
                 problems.append(f"{label}: {msg}")
