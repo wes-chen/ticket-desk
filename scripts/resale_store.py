@@ -69,6 +69,28 @@ was derived from something adjacent, such as a neighbouring row's label or a pri
 The three rows this store was migrated with are two `inferred` and one `measured`, and
 flattening that distinction is what rule 4 exists to stop.
 
+## The field set is closed (ops#78)
+
+A row carries `REQUIRED`, plus anything in `OPTIONAL`, and nothing else. An unknown key is
+refused and named. Before ops#78 the field set was open: a typo (`listingTpye`), a stray key
+from a paste, or a well-meant addition all entered the store silently - which is how the
+first row captured came to hold the ticket TYPE under `description`, the name that belongs
+to the band string. For a validator whose posture is refuse-rather-than-trust, an open field
+set was the gap that let that happen.
+
+The two optional fields, and why they are separate:
+
+- `description` - **reserved for the band string**, verbatim as Ticketmaster renders it in
+  a seat's Description field (the chart legend label, e.g. a "Lower N" style name). This is
+  the oracle ops#19 needs to place sections into bands, which is why the name is kept free
+  for it rather than spent on anything else. It is the raw evidence behind
+  `bandBasis: measured`; `band` stays the validated id.
+- `ticketType` - the ticket TYPE as rendered (e.g. "Standard Ticket"). Mostly redundant
+  with `listingType`, and kept only because it was captured.
+
+Adding a field means adding it to `OPTIONAL` with a line here saying what it holds. That is
+the point: the next capture should not have to guess what a name means.
+
 ## What must never be written here
 
 `isOurs`, `ours`, `mine`, and now `section`, `row`, `seat` are refused outright. Ownership
@@ -83,6 +105,7 @@ it to `.private-patterns` would fail the build on data that is fine. The refusal
 below is the enforcement, and it is why these field names are rejected by NAME rather than
 left to judgement.
 """
+import difflib
 import json
 import pathlib
 import sys
@@ -119,6 +142,16 @@ BAND_BASIS = {"measured", "inferred"}
 
 REQUIRED = ("observedDate", "gameId", "band", "seq", "price", "allIn", "listingType",
             "bandBasis")
+
+# ops#78: the only other fields a row may carry. See "The field set is closed" in the
+# module docstring for what each one holds - `description` is reserved for the BAND
+# string, not the ticket type.
+OPTIONAL = ("description", "ticketType")
+
+# Everything validate() will accept or refuse by name. A key outside this is UNKNOWN.
+# BANNED is included so a banned name gets its own rule-1 message rather than a second,
+# less specific "unknown field" finding on top of it.
+KNOWN = frozenset(REQUIRED) | frozenset(OPTIONAL) | frozenset(BANNED)
 
 
 class Invalid(Exception):
@@ -165,6 +198,19 @@ def validate(rows, game_ids=None):
 
     for i, r in enumerate(rows):
         where = f"row {i}"
+        # Unknown keys BEFORE the missing check, which `continue`s. A typo'd required key
+        # is both - `listingTpye` present, `listingType` absent - and "unknown
+        # 'listingTpye'" is the message that points at the fix; "missing listingType"
+        # alone sends the reader looking for a field that is sitting right there.
+        if not isinstance(r, dict):
+            problems.append(f"{where}: must be a JSON object, got {type(r).__name__}")
+            continue
+        for k in sorted(set(r) - KNOWN, key=str):
+            near = difflib.get_close_matches(str(k), sorted(KNOWN - frozenset(BANNED)), n=1)
+            hint = f" - did you mean '{near[0]}'?" if near else "."
+            problems.append(f"{where}: unknown field {k!r}{hint} The field set is closed "
+                            f"(ops#78): REQUIRED plus OPTIONAL {list(OPTIONAL)}, nothing "
+                            f"else")
         missing = [f for f in REQUIRED if f not in r]
         if missing:
             problems.append(f"{where}: missing {', '.join(missing)}")
@@ -205,6 +251,11 @@ def validate(rows, game_ids=None):
                             f"price includes buyer fees, got {r['allIn']!r}. Every public "
                             f"resale price is all-in and every member-map price is not; "
                             f"defaulting it is how the ops#20 comparison went wrong once")
+
+        for opt in OPTIONAL:
+            if opt in r and (not isinstance(r[opt], str) or not r[opt].strip()):
+                problems.append(f"{where}: {opt} must be a non-empty string when present, "
+                                f"got {r[opt]!r}")
 
         p = r["price"]
         if not isinstance(p, (int, float)) or isinstance(p, bool) or p <= 0:
@@ -257,6 +308,8 @@ def validate(rows, game_ids=None):
         return (od, gid, band_v, lt)
 
     for r in rows:
+        if not isinstance(r, dict):
+            continue  # already refused above; it has no group to rank within
         gk = group_key(r)
         seq_v = as_int(r.get("seq"))
         usable = (
@@ -510,6 +563,35 @@ def self_test():
     check("a string band that is merely unknown is still key-able",
           len(validate([row(band="not-a-band"), row(band="not-a-band", seq=2,
                             price=22222222.0)])), 2)
+
+    # ops#78: the field set is closed. An unknown key is refused and NAMED.
+    got = validate([row(stray=11111111)])
+    check("an unknown key is refused", len(got), 1)
+    check("and the unknown key is named", "'stray'" in first(got), True)
+    check("and says the field set is closed", "field set is closed" in first(got), True)
+    # A typo'd REQUIRED key is reported as UNKNOWN, not only as missing - the unknown
+    # message is the one that points at the fix.
+    typo = {("listingTpye" if k == "listingType" else k): v for k, v in row().items()}
+    got = validate([typo])
+    check("a typo'd required key is reported as unknown",
+          any("unknown field 'listingTpye'" in g for g in got), True)
+    check("and suggests the intended name",
+          any("did you mean 'listingType'" in g for g in got), True)
+    check("and is still reported as missing", any("missing listingType" in g for g in got),
+          True)
+    check("a typo'd required key gives exactly those two findings", len(got), 2)
+    # BANNED names keep their own rule-1 message and are not double-reported as unknown.
+    check("a banned key is not also reported as unknown",
+          any("unknown field" in g for g in validate([row(isOurs=True)])), False)
+    # Both optional fields are accepted, and must carry a real string.
+    check("ticketType is accepted", validate([row(ticketType="Xxxxx Ticket")]), [])
+    check("description (the band string) is accepted",
+          validate([row(description="Xxxxx 9")]), [])
+    check("every OPTIONAL name is covered", OPTIONAL, ("description", "ticketType"))
+    for opt in OPTIONAL:
+        refused(f"an empty {opt} is refused", [row(**{opt: " "})])
+        refused(f"a non-string {opt} is refused", [row(**{opt: 11111111})])
+    refused("a non-object row is refused, not raised", [["not", "a", "row"]])
 
     check("a non-measured bandBasis is refused",
           len(validate([row(bandBasis="probably")])), 1)

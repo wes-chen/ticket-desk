@@ -20,6 +20,8 @@ import pathlib
 import sys
 import urllib.error
 import urllib.request
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 MAX_BODY_PAGE = 8_000_000
 MAX_BODY_SITEMAP = 40_000_000
@@ -29,6 +31,40 @@ TIMEOUT = 45
 # politeness lever is request VOLUME, which is a few dozen a day.
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+
+
+# Schedule dates are venue-local, so "today" must be too. Lifted out of
+# collect_tickpick.py (ops#351) so every collector shares ONE definition of "already
+# played" rather than each growing its own.
+PT = ZoneInfo("America/Los_Angeles")
+
+
+def venue_today(now: datetime | None = None) -> str:
+    """Today's date at the arena, as the ISO string schedule.json's `date` uses."""
+    return (now or datetime.now(PT)).astimezone(PT).date().isoformat()
+
+
+def is_played(game: dict, today: str) -> bool:
+    """A game is ALREADY PLAYED once its venue-local date is strictly before today.
+
+    Why this matters (ops#351): every marketplace delists a game once it has been played.
+    The collectors' refuse-the-whole-run guard, which exists so one game's prices are never
+    attributed to another, read "played and delisted" as "missing" - and three sources
+    wrote nothing for five days while the season simply ran forward.
+
+    Why the DATE and not the start time. This is the definition collect_tickpick.py's
+    resolver already used for carry-forward, and check_data_freshness.py's departure diff
+    uses the same date comparison, so reusing it keeps one meaning of "played" across the
+    project. It is also the conservative side: on game night, between puck drop and local
+    midnight, the game is not yet "played" here, so a source that delists it mid-game would
+    still refuse that run. The scheduled collector runs in the Pacific morning, so that
+    window is not reached in practice; a manual evening run could reach it, and refusing is
+    the safe failure. Whether any source delists before midnight is UNMEASURED.
+
+    A played game is NOT carried forward with prices here: it simply leaves the set the
+    collectors require. If a source still lists it, it still joins normally.
+    """
+    return game["date"] < today
 
 
 def rel(path: pathlib.Path, root: pathlib.Path) -> str:
@@ -142,6 +178,16 @@ def self_test() -> int:
                                  "date": "2026-10-01", "ok": False, "error": "http 500"}], False)
         check("partial failure stores the error row", len(after), 3)
         check("error row persisted", read_store(p)[-1]["error"], "http 500")
+
+    # ---- the shared "already played" definition (ops#351) ----
+    g = {"date": "2026-09-22"}
+    check("a game before today is played", is_played(g, "2026-09-23"), True)
+    check("a game TODAY is not yet played", is_played(g, "2026-09-22"), False)
+    check("a future game is not played", is_played(g, "2026-09-21"), False)
+    # 2026-09-23T05:00Z is still 2026-09-22 in Pacific time: the UTC date must not be used.
+    from datetime import timezone
+    check("today is venue-local, not UTC",
+          venue_today(datetime(2026, 9, 23, 5, 0, tzinfo=timezone.utc)), "2026-09-22")
 
     check("rel inside root", rel(pathlib.Path("/a/b/c.txt"), pathlib.Path("/a")), "b/c.txt")
     check("rel outside root", rel(pathlib.Path("/x/c.txt"), pathlib.Path("/a")), "/x/c.txt")

@@ -126,32 +126,50 @@ DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # load_accepted() and the COVERAGE FLOOR block in analyse() for what it does and does not
 # exempt.
 FLOOR_RE = re.compile(r"^coverage\s+([a-z0-9_]+)\s+(\d+)$")
+# `2026-09-23 gametime scorebig` - an outage day accepted for the NAMED sources only.
+#
+# Added for ops#351. A bare date is global: it excuses that day for every source. That was
+# right for the ops#135 loss, which took all four sources at once, and wrong for ops#351,
+# where three collectors refused to write for a cause that is understood while TickPick
+# was separately missing one of the same days. A bare-date accept would have excused
+# TickPick's day too, under a reason that does not apply to it - an accepted finding whose
+# recorded cause is false is worse than a red one. The bare form keeps its meaning.
+SOURCE_DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})((?:\s+[a-z0-9_]+)+)$")
 
 
-def load_accepted(path: pathlib.Path | None = None) -> tuple[set[str], dict[str, int]]:
+def load_accepted(path: pathlib.Path | None = None
+                  ) -> tuple[set[str], dict[str, int], dict[str, set[str]]]:
     """Reviewed findings: accepted outage dates, and accepted coverage floors.
 
-    Two line forms, because two different things get consciously accepted here and both
+    Three line forms, because different things get consciously accepted here and all
     have the same failure mode if they cannot be - a gate that is red forever for a reason
     no future run can fix:
 
-        2026-09-09                 an outage day whose data is unrecoverable
+        2026-09-09                 an outage day, every source, whose data is unrecoverable
+        2026-09-23 gametime        the same, for the NAMED sources only
         coverage ticketnetwork 16  a low mode this source is known to flap into
 
     Everything after `#` is a comment and is the place to record WHY. Returns
-    (dates, floors) rather than a bare set; callers want them separately.
+    (dates, floors, per-source dates); callers want them separately. Use
+    accepted_days_for() to get the days that apply to one source.
     """
     path = path or ACCEPTED_GAPS_FILE
     if not path.exists():
-        return set(), {}
+        return set(), {}, {}
     days: set[str] = set()
     floors: dict[str, int] = {}
+    source_days: dict[str, set[str]] = {}
     for ln in path.read_text().splitlines():
         ln = ln.split("#", 1)[0].strip()
         if not ln:
             continue
         if DATE_RE.match(ln):
             days.add(ln)
+            continue
+        m = SOURCE_DATE_RE.match(ln)
+        if m:
+            for src in m.group(2).split():
+                source_days.setdefault(src, set()).add(m.group(1))
             continue
         m = FLOOR_RE.match(ln)
         if m:
@@ -169,7 +187,13 @@ def load_accepted(path: pathlib.Path | None = None) -> tuple[set[str], dict[str,
         # Loud rather than silent: a typo here would quietly un-accept a gap and turn
         # the gate red again for a reason nobody could find.
         print(f"  ignoring unparseable line in {path.name}: {ln!r}", file=sys.stderr)
-    return days, floors
+    return days, floors, source_days
+
+
+def accepted_days_for(name: str, days: set[str],
+                      source_days: dict[str, set[str]]) -> set[str]:
+    """The accepted outage days that apply to source `name`: global ones plus its own."""
+    return set(days) | source_days.get(name, set())
 
 
 def load(path: pathlib.Path) -> list[dict]:
@@ -344,6 +368,52 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         if r.get("ok") and r.get("low") is not None:
             served_by_day[r["observedDate"]].add(r["gameId"])
 
+    game_day = {g["gameId"]: g["date"] for g in games}
+
+    # IS `d` AT OR ABOVE THE FLOOR, counting games PLAYED since `ref` as still present.
+    #
+    # Added for ops#351, on the real store. The floor is a count taken when the low mode's
+    # games were all still upcoming, and a rolling window starts at the front of the
+    # season - so every game played is one the low mode contained. On 2026-09-22
+    # TicketNetwork served its low mode at 17; the 09-22 and 09-24 games were then played,
+    # and on 09-28 it served the same window minus those two: 15, with nothing else lost.
+    # Comparing 15 to a floor of 16 reported the calendar as a collapse below the floor.
+    #
+    # The credit is ONLY games that ACTUALLY LEFT and were PLAYED IN THE INTERVAL: served on
+    # `ref`, dated `ref <= day < d` - so upcoming on `ref` and played by `d`, by the same
+    # "played" test the departure diff below uses (a game dated before the observation day,
+    # which is market_store.is_played) - and NOT attempted on `d`. An ok=False row means
+    # the collector still asked for that game; a failed fetch cannot prove attrition.
+    # The floor does not decay with the season: `ref` is an adjacent observation day for
+    # departures and the gate's three-day lookback base for the coverage check. The lower
+    # bound on the
+    # game's date is what confines the credit to games played between the two. A game that
+    # is still upcoming and missing earns nothing, so a real collapse below the floor stays
+    # fatal exactly as before.
+    #
+    # The `ref <=` half was missing from the second version and is load-bearing too (PR
+    # review of ops#351): a rolling source may keep games listed long after they were
+    # played. Without the lower bound, a batch of such stale games leaving at the same
+    # moment as a real loss of upcoming games was credited as if the calendar had just
+    # taken them - they were never part of the upcoming low mode the floor counts.
+    # Reproduced as three 29-game days then five 11-game days, with five games played
+    # before the series began served on every high day and leaving alongside 13 upcoming
+    # ones: at floor 16 it went fully green, where the same rows unfloored give 13 holes.
+    #
+    # The "not served on `d`" half was missing from the first version and is load-bearing
+    # (PR review of ops#351): TicketNetwork may keep a played game listed, and such a game
+    # is ALREADY counted in ok_by_day[d]. Crediting it as well counted it twice, lowering
+    # the effective floor by one for every played game still listed - reproduced as three
+    # 29-game days then five 15-game days with one played game listed throughout and 14
+    # upcoming games leaving together, which went fully green at floor 16. Excluding all
+    # attempts also prevents a failed fetch of a played game from earning calendar credit.
+    def played_since(ref: str, d: str) -> int:
+        return len({g for g in served_by_day[ref] - attempted_by_day[d]
+                    if g in game_day and ref <= game_day[g] < d})
+
+    def at_floor(d: str, ref: str) -> bool:
+        return ok_by_day[d] + played_since(ref, d) >= coverage_floor
+
     # gameId -> the days on which its absence is excused. Absent from this map means the
     # ordinary per-game rule applies, which is the default for every unfloored source.
     flap_exempt: dict[str, set] = {d: set() for d in days}
@@ -372,7 +442,6 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         # finding the unfloored check reported. Excluding them is safe in the other
         # direction too, since the per-game loop iterates the SCHEDULE - an orphan could
         # never be reported as a hole anyway, so this only ever shrinks a bloc.
-        game_day = {g["gameId"]: g["date"] for g in games}
         gone_together: set = set()
         for prev, cur in zip(days, days[1:]):
             left = {g for g in served_by_day[prev] - attempted_by_day[cur]
@@ -385,7 +454,7 @@ def analyse(rows: list[dict], games: list[dict], today: date,
                 # this, a flap-dropped game that never returned stayed excused forever,
                 # even once the source was visibly serving its full set again.
                 gone_together = set()
-            if len(left) >= COVERAGE_DROP_MIN_GAMES and ok_by_day[cur] >= coverage_floor:
+            if len(left) >= COVERAGE_DROP_MIN_GAMES and at_floor(cur, prev):
                 gone_together |= left
             # A game being served again is no longer explained by the window, and its next
             # absence starts accumulating from scratch.
@@ -402,6 +471,26 @@ def analyse(rows: list[dict], games: list[dict], today: date,
             gone_together -= served_by_day[cur]
             flap_exempt[cur] = set(gone_together)
     floor_applied = coverage_floor if any(flap_exempt.values()) else None
+
+    # EACH DAY'S OWN HORIZON, for rolling sources: the latest game served that day.
+    #
+    # Added for ops#351, on the real store. ScoreBig serves a fixed list of 19 games; when
+    # the 09-22 and 09-24 games were played, the 12-14 and 12-26 games entered at the far
+    # edge of the list on 09-28 - confirmed against a live fetch, which joined the same 19.
+    # Both were then reported as "absent for 16 consecutive observation days", because the
+    # per-game run counted every day BEFORE they were first listed, when they lay beyond
+    # that day's horizon and nothing could have priced them. A game entering the window is
+    # not a hole in it.
+    #
+    # Deliberately narrow: a day is neutral only while the game has NEVER yet been served,
+    # was NOT attempted that day, and lies beyond that day's horizon. An ok=False row is
+    # evidence that the collector asked for the game, so it is a failed fetch rather than
+    # a window entry. A game inside the window that is missing is still a hole, and a game
+    # that was served and then vanishes - including from the far edge, where its own
+    # departure would pull the horizon in behind it - is counted from its first absence.
+    day_horizon: dict[str, str | None] = {
+        d: max((game_day[g] for g in served_by_day[d] if g in game_day), default=None)
+        for d in days}
 
     for g in future:
         got = seen_per_game.get(g["gameId"])
@@ -428,9 +517,14 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         # difference. No test distinguishes them here because none can - a mutation that
         # swaps them survives the suite, and that is correct rather than a gap.
         run = worst = 0
+        first_seen = min(got)
         for d in days:
             if g["gameId"] in flap_exempt[d]:
                 continue
+            if (rolling and d < first_seen and g["gameId"] not in attempted_by_day[d]
+                    and day_horizon[d] is not None
+                    and g["date"] > day_horizon[d]):
+                continue  # not yet listed that day - see EACH DAY'S OWN HORIZON above
             if d in got:
                 run = 0
             else:
@@ -511,12 +605,14 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         run = days[-COVERAGE_DROP_PERSIST_DAYS:]
         now_n = ok_by_day[run[-1]]
         if all(dropped(base_n, ok_by_day[d]) for d in run):
-            if coverage_floor is not None and now_n >= coverage_floor:
+            if coverage_floor is not None and at_floor(run[-1], base_day):
+                played = played_since(base_day, run[-1])
                 findings.append(("warn",
                                  f"coverage fell from {base_n} to {now_n} games after "
                                  f"{base_day} and has stayed down for {len(run)} "
-                                 f"observation day(s) ({run[0]}..{run[-1]}), but {now_n} is "
-                                 f"at or above the reviewed floor of {coverage_floor} - "
+                                 f"observation day(s) ({run[0]}..{run[-1]}), but {now_n}"
+                                 f"{f' plus {played} game(s) played since' if played else ''}"
+                                 f" is at or above the reviewed floor of {coverage_floor} - "
                                  f"see .freshness-accepted, which records what this does "
                                  f"and does not still catch below {coverage_floor}."))
             else:
@@ -565,9 +661,15 @@ def run(strict: bool, today: date) -> int:
     any_data = False
 
     sched = scheduled_collectors(workflow_text())
-    accepted, floors = load_accepted()
+    accepted, floors, source_days = load_accepted()
     accepted_seen: set[str] = set()
     floors_seen: set[str] = set()
+
+    # A per-source date for a source that does not exist is a typo, and a silent one would
+    # leave the real source's day red while the file reads as if it had been reviewed.
+    for unknown in sorted(set(source_days) - {n for n, *_ in STORES}):
+        print(f"  ignoring accepted outage day(s) for unknown source {unknown!r} in "
+              f"{ACCEPTED_GAPS_FILE.name}", file=sys.stderr)
 
     # A floor for a source that does not exist is a typo, and a silent one would leave a
     # real source unprotected while the file reads as if it were reviewed.
@@ -602,7 +704,8 @@ def run(strict: bool, today: date) -> int:
                 print(f"{name}: not collected (not scheduled in any workflow yet)")
             continue
         any_data = True
-        a = analyse(rows, games, today, rolling, accepted, floors.get(name))
+        a = analyse(rows, games, today, rolling,
+                    accepted_days_for(name, accepted, source_days), floors.get(name))
         print(f"{name}: {len(rows)} rows across {len(a['days'])} day(s), "
               f"{a['days'][0]} .. {a['days'][-1]}, last {a['staleDays']} day(s) ago")
         for d in a["days"][-3:]:
@@ -1153,17 +1256,17 @@ def self_test() -> int:
         f.write_text("# a comment\n\n2026-09-09\n2026-09-10  # trailing reason\n"
                      "not-a-date\ncoverage ticketnetwork 16  # reviewed low mode\n"
                      "coverage 99\n")
-        got_days, got_floors = load_accepted(f)
+        got_days, got_floors, got_src = load_accepted(f)
     check("parser reads dates, skips comments and junk", sorted(got_days),
           ["2026-09-09", "2026-09-10"])
     check("parser reads coverage floors", got_floors, {"ticketnetwork": 16})
     check("a missing accepted file is empty, not an error",
-          load_accepted(pathlib.Path("/nonexistent/.freshness-accepted")), (set(), {}))
+          load_accepted(pathlib.Path("/nonexistent/.freshness-accepted")), (set(), {}, {}))
 
     # The committed file must actually parse - a typo here silently un-accepts a finding
     # and turns the gate red for a reason nobody can find. Reading the real file rather
     # than a fixture is the point: fixtures cannot catch a typo in the thing that ships.
-    real_days, real_floors = load_accepted()
+    real_days, real_floors, real_src = load_accepted()
     check("the committed accept file names only real sources",
           sorted(set(real_floors) - {n for n, *_ in STORES}), [])
 
@@ -1316,6 +1419,213 @@ def self_test() -> int:
     a = analyse(rows(["2026-09-08", "2026-09-10"], ids), gs, today)
     lvls = [l for l, m in a["findings"] if "missing inside the series" in m]
     check("single interior gap is a warning", lvls, ["warn"])
+
+    # ---- ops#351: per-source accepted days ----
+    # A bare date excuses every source; a date followed by source names excuses only those.
+    # The case that forced it: three collectors lost 09-23..27 to an understood cause, while
+    # TickPick was separately missing 09-23. Excusing TickPick's day under ops#351's reason
+    # would record a false cause.
+    with tempfile.TemporaryDirectory() as td:
+        f = pathlib.Path(td) / ".freshness-accepted"
+        f.write_text("2026-09-09\n"
+                     "2026-09-23 gametime ticketnetwork scorebig  # reason\n"
+                     "2026-09-24   gametime\n"
+                     "2026-09-25gametime\n")
+        pd, pf, ps = load_accepted(f)
+    check("a per-source date does not enter the global set", sorted(pd), ["2026-09-09"])
+    check("a per-source date is parsed per source", {k: sorted(v) for k, v in ps.items()},
+          {"gametime": ["2026-09-23", "2026-09-24"], "ticketnetwork": ["2026-09-23"],
+           "scorebig": ["2026-09-23"]})
+    check("the per-source form adds no floors", pf, {})
+    check("a named source gets global plus its own days",
+          sorted(accepted_days_for("gametime", pd, ps)),
+          ["2026-09-09", "2026-09-23", "2026-09-24"])
+    check("an UNNAMED source gets only the global days",
+          sorted(accepted_days_for("tickpick", pd, ps)), ["2026-09-09"])
+
+    # End to end through analyse(): the same missing day is excused for a named source and
+    # still reported for one the line does not name.
+    tp_days = ["2026-09-21", "2026-09-22", "2026-09-24"]
+    a_named = analyse(rows(tp_days, ids), gs, date(2026, 9, 24),
+                      accepted=accepted_days_for("gametime", pd, ps))
+    a_other = analyse(rows(tp_days, ids), gs, date(2026, 9, 24),
+                      accepted=accepted_days_for("tickpick", pd, ps))
+    check("a per-source accept excuses the named source",
+          any("missing inside the series" in m for _, m in a_named["findings"]), False)
+    check("...and leaves an unnamed source's same day reported",
+          any("missing inside the series" in m for _, m in a_other["findings"]), True)
+
+    # THE COMMITTED FILE, not a fixture: TickPick's 09-23 is excused by its OWN line with
+    # its own cause (the collector refused at "Re-resolve event ids" on the played,
+    # delisted 09-22 game), not by the three-source ops#351 lines or a bare date. Pinned
+    # three ways so that
+    # "tidying" these into bare dates is a failing test rather than a silent re-scoping:
+    # the global set is exactly the two reviewed days; TickPick's own days are exactly the
+    # one; and the three-source lines do not name TickPick.
+    check("the committed global (bare-date) accepts are exactly the reviewed ones",
+          sorted(real_days), ["2026-09-09", "2026-09-10"])
+    check("the committed file excuses TickPick's 2026-09-23 by a TickPick-only entry",
+          sorted(real_src.get("tickpick", set())), ["2026-09-23"])
+    check("...and the three-source outage lines stay separate from it",
+          {k: sorted(v) for k, v in real_src.items() if k != "tickpick"},
+          {k: [f"2026-09-{x}" for x in range(23, 28)]
+           for k in ("gametime", "ticketnetwork", "scorebig")})
+    check("the committed per-source days name only real sources",
+          sorted(set(real_src) - {n for n, *_ in STORES}), [])
+
+    # ---- ops#351: games PLAYED do not count against the floor ----
+    # The real shape: a rolling source at its floor loses games to the calendar, and the
+    # same window then reads below the floor. Two games dated on the last high day are
+    # played by the first low day; the low mode is 16 games minus those two, served as 14.
+    def played_fixture(n_low, played):
+        dd = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(3 + n_low)]
+        gl = [{"gameId": i, "date": (dd[2] if (played and i < 2)
+                                     else (date(2026, 11, 1) + timedelta(days=i)).isoformat()),
+               "opponent": {"abbrev": "XXX"}} for i in range(30)]
+        rr = (sum([rows([x], hi) for x in dd[:3]], [])
+              + sum([rows([x], list(range(2, 16))) for x in dd[3:]], []))
+        return analyse(rr, gl, date.fromisoformat(dd[-1]), rolling=True, coverage_floor=16)
+
+    for n_low in (2, 3, 5):
+        a = played_fixture(n_low, played=True)
+        check(f"a {n_low}-day low run at floor-minus-played is not fatal", fatals(a), [])
+        check(f"...and the floor is still reported as applied ({n_low}-day)",
+              a["acceptedFloor"], 16)
+        # CONTROL: the same two games absent but NOT played - genuinely dropped upcoming
+        # games. The credit is for the calendar only, so this stays a collapse below floor.
+        check(f"the same drop without played games is still fatal ({n_low}-day)",
+              bool(fatals(played_fixture(n_low, played=False))), True)
+
+    # REGRESSION (PR review of ops#351): the credit counts only played games that LEFT.
+    # Three 29-game days, then five 15-game days. One played game stays listed throughout,
+    # so it is already inside the 15; the other 14 served that day are upcoming, and 14
+    # upcoming games depart together. 15 < 16 with nothing played having left, so this is
+    # a collapse below the floor and must be fatal. The first version credited the listed
+    # played game a second time, reached 16, excused all 14 departures and went green.
+    def played_listed_fixture(played):
+        dd = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(8)]
+        gl = [{"gameId": i, "date": (dd[2] if (played and i == 0)
+                                     else (date(2026, 11, 1) + timedelta(days=i)).isoformat()),
+               "opponent": {"abbrev": "XXX"}} for i in range(30)]
+        rr = (sum([rows([x], list(range(29))) for x in dd[:3]], [])
+              + sum([rows([x], list(range(15))) for x in dd[3:]], []))
+        return analyse(rr, gl, date.fromisoformat(dd[-1]), rolling=True, coverage_floor=16)
+
+    a = played_listed_fixture(played=True)
+    check("a played game still listed earns no floor credit (14 upcoming leave, fatal)",
+          holes(a), 14)
+    check("...and the floor is not reported as applied", a["acceptedFloor"], None)
+    check("...matching the same rows with that game upcoming",
+          holes(played_listed_fixture(played=False)), 14)
+
+    # A played game attempted on the low day but failing to price has not been shown to
+    # leave the window. Crediting it would let 15 successful games meet a floor of 16 and
+    # excuse 14 upcoming games that departed together.
+    dd = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(8)]
+    gl = [{"gameId": i, "date": (dd[2] if i == 0
+                                 else (date(2026, 11, 1) + timedelta(days=i)).isoformat()),
+           "opponent": {"abbrev": "XXX"}} for i in range(30)]
+    rr = (sum([rows([x], list(range(30))) for x in dd[:3]], [])
+          + sum([rows([x], list(range(1, 16))) + rows([x], [0], ok=False)
+                 for x in dd[3:]], []))
+    a = analyse(rr, gl, date.fromisoformat(dd[-1]), rolling=True, coverage_floor=16)
+    check("a failed attempt of a played game earns no floor credit (14 upcoming leave)",
+          holes(a), 14)
+    check("...and failed-attempt credit does not apply the floor", a["acceptedFloor"], None)
+
+    # REGRESSION (second PR review of ops#351): the credit counts only games played IN THE
+    # INTERVAL. Three 29-game days, then five 11-game days, floor 16. Five of the 29 were
+    # played nine days before the first observation and stay listed on every high day; they
+    # then leave together with 13 upcoming games. Those five were never in the upcoming low
+    # mode, so 11 is a collapse below the floor and all 13 upcoming departures are holes.
+    # Without the `ref <=` bound the stale five were credited, 11 + 5 reached 16, and the
+    # whole run went green.
+    def stale_played_fixture(stale_day, floor):
+        dd = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(8)]
+        gl = [{"gameId": i, "date": (stale_day if i < 5
+                                     else (date(2026, 11, 1) + timedelta(days=i)).isoformat()),
+               "opponent": {"abbrev": "XXX"}} for i in range(30)]
+        rr = (sum([rows([x], list(range(29))) for x in dd[:3]], [])
+              + sum([rows([x], list(range(5, 16))) for x in dd[3:]], []))
+        return analyse(rr, gl, date.fromisoformat(dd[-1]), rolling=True,
+                       coverage_floor=floor)
+
+    a = stale_played_fixture("2026-08-23", 16)
+    check("games played BEFORE the reference day earn no floor credit (13 fatal)",
+          len(fatals(a)), 13)
+    check("...all of them per-game holes", holes(a), 13)
+    check("...and the floor is not reported as applied", a["acceptedFloor"], None)
+    check("...matching the same rows with no floor",
+          holes(stale_played_fixture("2026-08-23", None)), 13)
+    # CONTROL: the same five games played on the last high day DID leave to the calendar in
+    # the interval, 11 + 5 = 16 is at the floor, and the credit still applies.
+    check("the same five played INSIDE the interval still earn the credit",
+          fatals(stale_played_fixture("2026-09-03", 16)), [])
+
+    # And the coverage finding on day two names the credit rather than hiding it.
+    a = played_fixture(2, played=True)
+    check("the coverage warning names the played-game credit",
+          any("played since" in m for l, m in a["findings"] if l == "warn"), True)
+
+    # The real TicketNetwork series around the incident, as counts: 29, 29, 17 (the bloc
+    # leaves at the floor), 15 (two played), then held for 3 and 5 days.
+    def tn_real(extra):
+        dd = ["2026-09-20", "2026-09-21", "2026-09-22"] + [
+            (date(2026, 9, 28) + timedelta(days=i)).isoformat() for i in range(extra)]
+        gl = ([{"gameId": 0, "date": "2026-09-22", "opponent": {"abbrev": "XXX"}},
+               {"gameId": 1, "date": "2026-09-24", "opponent": {"abbrev": "XXX"}}]
+              + [{"gameId": i, "date": (date(2026, 10, 1) + timedelta(days=i)).isoformat(),
+                  "opponent": {"abbrev": "XXX"}} for i in range(2, 44)])
+        rr = (sum([rows([x], hi) for x in dd[:2]], []) + rows(dd[2:3], list(range(17)))
+              + sum([rows([x], list(range(2, 17))) for x in dd[3:]], []))
+        # The five outage days are accepted, as in the committed file, so that only the
+        # coverage and per-game checks are under test here.
+        out = {f"2026-09-{x}" for x in range(23, 28)}
+        return analyse(rr, gl, date.fromisoformat(dd[-1]), rolling=True, accepted=out,
+                       coverage_floor=16)
+
+    for extra in (1, 3, 5):
+        check(f"the real 29-29-17-15 series held {extra} day(s) is not fatal",
+              fatals(tn_real(extra)), [])
+
+    # ---- ops#351: a game entering a rolling window is not a hole ----
+    # ScoreBig serves a fixed-size list; two games played, two later ones enter at the far
+    # edge. Their days before first listing lay beyond each day's horizon.
+    ed = [(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(6)]
+    eg = games(44, "2026-11-01")
+    rr = (sum([rows([x], list(range(19))) for x in ed[:5]], [])
+          + rows(ed[5:], list(range(21))))
+    check("a game entering at the horizon edge is not a per-game hole",
+          holes(analyse(rr, eg, date.fromisoformat(ed[-1]), rolling=True)), 0)
+    check("...but on a NON-rolling source a late first sighting still is",
+          holes(analyse(rr, eg, date.fromisoformat(ed[-1]), rolling=False)), 2)
+    # CONTROL: a game INSIDE each day's horizon, unlisted until the last day, is a hole.
+    rr = (sum([rows([x], [g for g in range(19) if g != 10]) for x in ed[:5]], [])
+          + rows(ed[5:], list(range(19))))
+    check("a late first sighting INSIDE the horizon is still a hole",
+          holes(analyse(rr, eg, date.fromisoformat(ed[-1]), rolling=True)), 1)
+    # And a game served, then dropped from the far edge, is caught - its own departure
+    # pulls the horizon in behind it, which must not excuse it.
+    rr = (sum([rows([x], list(range(19))) for x in ed[:2]], [])
+          + sum([rows([x], list(range(18))) for x in ed[2:]], []))
+    check("a game dropped from the far edge is still a hole",
+          holes(analyse(rr, eg, date.fromisoformat(ed[-1]), rolling=True)), 1)
+
+    # REGRESSION (additional PR review of ops#351): a failed attempt before the first
+    # success is a hole even when the game's date lies beyond the successful horizon.
+    # Nineteen other games succeed on every day; the later game fails on the first three
+    # days, then succeeds on days four and five. Its failed rows prove it was in scope.
+    ad = ed[:5]
+    ag = games(20, "2026-11-01")
+    ar = (rows(ad, list(range(19))) + rows(ad[:3], [19], ok=False)
+          + rows(ad[3:], [19]))
+    a = analyse(ar, ag, date.fromisoformat(ad[-1]), rolling=True)
+    check("an attempted failed fetch beyond the horizon is a fatal three-day hole",
+          holes(a), 1)
+    check("...and it is fatal rather than only a warning",
+          len(fatals(a)), 1)
+    check("the same failed fetch remains fatal without rolling neutrality",
+          holes(analyse(ar, ag, date.fromisoformat(ad[-1]), rolling=False)), 1)
 
     for f in fails:
         print(f"  FAIL {f}", file=sys.stderr)

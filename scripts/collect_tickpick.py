@@ -50,8 +50,9 @@ import pathlib
 import re
 import sys
 import time
+import tempfile
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+from unittest.mock import patch
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import market_store as ms  # noqa: E402
@@ -119,8 +120,9 @@ def offer(ev: dict) -> dict:
 # ------------------------------------------------------------------- resolving
 
 # Schedule dates are venue-local; "today" must be too, or a game played tonight would
-# flip to carried-forward while the sitemap still lists it.
-PT = ZoneInfo("America/Los_Angeles")
+# flip to carried-forward while the sitemap still lists it. The definition now lives in
+# market_store (ms.venue_today / ms.is_played) so the other three collectors share it
+# (ops#351) instead of each writing their own.
 
 
 def load_previous_map() -> dict:
@@ -167,9 +169,9 @@ def resolve() -> int:
     schedule = json.loads(SCHEDULE.read_text())
     # Only upcoming games can be re-resolved from the live sitemap. Completed games
     # are carried forward from the previous resolution (see carry_forward).
-    today = datetime.now(PT).date().isoformat()
-    past = [g for g in schedule["games"] if g["date"] < today]
-    upcoming = {g["date"]: g for g in schedule["games"] if g["date"] >= today}
+    today = ms.venue_today()
+    past = [g for g in schedule["games"] if ms.is_played(g, today)]
+    upcoming = {g["date"]: g for g in schedule["games"] if not ms.is_played(g, today)}
     previous = load_previous_map()
     carried, carry_problems = carry_forward(past, previous.get("events") or [])
 
@@ -270,8 +272,9 @@ def collect(store: pathlib.Path, raw_dir: pathlib.Path | None, limit: int | None
     # A completed game has no market left to observe; its price series ends with its
     # last pre-game observation. Fetching its page daily would just accrue dead
     # requests (and they grow: one more per game played).
-    today = datetime.now(PT).date().isoformat()
-    events = [e for e in json.loads(EVENT_MAP.read_text())["events"] if e["date"] >= today]
+    today = ms.venue_today()
+    events = [e for e in json.loads(EVENT_MAP.read_text())["events"]
+              if not ms.is_played(e, today)]
     if limit:
         events = events[:limit]
 
@@ -411,6 +414,41 @@ def self_test() -> int:
     check("schedule date moved under carried entry fails loudly",
           any("SCHEDULE MOVED UNDER CARRY" in p for p in carry_forward(moved, prev_fx)[1]),
           True)
+
+    # Exercise the split at its callers too: the sitemap no longer needs to list a
+    # played game, and the collector must not request its old event page.
+    with tempfile.TemporaryDirectory() as td:
+        tmp = pathlib.Path(td)
+        schedule_path = tmp / "schedule.json"
+        map_path = tmp / "events.json"
+        store_path = tmp / "market.jsonl"
+        upcoming_game = {"gameId": 2, "date": "2026-10-01", "gameType": "regular",
+                         "opponent": {"abbrev": "FLA", "name": "Florida Panthers"}}
+        schedule_path.write_text(json.dumps({"games": [dict(past[0], gameType="preseason"),
+                                                        upcoming_game]}))
+        map_path.write_text(json.dumps({"events": prev_fx, "source": SITEMAP,
+                                        "generatedAt": "2026-09-01T00:00:00Z"}))
+        upcoming_url = ("https://example.test/buy-san-jose-sharks-vs-florida-panthers-"
+                        "tickets-sap-center-10-1-26-7pm/8135359/")
+        sitemap = f"<urlset><loc>{upcoming_url}</loc></urlset>"
+        with patch.object(ms, "venue_today", return_value="2026-09-27"), \
+             patch.object(ms, "get", return_value=(sitemap, None)), \
+             patch.dict(globals(), {"SCHEDULE": schedule_path, "EVENT_MAP": map_path}):
+            check("resolve carries played and resolves upcoming", resolve(), 0)
+            resolved = json.loads(map_path.read_text())["events"]
+            check("resolve has one entry for each date",
+                  [e["date"] for e in resolved], ["2026-09-22", "2026-10-01"])
+            check("resolve keeps the played event id", resolved[0]["eventId"], "8075165")
+        with patch.object(ms, "venue_today", return_value="2026-09-27"), \
+             patch.object(ms, "get", return_value=(html, None)) as fetch, \
+             patch.dict(globals(), {"EVENT_MAP": map_path}), \
+             patch.object(time, "sleep"):
+            check("collect succeeds with one upcoming event", collect(store_path, None, None), 0)
+            check("collect requests only the upcoming event", fetch.call_count, 1)
+            check("collect uses the upcoming URL",
+                  fetch.call_args.args[0] if fetch.call_args else None, upcoming_url)
+        saved = ms.read_store(store_path)
+        check("collect writes only the upcoming game", [r["gameId"] for r in saved], [2])
 
     # Upsert semantics. Covered more thoroughly in market_store.py's own self-test;
     # kept here as a smoke check that this collector is wired to the shared store.

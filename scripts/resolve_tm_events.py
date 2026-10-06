@@ -37,6 +37,11 @@ Key 3 is what makes this a cross-check rather than an inference. It matched 42/4
 zero mismatches on capture day; a future rename or reschedule that breaks the date join
 would have to break the legacy id in the same direction to slip through.
 
+NON-NHL EXCEPTION. SAP Center is a shared venue: Discovery also lists PWHL games and
+concerts on days with no Sharks game. Those benign orphans warn-and-skip (2026-09-29:
+PWHL San Jose's Dec 5 home opener tripped the orphan guard two days running). Anything
+that could be a mislabeled Sharks game still fails closed.
+
 COMPLETED GAMES. Discovery drops events from search once they are played (measured
 2026-09-23: the Sep 22 VGK preseason game vanished from results the morning after,
 failing the run on "NO TM EVENT"). A completed game can no longer be re-validated
@@ -210,6 +215,30 @@ def home_events(events: list[dict]) -> tuple[list[dict], list[str]]:
     return kept, problems
 
 
+# Venue-sharing leagues and concerts are listed by Discovery at SAP Center alongside
+# Sharks games (2026-09-29: PWHL San Jose's Dec 5 home opener vs Minnesota Frost
+# failed the daily refresh two days running). Those are benign orphans, not a corrupt
+# id map - but an orphan that could be a mislabeled Sharks game stays fail-closed.
+NON_NHL_NAME_MARKERS = ("pwhl",)
+
+
+def clearly_not_nhl(event: dict) -> bool:
+    """True only on positive evidence the event is not an NHL/Sharks game.
+
+    Conservative by design: a hockey event that is NOT positively identified as
+    another league still fails closed. A mislabeled Sharks game must never be
+    silently skipped.
+    """
+    name = (event.get("name") or "").lower()
+    if any(m in name for m in NON_NHL_NAME_MARKERS):
+        return True
+    for c in event.get("classifications") or []:
+        seg = ((c.get("segment") or {}).get("name") or "").lower()
+        if seg and seg != "sports":
+            return True
+    return False
+
+
 def join(events: list[dict], schedule: dict) -> tuple[list[dict], list[str]]:
     games = schedule["games"]
     by_date: dict[str, list[dict]] = {}
@@ -275,8 +304,14 @@ def join(events: list[dict], schedule: dict) -> tuple[list[dict], list[str]]:
 
     for date, cands in by_date.items():
         if date not in matched and date is not None:
+            e = cands[0]
+            if clearly_not_nhl(e):
+                # Benign venue sharing (2026-09-29: PWHL at SAP Center). Warn loudly,
+                # skip, keep going - a benign orphan is not a corrupt id map.
+                print(f"  skipping non-NHL venue event: {date} ({e.get('name')!r})")
+                continue
             problems.append(
-                f"ORPHAN TM EVENT: {date} ({cands[0].get('name')!r}) matches no scheduled home game"
+                f"ORPHAN TM EVENT: {date} ({e.get('name')!r}) matches no scheduled home game"
             )
 
     return out, problems
@@ -485,6 +520,26 @@ def self_test() -> int:
 
     check("orphan TM event is caught",
           any("ORPHAN TM EVENT" in p for p in join(kept, {"games": [sched["games"][0]]})[1]), True)
+
+    # Non-NHL venue events warn-and-skip instead of failing (2026-09-29: PWHL).
+    pwhl = {"name": "PWHL San Jose vs. Minnesota Frost",
+            "dates": {"start": {"localDate": "2026-12-05"}},
+            "classifications": [{"segment": {"name": "Sports"}}]}
+    check("PWHL orphan is skipped, not a problem",
+          join(kept + [pwhl], sched)[1], [])
+
+    concert = {"name": "Some Band: Live in Concert",
+               "dates": {"start": {"localDate": "2026-11-01"}},
+               "classifications": [{"segment": {"name": "Music"}}]}
+    check("concert orphan is skipped, not a problem",
+          join(kept + [concert], sched)[1], [])
+
+    # ...while an unlabeled hockey orphan still fails closed.
+    mystery = {"name": "San Jose Sharks vs. Mystery Opponent",
+               "dates": {"start": {"localDate": "2026-11-02"}},
+               "classifications": [{"segment": {"name": "Sports"}}]}
+    check("unlabeled hockey orphan still fails closed",
+          any("ORPHAN TM EVENT" in p for p in join(kept + [mystery], sched)[1]), True)
 
     dup = kept + [kept[1]]
     check("ambiguous date is caught",

@@ -1,9 +1,9 @@
 {
   "_comment": "Ticketmaster Discovery event ids for each home game, resolved by scripts/resolve_tm_events.py. PUBLIC event metadata only - no prices, no seats, no account data. Discovery publishes no priceRanges for this venue; see ops#5.",
-  "generatedAt": "2026-09-25T17:57:12Z",
+  "generatedAt": "2026-10-04T17:34:40Z",
   "venueId": "KovZpZAJelvA",
   "priceRangeProbe": {
-    "checked": 42,
+    "checked": 53,
     "withPriceRanges": 0
   },
   "events": [

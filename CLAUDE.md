@@ -896,6 +896,14 @@ successes cannot be audited.
 - **Git never forgets.** Anything committed is permanent. Do not commit raw scrape
   snapshots and plan to prune them - deleting a file does not remove its blobs. Raw data
   goes to Actions artifacts; only small aggregates get committed.
+- **Gametime, TicketNetwork and ScoreBig stop collecting after the last scheduled home
+  game, playoffs included.** Their season-over exit fires once every game in
+  `data/schedule.json` is played, and that file holds no playoff games (none are
+  scheduled; measured 2026-10-03: 42 regular, 2 preseason). So from the day after the last
+  regular-season home game those collectors print `season over` and exit 0, even if a
+  playoff run is selling. That is the documented behaviour, not an outage - and do not
+  "fix" it by adding playoff games without deciding to collect them (ops#371). The
+  reasoning is in a comment at the exit in each collector.
 
 ## Commands
 
@@ -905,7 +913,7 @@ npm, so a collector missing from `package.json` is not breakage. Verified by run
 of these on 2026-09-15, after the ops#165 rewrite.
 
 ```bash
-npm run build          # privacy + read-only checks, then copy the static site into dist/
+npm run build          # scripts/build.py: fresh dist/ from sources, THEN privacy + read-only checks
 npm run check:privacy  # the three privacy passes alone
 npm run check:readonly # assert the site ships no input path - see check_readonly.py
 npm test               # the self-test suite (offline; does NOT run the privacy passes)
@@ -934,8 +942,12 @@ node scripts/probe_browser.mjs --label local    # source reachability (needs loc
 
 **`npm run build` is a smaller gate than it used to be, and rule 5 leans on it.** Before
 the ops#165 rewrite it chained the band, tier-market and freshness checks behind a
-type-check. It no longer does: it runs the privacy passes, the read-only check, and copies
-files. Nothing was deleted - every one of those checks still exists and CI still runs the
+type-check. It no longer does: it assembles a fresh `dist/` and then runs the privacy
+passes and the read-only check over it, removing `dist/` if either fails. That order is
+ops#374 - the checks used to run first, so the literal pass scanned the *previous* build's
+`dist/` and failed outright on a fresh worktree. `npm run check:privacy` on its own still
+has the old dependency: with `.private-patterns` present it needs a built `dist/`.
+Nothing was deleted - every one of those checks still exists and CI still runs the
 freshness and tier-market ones directly - but a clean local `npm run build` now proves
 less than the sentence in rule 5 implies. Run the freshness check yourself before a push
 that touches collected data. Whether they belong back in the build chain is an open
@@ -968,9 +980,14 @@ than appends; deterministic sort so a daily commit diffs cleanly; and a read tha
 size cap is an ERROR, never data - that last rule exists because this project has produced
 the same silent-truncation bug three times.
 
-`.freshness-accepted` records reviewed findings in two line forms - an outage day as a
-bare ISO date, and a flapping rolling source's accepted low coverage mode as `coverage
-<source> <n>` - with the reason in a `#` comment. It is **committed**, unlike
+`.freshness-accepted` records reviewed findings in three line forms - an outage day for
+every source as a bare ISO date, an outage day for named sources only as `<date> <source>
+...`, and a flapping rolling source's accepted low coverage mode as `coverage <source>
+<n>` - with the reason in a `#` comment. **Use the per-source form unless the outage took
+every source**: a bare date also excuses any source that missed the same day for another,
+unexplained reason. ops#351 is the example: three sources' 09-23..27 share one cause, and
+TickPick's 09-23 has a different one (its own resolver, fixed in `f3e0aae`), so it has its
+own `2026-09-23 tickpick` line and reason. It is **committed**, unlike
 `.private-patterns`, because the run that needs it is the collector's own `--strict` run
 on the runner, which has no local state.
 
