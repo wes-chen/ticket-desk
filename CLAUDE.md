@@ -87,12 +87,21 @@ Never write into this repo anything that ties **our seats or our account** to a 
   we hold". Added 2026-09-16, found in review of ops#167.
 - Season invoice totals, or any amount **we** paid - but read the published-face carve-out
   below before concluding a face figure is one of these
-- Exchange credit amounts per tier
 - Listing prices, payouts, or offers **attributable to our listings** - which games we
   have listed, at what price, with what net
 - Account, listing, or order identifiers
 
 These live in the **private ops repo** and in the chat interface. Nowhere else.
+
+Per-tier exchange credits are outside that forbidden list. Wesley's reason, recorded on
+2026-10-03 in ops#387:
+
+> why are we still on this 387? the seat info is pseudo anonymised information.
+
+The more specific explanation that every holder in a band receives the same credit, so
+the credit reveals no more than the band, is **unverified**. The committed `app.js`
+`TIER_CREDIT` table has one value per tier, but does not establish what other holders
+receive; no published team source was verified for that claim.
 
 **Not in the browser either, since ops#165.** This used to read "browser `localStorage`,
 entered through the app's setup screen". Both are gone: the site is display-only and Rumi
