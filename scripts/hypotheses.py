@@ -382,14 +382,21 @@ def self_test() -> int:
     import contextlib
     import io
     from unittest import mock
-    report = io.StringIO()
-    with mock.patch.dict(run.__globals__, {"count_outcomes": lambda: 8}), \
-            contextlib.redirect_stdout(report):
-        run(True, today)
-    check("report uses counted outcomes", "recorded sold-game outcomes in "
-          "data/outcomes.json: 8" in report.getvalue(), True)
-    check("counted outcomes reach readiness", "[READY  ] H6-sell-through" in
-          report.getvalue(), True)
+    for count, mark, shortfall in [(2, "waiting", "6 more recorded outcome(s)"),
+                                   (8, "READY  ", None)]:
+        report = io.StringIO()
+        with mock.patch.dict(run.__globals__, {"count_outcomes": lambda: count}), \
+                contextlib.redirect_stdout(report):
+            run(True, today)
+        output = report.getvalue()
+        check(f"report uses counted outcomes at {count}",
+              f"recorded sold-game outcomes in data/outcomes.json: {count}" in output,
+              True)
+        h6_line = next(line for line in output.splitlines() if "H6-sell-through" in line)
+        check(f"counted outcomes reach readiness at {count}",
+              f"[{mark}] H6-sell-through" in h6_line, True)
+        if shortfall:
+            check("outcome shortfall reaches report", shortfall in h6_line, True)
 
     # Readiness arithmetic.
     cs = next(e for e in REGISTER if e["id"] == "H1-source-agreement")
