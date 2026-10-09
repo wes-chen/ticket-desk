@@ -1,5 +1,5 @@
 {
-  "_comment": "PUBLIC model constants only. Nothing here identifies a seat, a price paid, or an account. Anything personal - seat location, season invoice, tier credit amounts, our own list prices - lives in the private ops repo (ops:data/profile/snapshots.jsonl) and in the chat interface, and is never committed here or served by the site. See CLAUDE.md rule 1.",
+  "_comment": "PUBLIC model constants only. Nothing here identifies a seat, a price paid, or an account. Anything personal - seat location, season invoice, our account credit balance, our own list prices - lives in the private ops repo (ops:data/profile/snapshots.jsonl) and in the chat interface, and is never committed here or served by the site. Per-tier credit amounts are not personal under rule 1 since ops#387; their record is that snapshots store and the dashboard's display copy is app.js TIER_CREDIT. See CLAUDE.md rule 1.",
   "resale": {
     "primaryPlatform": "ticketmaster",
     "platforms": {

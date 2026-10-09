@@ -87,12 +87,40 @@ Never write into this repo anything that ties **our seats or our account** to a 
   we hold". Added 2026-09-16, found in review of ops#167.
 - Season invoice totals, or any amount **we** paid - but read the published-face carve-out
   below before concluding a face figure is one of these
-- Exchange credit amounts per tier
 - Listing prices, payouts, or offers **attributable to our listings** - which games we
   have listed, at what price, with what net
 - Account, listing, or order identifiers
 
 These live in the **private ops repo** and in the chat interface. Nowhere else.
+
+Per-tier exchange credits are outside that forbidden list. Wesley's reason, said in chat
+on 2026-10-03 and recorded in the ops#387 closing comment (dated 2026-10-04):
+
+> why are we still on this 387? the seat info is pseudo anonymised information.
+
+The more specific explanation that every holder in a band receives the same credit, so
+the credit reveals no more than the band, is **unverified**. The committed `app.js`
+`TIER_CREDIT` table has one value per tier, but does not establish what other holders
+receive; no published team source was verified for that claim.
+
+This permits the `app.js` `TIER_CREDIT` table **and that table's value shown against a
+named game** - the dashboard's `nets $X vs $Y credit` line, next to an `exchanged` status
+in `data/outcomes.json`. README records as measured that the credit is a pure tier
+constant, so a game's credit follows from its public tier and the table; showing it adds
+nothing. Do not strip that banner or file an incident over it. What stays private is a
+credit figure that is **not** the table value:
+
+- our account's credit balance, or any amount actually credited to us that differs from
+  the tier table;
+- any total or aggregate over our exchanges - credit received to date, a season credit
+  total. It multiplies in how many seats we hold and names which games we exchanged, so
+  the seat-count rule above and the aggregate rule below already forbid it; this line
+  names it so nobody reads the table allowance as covering it.
+
+The structural check in `scripts/check_privacy.py` still rejects
+`creditPerSeat` and `exchangeCreditPerSeat` keys in committed JSON, even when a value
+would be tier-only. Keep the permitted table as a named code constant, not under those
+JSON keys; changing the protected checker requires a separate decision and review.
 
 **Not in the browser either, since ops#165.** This used to read "browser `localStorage`,
 entered through the app's setup screen". Both are gone: the site is display-only and Rumi
@@ -116,7 +144,7 @@ leaking, and strip the market context out of the dashboard - deleting an ops#165
 acceptance criterion to satisfy a rule that was mis-stated.
 
 What would be the linkage is **our** number against a named game: a list price, net,
-payout, per-seat credit or invoice figure. `scripts/check_privacy.py` draws exactly that
+payout, invoice figure, or a credit amount that is not the published tier-table value. `scripts/check_privacy.py` draws exactly that
 line in `OWN_PRICE_FIELDS`, and deliberately excludes `low`, `high` and `price` - it says
 why in a comment worth reading before touching this rule.
 
@@ -220,7 +248,10 @@ it is private, whatever field it lives in. If no, it is a market observation.
 season face *is* connectable to our seats - it identifies our band - so a reader applying
 this test in isolation resolves it "private", which is the contradiction the carve-out
 above exists to end. The carve-out wins, on the reproducibility check, and it is the
-**only** exception: nothing else on the forbidden list gets one by analogy.
+**only** exception for an item on the forbidden list: nothing else on that list gets
+one by analogy. The tier credit table described above is outside the list, and so is
+its value shown on a named game; neither leans on this face-price exception, and neither
+extends to a credit figure that differs from the table or totals our exchanges.
 
 Corollary for fixtures and examples: **plausible means real.** Use absurd values
 (`11111111`), never a realistic-looking one. That is precisely how ops#29 happened.
