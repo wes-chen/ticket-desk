@@ -62,17 +62,38 @@ def verify_chart_hash(image_hash, entries=ASYMMETRIC_SECTION_PAIRS):
 
 
 def self_test():
+    failures = []
+
+    def expect_value_error(label, action):
+        try:
+            action()
+        except ValueError:
+            return
+        except Exception as e:
+            failures.append(f"{label}: raised {type(e).__name__}, expected ValueError")
+        else:
+            failures.append(f"{label}: accepted invalid evidence")
+
     pairs = [("104", "112"), ("106", "110"), ("101", "115")]
     assert remaining_pairs(pairs) == [("101", "115")]
-    for field in ("ray_profile", "angle_range", "chart_hash"):
+    for field in ("pair", "ray_profile", "angle_range", "chart_hash"):
         broken = {"test": {**ASYMMETRIC_SECTION_PAIRS["rink_corner_104_112"]}}
         del broken["test"][field]
-        try:
-            exempt_pairs(broken)
-        except ValueError as e:
-            assert field in str(e)
-        else:
-            raise AssertionError(f"missing {field} was accepted")
+        expect_value_error(f"missing {field}", lambda: exempt_pairs(broken))
+    for pair in ((), ("104",), ("104", "112", "110"), ("104", "104")):
+        broken = {"test": {**ASYMMETRIC_SECTION_PAIRS["rink_corner_104_112"], "pair": pair}}
+        expect_value_error(f"invalid pair {pair}", lambda: exempt_pairs(broken))
+    for field, values in (
+        ("ray_profile", (123,)),
+        ("angle_range", ((), (202,), (218, 202), (-1, 218), (202, 361))),
+        ("chart_hash", ("0" * 63, "g" * 64)),
+    ):
+        for value in values:
+            broken = {"test": {**ASYMMETRIC_SECTION_PAIRS["rink_corner_104_112"], field: value}}
+            expect_value_error(f"invalid {field}: {value}", lambda: exempt_pairs(broken))
+    duplicate = {"first": ASYMMETRIC_SECTION_PAIRS["rink_corner_104_112"],
+                 "second": ASYMMETRIC_SECTION_PAIRS["rink_corner_104_112"]}
+    expect_value_error("duplicate pair", lambda: exempt_pairs(duplicate))
     try:
         remaining_pairs([("101", "115")])
     except ValueError:
@@ -86,8 +107,10 @@ def self_test():
         assert "chart hash" in str(e)
     else:
         raise AssertionError("changed chart was accepted")
-    print("self-test: passed")
-    return 0
+    for failure in failures:
+        print(f"  FAIL {failure}")
+    print(f"self-test: {'FAILED' if failures else 'passed'}")
+    return 1 if failures else 0
 
 
 if __name__ == "__main__":
