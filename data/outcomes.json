@@ -26,6 +26,7 @@
     null,
     null,
     null,
+    null,
     null
    ]
   },
@@ -55,6 +56,7 @@
     null,
     null,
     null,
+    null,
     null
    ]
   },
@@ -73,12 +75,12 @@
    "status": "attending",
    "tier": "A",
    "trend": [
-    250,
     240,
     240,
     226,
     226,
     226,
+    null,
     null,
     null,
     null,
@@ -115,6 +117,7 @@
     null,
     null,
     null,
+    null,
     null
    ]
   },
@@ -123,17 +126,16 @@
    "date": "2026-10-10",
    "gameId": 2026020072,
    "logo": "https://assets.nhle.com/logos/nhl/svg/EDM_light.svg",
-   "marketCount": 10,
-   "marketMax": 555,
-   "marketMedian": 180,
-   "marketMin": 150,
+   "marketCount": 14,
+   "marketMax": 500,
+   "marketMedian": 193,
+   "marketMin": 140,
    "marketWithheld": false,
    "opponent": "Edmonton Oilers",
    "puckTime": "2026-10-10T20:00:00Z",
    "status": "attending",
    "tier": "B",
    "trend": [
-    161,
     155,
     155,
     161,
@@ -146,7 +148,8 @@
     190,
     190,
     178,
-    180
+    180,
+    193
    ]
   },
   {
@@ -170,13 +173,13 @@
     124,
     124,
     124,
-    124,
     122,
     122,
     195,
     122,
     122,
     122,
+    124,
     124
    ]
   },
@@ -203,11 +206,11 @@
     86,
     86,
     86,
-    86,
     164,
     84,
     84,
     85,
+    86,
     86
    ]
   },
@@ -226,7 +229,6 @@
    "status": "attending",
    "tier": "D",
    "trend": [
-    91,
     94,
     94,
     94,
@@ -239,6 +241,7 @@
     91,
     91,
     94,
+    91,
     91
    ]
   },
@@ -249,7 +252,7 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/OTT_light.svg",
    "marketCount": 7,
    "marketMax": 220,
-   "marketMedian": 160,
+   "marketMedian": 150,
    "marketMin": 131,
    "marketWithheld": false,
    "opponent": "Ottawa Senators",
@@ -257,7 +260,6 @@
    "status": "undecided",
    "tier": "B",
    "trend": [
-    133,
     134,
     134,
     133,
@@ -270,7 +272,8 @@
     143,
     143,
     160,
-    160
+    160,
+    150
    ]
   },
   {
@@ -294,12 +297,12 @@
     99,
     99,
     99,
-    99,
     104,
     104,
     132,
     99,
     99,
+    107,
     107,
     107
    ]
@@ -325,10 +328,10 @@
     110,
     110,
     110,
-    110,
     115,
     115,
     129,
+    115,
     115,
     115,
     115,
@@ -354,7 +357,6 @@
     121,
     121,
     121,
-    121,
     124,
     126,
     126,
@@ -363,6 +365,7 @@
     126,
     126,
     126,
+    130,
     130
    ]
   },
@@ -383,7 +386,6 @@
    "trend": [
     130,
     130,
-    130,
     126,
     126,
     126,
@@ -394,6 +396,7 @@
     135,
     135,
     135,
+    128,
     128
    ]
   },
@@ -420,11 +423,11 @@
     96,
     96,
     96,
-    96,
     128,
     96,
     96,
     96,
+    98,
     98
    ]
   },
@@ -443,7 +446,6 @@
    "status": "undecided",
    "tier": "A",
    "trend": [
-    142,
     139,
     139,
     139,
@@ -456,6 +458,7 @@
     149,
     149,
     149,
+    150,
     150
    ]
   },
@@ -479,7 +482,6 @@
     110,
     110,
     110,
-    110,
     115,
     115,
     115,
@@ -487,6 +489,7 @@
     115,
     115,
     115,
+    120,
     120
    ]
   },
@@ -507,7 +510,6 @@
    "trend": [
     180,
     180,
-    180,
     188,
     188,
     188,
@@ -518,6 +520,7 @@
     195,
     195,
     195,
+    196,
     196
    ]
   },
@@ -544,8 +547,8 @@
     99,
     99,
     99,
-    99,
     107,
+    99,
     99,
     99,
     99,
@@ -573,10 +576,10 @@
     148,
     148,
     148,
-    148,
     150,
     150,
     null,
+    154,
     154,
     154,
     154,
@@ -604,10 +607,10 @@
     94,
     94,
     94,
-    94,
     100,
     100,
     155,
+    100,
     100,
     100,
     100,
@@ -631,7 +634,6 @@
    "trend": [
     183,
     183,
-    183,
     178,
     178,
     176,
@@ -639,6 +641,7 @@
     176,
     183,
     null,
+    183,
     183,
     183,
     183,
@@ -664,12 +667,12 @@
     158,
     158,
     158,
-    158,
     155,
     155,
     155,
     155,
     null,
+    155,
     155,
     155,
     155,
@@ -683,15 +686,14 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/TOR_light.svg",
    "marketCount": 4,
    "marketMax": 200,
-   "marketMedian": 183,
-   "marketMin": 173,
+   "marketMedian": 186,
+   "marketMin": 178,
    "marketWithheld": false,
    "opponent": "Toronto Maple Leafs",
    "puckTime": "2027-01-03T00:00:00Z",
    "status": "undecided",
    "tier": "A+",
    "trend": [
-    179,
     178,
     178,
     178,
@@ -704,7 +706,8 @@
     194,
     194,
     194,
-    183
+    183,
+    186
    ]
   },
   {
@@ -712,9 +715,9 @@
    "date": "2027-01-04",
    "gameId": 2026020680,
    "logo": "https://assets.nhle.com/logos/nhl/svg/NJD_light.svg",
-   "marketCount": 6,
+   "marketCount": 5,
    "marketMax": 190,
-   "marketMedian": 103,
+   "marketMedian": 104,
    "marketMin": 99,
    "marketWithheld": false,
    "opponent": "New Jersey Devils",
@@ -730,12 +733,12 @@
     94,
     94,
     94,
-    94,
     190,
     104,
     104,
     104,
-    103
+    103,
+    104
    ]
   },
   {
@@ -761,8 +764,8 @@
     122,
     122,
     122,
-    122,
     null,
+    122,
     122,
     122,
     122,
@@ -792,11 +795,11 @@
     175,
     175,
     175,
-    175,
     null,
     204,
     204,
     209,
+    211,
     211
    ]
   },
@@ -823,8 +826,8 @@
     170,
     170,
     170,
-    170,
     null,
+    170,
     170,
     170,
     170,
@@ -854,8 +857,8 @@
     136,
     136,
     136,
-    136,
     null,
+    136,
     136,
     136,
     136,
@@ -881,12 +884,12 @@
     133,
     133,
     133,
-    133,
     132,
     132,
     156,
     156,
     null,
+    156,
     156,
     156,
     156,
@@ -900,15 +903,14 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/NSH_light.svg",
    "marketCount": 5,
    "marketMax": 120,
-   "marketMedian": 103,
-   "marketMin": 98,
+   "marketMedian": 108,
+   "marketMin": 102,
    "marketWithheld": false,
    "opponent": "Nashville Predators",
    "puckTime": "2027-01-29T03:00:00Z",
    "status": "undecided",
    "tier": "C",
    "trend": [
-    118,
     106,
     106,
     106,
@@ -921,7 +923,8 @@
     102,
     102,
     102,
-    103
+    103,
+    108
    ]
   },
   {
@@ -931,15 +934,14 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/CHI_light.svg",
    "marketCount": 2,
    "marketMax": 175,
-   "marketMedian": 153,
-   "marketMin": 131,
+   "marketMedian": 157,
+   "marketMin": 139,
    "marketWithheld": false,
    "opponent": "Chicago Blackhawks",
    "puckTime": "2027-01-30T21:00:00Z",
    "status": "undecided",
    "tier": "A",
    "trend": [
-    158,
     158,
     158,
     133,
@@ -952,7 +954,8 @@
     153,
     153,
     153,
-    153
+    153,
+    157
    ]
   },
   {
@@ -974,12 +977,12 @@
     120,
     120,
     120,
-    120,
     117,
     117,
     117,
     117,
     null,
+    117,
     117,
     117,
     117,
@@ -1009,8 +1012,8 @@
     172,
     172,
     172,
-    172,
     null,
+    172,
     172,
     172,
     172,
@@ -1040,8 +1043,8 @@
     124,
     124,
     124,
-    124,
     null,
+    124,
     124,
     124,
     124,
@@ -1055,15 +1058,14 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/MTL_light.svg",
    "marketCount": 4,
    "marketMax": 130,
-   "marketMedian": 105,
-   "marketMin": 101,
+   "marketMedian": 112,
+   "marketMin": 108,
    "marketWithheld": false,
    "opponent": "Montr\u00e9al Canadiens",
    "puckTime": "2027-03-02T03:00:00Z",
    "status": "undecided",
    "tier": "C",
    "trend": [
-    118,
     118,
     118,
     95,
@@ -1076,7 +1078,8 @@
     105,
     105,
     105,
-    105
+    105,
+    112
    ]
   },
   {
@@ -1102,8 +1105,8 @@
     92,
     92,
     92,
-    92,
     null,
+    92,
     92,
     92,
     92,
@@ -1117,15 +1120,14 @@
    "logo": "https://assets.nhle.com/logos/nhl/svg/COL_light.svg",
    "marketCount": 4,
    "marketMax": 145,
-   "marketMedian": 120,
-   "marketMin": 116,
+   "marketMedian": 132,
+   "marketMin": 126,
    "marketWithheld": false,
    "opponent": "Colorado Avalanche",
    "puckTime": "2027-03-06T03:00:00Z",
    "status": "undecided",
    "tier": "B",
    "trend": [
-    140,
     140,
     140,
     138,
@@ -1138,7 +1140,8 @@
     120,
     120,
     120,
-    120
+    120,
+    132
    ]
   },
   {
@@ -1164,8 +1167,8 @@
     151,
     151,
     151,
-    151,
     null,
+    151,
     151,
     151,
     151,
@@ -1193,10 +1196,10 @@
     154,
     154,
     154,
-    154,
     162,
     162,
     null,
+    206,
     206,
     206,
     206,
@@ -1222,12 +1225,12 @@
     118,
     118,
     118,
-    118,
     122,
     122,
     122,
     122,
     null,
+    122,
     122,
     122,
     122,
@@ -1257,8 +1260,8 @@
     120,
     120,
     120,
-    120,
     null,
+    120,
     120,
     120,
     120,
@@ -1288,8 +1291,8 @@
     115,
     115,
     115,
-    115,
     null,
+    115,
     115,
     115,
     115,
@@ -1319,8 +1322,8 @@
     124,
     124,
     124,
-    124,
     null,
+    124,
     124,
     124,
     124,
@@ -1350,8 +1353,8 @@
     174,
     174,
     174,
-    174,
     null,
+    174,
     174,
     174,
     174,
@@ -1359,6 +1362,6 @@
    ]
   }
  ],
- "generated_at": "2026-10-08T15:04:37.354267+00:00",
+ "generated_at": "2026-10-09T15:01:44.905415+00:00",
  "season": "2026-27"
 }
