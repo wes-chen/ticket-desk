@@ -8,8 +8,8 @@ tier table. Sampling pixels removes the eye from the loop. What it does NOT remo
 the possibility of sampling the wrong pixels, so the tool scores itself.
 
 THE SELF-GATE, which is the point of this file. The arena is mirror-symmetric about the
-rink's LONG axis, so sections that mirror each other must carry identical band stacks.
-The tool computes that agreement and writes nothing unless it clears --min-agreement.
+rink's LONG axis except at the two measured lower-corner pairs, 104/112 and 106/110.
+The tool scores all other pairs and writes nothing unless it clears --min-agreement.
 A 75%-correct section map committed as fact is worse than no map: it would silently
 misprice comps forever, and this repo has shipped enough confident wrong answers.
 
@@ -196,16 +196,20 @@ no JPEG decoder on this machine other than Chromium.
 """
 
 import argparse
+import hashlib
 import json
 import math
 import pathlib
 import sys
 from collections import Counter, deque
 
+from price_band_asymmetry import remaining_pairs, verify_chart_hash
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent / "lib"))
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "config" / "price_bands.json"
+MIN_AGREEMENT = 0.95
 
 # Clockwise-adjacent section order per level. Direction is irrelevant to the checks;
 # adjacency is what matters. Sourced from config/price_bands.json rings.
@@ -343,6 +347,20 @@ def anchor(ring, order, anchor_section, at_deg=90.0):
     k = min(range(len(ring)), key=lambda i: abs(((ring[i]["a"] - at_deg + 180) % 360) - 180))
     n = len(seq)
     return [(seq[(j - k) % n], ring[j]) for j in range(len(ring))]
+
+
+def label_ring(ring, order, anchor_section):
+    """Config lists sections counter-clockwise on screen; atan2 sorts clockwise."""
+    return anchor(ring, list(reversed(order)), anchor_section)
+
+
+def extract_ring(im, ring, order, axis, ring_name, cx, cy, a, b,
+                 r_lo, r_hi, palette, **kw):
+    """Label in the chart's direction and score with the measured exceptions."""
+    ex = sector_bands(im, label_ring(ring, order, axis[0]), cx, cy, a, b,
+                      r_lo, r_hi, palette, **kw)
+    _, ok, n, bad = score_mirrors(ex, order, axis, ring_name)
+    return ex, ok, n, bad
 
 
 def sector_bands(im, pairs, cx, cy, a, b, r_lo, r_hi, palette, margin=0.30,
@@ -572,6 +590,13 @@ def agreement(extracted, pairs):
     return (ok / len(pairs) if pairs else 0.0), ok, len(pairs), bad
 
 
+def score_mirrors(extracted, order, axis, ring_name):
+    pairs = mirror_pairs(order, *axis)
+    if ring_name == "lower":
+        pairs = remaining_pairs(pairs)
+    return agreement(extracted, pairs)
+
+
 def self_test() -> int:
     fails = []
 
@@ -730,6 +755,20 @@ def self_test() -> int:
     got = dict(anchor(ring, ["A", "D", "C", "B"], "A"))
     check("a reversed ring anchors by name too", got["A"]["a"], 90)
     check("reversed ring walks the other way", got["D"]["a"], 180)
+    got = dict(label_ring(ring, ["A", "B", "C", "D"], "A"))
+    check("chart order labels second section on screen right", got["B"]["a"], 0)
+    check("chart order labels last section on screen left", got["D"]["a"], 180)
+
+    # Exercise the integrated label and score path, not only its helpers.
+    from unittest.mock import patch
+    with patch(__name__ + ".sector_bands") as sampled:
+        sampled.side_effect = lambda im, pairs_, *a, **kw: {
+            s: [{"band": "X"}] for s, _ in pairs_}
+        ex_w, _, _, _ = extract_ring(None, ring, ["A", "B", "C", "D"],
+                                     ("A", "C"), "upper", 0, 0, 1, 1,
+                                     0, 1, {"X": (1, 1, 1)})
+        check("integrated path labels screen right", dict(sampled.call_args.args[1])["B"]["a"], 0)
+        check("integrated path scores extracted labels", sorted(ex_w), ["A", "B", "C", "D"])
 
     # Mirror pairing about the long axis.
     order = ["101", "102", "103", "104", "115", "116", "117", "118"]
@@ -750,6 +789,71 @@ def self_test() -> int:
     check("agreement counts matching pairs", (ok, tot), (1, 2))
     check("agreement fraction", round(frac, 2), 0.5)
     check("disagreement is reported", bad[0][0], "103")
+    # A genuine corner exception cannot hide a transcription error elsewhere.
+    lower = mirror_pairs(rings()["lower"], "101", "115")
+    kept = remaining_pairs(lower)
+    check("only two measured lower pairs exempt", len(kept), 9)
+    check("ordinary pair remains", ("101", "115") in kept, True)
+    check("95 percent floor unchanged", MIN_AGREEMENT, 0.95)
+    check("remaining 22 pairs set denominator", len(kept) + 13, 22)
+    check("one miss in 22 still meets floor", 21 / 22 >= MIN_AGREEMENT, True)
+    check("two misses in 22 fail floor", 20 / 22 >= MIN_AGREEMENT, False)
+    bad_map = {s: [{"band": "X"}] for pair in kept for s in pair}
+    bad_map["101"] = [{"band": "Y"}]
+    _, _, total, bad = score_mirrors(bad_map, rings()["lower"], ("101", "115"), "lower")
+    check("production score uses remaining pairs", total, 9)
+    check("non-exempt misfile fails agreement", len(bad), 1)
+
+    # Run main with a 50-disc synthetic chart. A changed hash must be refused before
+    # extraction, and a valid chart must score 22 pairs through extract_ring. This catches
+    # removing either production call even when its helper tests still pass.
+    import contextlib
+    import io
+    import tempfile
+    import types
+    from unittest.mock import patch
+    with tempfile.TemporaryDirectory() as tmp:
+        image = pathlib.Path(tmp) / "chart.png"
+        output = pathlib.Path(tmp) / "result.json"
+        image.write_bytes(b"synthetic chart")
+        expected_hash = hashlib.sha256(image.read_bytes()).hexdigest()
+        fake_png = types.SimpleNamespace(Img=lambda path: types.SimpleNamespace(w=100, h=100))
+        lower_order = rings()["lower"]
+        lower_discs = [{"a": i * 360 / 22} for i in range(22)]
+        upper_discs = [{"a": i * 360 / 28} for i in range(28)]
+        def check_hash(digest):
+            if digest != expected_hash:
+                raise ValueError("chart hash differs from evidence")
+        observed_labels = []
+        def sampled_bands(im, pairs_, *a, **kw):
+            observed_labels.append(dict(pairs_))
+            return {s: [{"band": "X"}] for s, _ in pairs_}
+        common = [
+            patch.dict(sys.modules, {"minipng": fake_png}),
+            patch(__name__ + ".verify_chart_hash", side_effect=check_hash),
+            patch(__name__ + ".label_discs", return_value=[(50, 50)] * 50),
+            patch(__name__ + ".split_rings", return_value=(lower_discs, upper_discs, 1, 1)),
+            patch(__name__ + ".legend", return_value={"X": (1, 1, 1)}),
+            patch(__name__ + ".sector_bands", side_effect=sampled_bands),
+        ]
+        with contextlib.ExitStack() as stack:
+            for item in common:
+                stack.enter_context(item)
+            stdout, stderr = io.StringIO(), io.StringIO()
+            argv = ["extract_price_bands.py", "--image", str(image),
+                    "--out", str(output), "--centre", "0", "0"]
+            with patch.object(sys, "argv", argv), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                result = main()
+            check("main accepts chart with evidence hash", result, 0)
+            check("main scores 9 lower and 13 upper pairs", "mirror agreement overall: 22/22" in stdout.getvalue(), True)
+            check("main uses corrected screen direction",
+                  observed_labels[0][lower_order[1]]["a"] < observed_labels[0][lower_order[0]]["a"], True)
+            image.write_bytes(b"changed synthetic chart")
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with patch.object(sys, "argv", argv), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                result = main()
+            check("main rejects changed chart before extraction", result, 2)
+            check("main reports chart hash mismatch", "chart hash differs" in stderr.getvalue(), True)
 
     # coverage(): the guard against buying agreement by discarding data.
     pal3 = {"A": (1, 1, 1), "B": (2, 2, 2), "C": (3, 3, 3)}
@@ -789,7 +893,7 @@ def main() -> int:
                     help="search the bowl centre +/- PX and keep the best-scoring one")
     ap.add_argument("--tol", type=int, default=14,
                     help="max-channel colour tolerance; raise for a JPEG-derived image")
-    ap.add_argument("--min-agreement", type=float, default=0.95,
+    ap.add_argument("--min-agreement", type=float, default=MIN_AGREEMENT,
                     help="refuse to write a map below this mirror agreement")
     ap.add_argument("--sample-step", type=float, default=0.0, metavar="PX",
                     help="target sample spacing in PIXELS for the final extraction. "
@@ -841,6 +945,15 @@ def main() -> int:
         args.sample_step = 1.0
     if not args.image:
         print("--image is required", file=sys.stderr)
+        return 2
+
+    # The exemption was measured on one raster. A different chart needs its own
+    # measurement, even if it happens to preserve the same section numbering.
+    image_hash = hashlib.sha256(args.image.read_bytes()).hexdigest()
+    try:
+        verify_chart_hash(image_hash)
+    except ValueError as e:
+        print(e, file=sys.stderr)
         return 2
 
     import minipng
@@ -905,22 +1018,17 @@ def main() -> int:
                 # extents and no reason to share a window.
                 (inner, r["lower"], ("101", "115"), *args.lower_window, "lower"),
                 (outer, r["upper"], ("201", "215"), *args.upper_window, "upper")):
-            best = None
-            for dname, seq in (("as-listed", order), ("reversed", list(reversed(order)))):
-                ex = sector_bands(im, anchor(ring, seq, axis[0]), ccx, ccy, a, b,
-                                  lo, hi, pal, margin=args.sector_margin,
-                                  tol=args.tol, step=sample_step, coherent=coh)
-                _, o, n, bad = agreement(ex, mirror_pairs(seq, *axis))
-                if best is None or o > best[0]:
-                    best = (o, n, ex, dname, bad)
+            ex, o, n, bad = extract_ring(
+                im, ring, order, axis, label, ccx, ccy, a, b, lo, hi, pal,
+                margin=args.sector_margin, tol=args.tol, step=sample_step, coherent=coh)
             if verbose:
-                print(f"  {label} ring, direction {best[3]}: {best[0]}/{best[1]}")
-                for x, y, A, B in best[4]:
+                print(f"  {label} ring: {o}/{n}")
+                for x, y, A, B in bad:
                     print(f"    MISMATCH {x} {A}")
                     print(f"             {y} {B}")
-            parts.update(best[2])
-            ok += best[0]
-            tot += best[1]
+            parts.update(ex)
+            ok += o
+            tot += n
         return ok, tot, parts
 
     # THE BOWL CENTRE IS THE MOST SENSITIVE PARAMETER IN THIS TOOL, by a wide margin.
@@ -932,8 +1040,7 @@ def main() -> int:
     # The centroid of the label discs is NOT the bowl centre: there are 28 upper discs
     # against 22 lower, and none for the plaza boxes, so the centroid is pulled off by
     # the uneven distribution. Rather than derive it more cleverly, search it - agreement
-    # is a scoreable objective with a known right answer, exactly like the threshold and
-    # direction searches above.
+    # is a scoreable objective with a known right answer, like the threshold search above.
     if args.search_centre:
         step = max(4, args.search_centre // 3)
         best = None
@@ -968,11 +1075,10 @@ def main() -> int:
 
     if frac < args.min_agreement:
         print(f"\nREFUSING to write a map at {frac:.0%} agreement. The arena is "
-              f"mirror-symmetric, so disagreeing pairs mean the extraction is wrong "
-              f"somewhere - and a section map that is mostly right would misprice comps "
-              f"silently forever. See the module docstring's 'residual' section for the "
-              f"two live hypotheses (sector clipping vs genuine asymmetry) and why more "
-              f"tuning here has not closed it.", file=sys.stderr)
+              f"mirror-symmetric outside the two measured lower-corner exceptions, so "
+              f"remaining disagreements mean the extraction is wrong somewhere. A "
+              f"section map that is mostly right would misprice comps silently forever.",
+              file=sys.stderr)
         return 1
 
     out = args.out or (ROOT / "data" / "price_band_sections.json")
