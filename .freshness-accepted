@@ -191,3 +191,11 @@
 # weeks would do. Revisit when there are enough closed runs to bound it; that needs weeks,
 # not days, and do not re-reject it on the equivalence argument alone.
 coverage ticketnetwork 16
+
+# ops#411: TicketNetwork changed Offer.price to AggregateOffer.lowPrice and
+# declared PST for PDT games. The price filter discarded every home event;
+# no observations were written, and the source has no historical-price endpoint.
+2026-10-05 ticketnetwork
+2026-10-06 ticketnetwork
+2026-10-07 ticketnetwork
+2026-10-08 ticketnetwork

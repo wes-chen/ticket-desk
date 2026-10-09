@@ -1,0 +1,265 @@
+{
+  "_fixture": "Captured 2026-10-09 UTC from https://www.ticketnetwork.com/performers/san-jose-sharks-tickets; trimmed to collector fields. AggregateOffer string prices and fixed -08:00 offsets, including October PDT and November PST games. Not evidence of year-round behavior.",
+  "events": [
+    {
+      "name": "San Jose Sharks vs. Edmonton Oilers",
+      "startDate": "2026-10-10T13:00:00-08:00",
+      "location": {
+        "name": "SAP Center"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "lowPrice": "84.00",
+        "highPrice": "5105.27"
+      },
+      "awayTeam": {
+        "name": "Edmonton Oilers",
+        "url": "https://www.ticketnetwork.com/performers/edmonton-oilers-340",
+        "@type": "SportsTeam"
+      },
+      "homeTeam": {
+        "name": "San Jose Sharks",
+        "url": "https://www.ticketnetwork.com/performers/san-jose-sharks-904",
+        "@type": "SportsTeam"
+      },
+      "url": "https://www.ticketnetwork.com/tickets/8139718/san-jose-sharks-vs.-edmonton-oilers-tickets-sat-oct-10-2026-sap-center",
+      "@type": "SportsEvent"
+    },
+    {
+      "name": "San Jose Sharks vs. Boston Bruins",
+      "startDate": "2026-10-13T20:00:00-08:00",
+      "location": {
+        "name": "SAP Center"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "lowPrice": "42.47",
+        "highPrice": "5105.27"
+      },
+      "awayTeam": {
+        "name": "Boston Bruins",
+        "url": "https://www.ticketnetwork.com/performers/boston-bruins-150",
+        "@type": "SportsTeam"
+      },
+      "homeTeam": {
+        "name": "San Jose Sharks",
+        "url": "https://www.ticketnetwork.com/performers/san-jose-sharks-904",
+        "@type": "SportsTeam"
+      },
+      "url": "https://www.ticketnetwork.com/tickets/8139720/san-jose-sharks-vs.-boston-bruins-tickets-tue-oct-13-2026-sap-center",
+      "@type": "SportsEvent"
+    },
+    {
+      "name": "Nashville Predators vs. San Jose Sharks",
+      "startDate": "2026-10-15T19:00:00-06:00",
+      "location": {
+        "name": "Bridgestone Arena"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "lowPrice": "18.76",
+        "highPrice": "925.47"
+      },
+      "awayTeam": {
+        "name": "San Jose Sharks",
+        "url": "https://www.ticketnetwork.com/performers/san-jose-sharks-904",
+        "@type": "SportsTeam"
+      },
+      "homeTeam": {
+        "name": "Nashville Predators",
+        "url": "https://www.ticketnetwork.com/performers/nashville-predators-710",
+        "@type": "SportsTeam"
+      },
+      "url": "https://www.ticketnetwork.com/tickets/8139377/nashville-predators-vs.-san-jose-sharks-tickets-thu-oct-15-2026-bridgestone-arena",
+      "@type": "SportsEvent"
+    },
+    {
+      "name": "Detroit Red Wings vs. San Jose Sharks",
+      "startDate": "2026-10-17T19:00:00-05:00",
+      "location": {
+        "name": "Little Caesars Arena"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "lowPrice": "43.21",
+        "highPrice": "1140.00"
+      },
+      "awayTeam": {
+        "name": "San Jose Sharks",
+        "url": "https://www.ticketnetwork.com/performers/san-jose-sharks-904",
+        "@type": "SportsTeam"
+      },
+      "homeTeam": {
+        "name": "Detroit Red Wings",
+        "url": "https://www.ticketnetwork.com/performers/detroit-red-wings-307",
+        "@type": "SportsTeam"
+      },
+      "url": "https://www.ticketnetwork.com/tickets/8138636/detroit-red-wings-vs.-san-jose-sharks-tickets-sat-oct-17-2026-little-caesars-arena",
+      "@type": "SportsEvent"
+    },
+    {
+      "name": "Montreal Canadiens vs. San Jose Sharks",
+      "startDate": "2026-10-20T19:00:00-05:00",
+      "location": {
+        "name": "Centre Bell"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "lowPrice": "136.99",
+        "highPrice": "10000000.00"
+      },
+      "awayTeam": {
+        "name": "San Jose Sharks",
+        "url": "https://www.ticketnetwork.com/performers/san-jose-sharks-904",
+        "@type": "SportsTeam"
+      },
+      "homeTeam": {
+        "name": "Montreal Canadiens",
+        "url": "https://www.ticketnetwork.com/performers/montreal-canadiens-691",
+        "@type": "SportsTeam"
+      },
+      "url": "https://www.ticketnetwork.com/tickets/8138929/montreal-canadiens-vs.-san-jose-sharks-tickets-tue-oct-20-2026-centre-bell",
+      "@type": "SportsEvent"
+    },
+    {
+      "name": "Boston Bruins vs. San Jose Sharks",
+      "startDate": "2026-10-24T19:00:00-05:00",
+      "location": {
+        "name": "TD Garden"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "lowPrice": "55.50",
+        "highPrice": "1670.97"
+      },
+      "awayTeam": {
+        "name": "San Jose Sharks",
+        "url": "https://www.ticketnetwork.com/performers/san-jose-sharks-904",
+        "@type": "SportsTeam"
+      },
+      "homeTeam": {
+        "name": "Boston Bruins",
+        "url": "https://www.ticketnetwork.com/performers/boston-bruins-150",
+        "@type": "SportsTeam"
+      },
+      "url": "https://www.ticketnetwork.com/tickets/8138273/boston-bruins-vs.-san-jose-sharks-tickets-sat-oct-24-2026-td-garden",
+      "@type": "SportsEvent"
+    },
+    {
+      "name": "San Jose Sharks vs. Buffalo Sabres",
+      "startDate": "2026-10-27T19:30:00-08:00",
+      "location": {
+        "name": "SAP Center"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "lowPrice": "30.28",
+        "highPrice": "1140.00"
+      },
+      "awayTeam": {
+        "name": "Buffalo Sabres",
+        "url": "https://www.ticketnetwork.com/performers/buffalo-sabres-179",
+        "@type": "SportsTeam"
+      },
+      "homeTeam": {
+        "name": "San Jose Sharks",
+        "url": "https://www.ticketnetwork.com/performers/san-jose-sharks-904",
+        "@type": "SportsTeam"
+      },
+      "url": "https://www.ticketnetwork.com/tickets/8139722/san-jose-sharks-vs.-buffalo-sabres-tickets-tue-oct-27-2026-sap-center",
+      "@type": "SportsEvent"
+    },
+    {
+      "name": "San Jose Sharks vs. Vancouver Canucks",
+      "startDate": "2026-10-29T19:00:00-08:00",
+      "location": {
+        "name": "SAP Center"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "lowPrice": "28.59",
+        "highPrice": "1258.95"
+      },
+      "awayTeam": {
+        "name": "Vancouver Canucks",
+        "url": "https://www.ticketnetwork.com/performers/vancouver-canucks-1115",
+        "@type": "SportsTeam"
+      },
+      "homeTeam": {
+        "name": "San Jose Sharks",
+        "url": "https://www.ticketnetwork.com/performers/san-jose-sharks-904",
+        "@type": "SportsTeam"
+      },
+      "url": "https://www.ticketnetwork.com/tickets/8139724/san-jose-sharks-vs.-vancouver-canucks-tickets-thu-oct-29-2026-sap-center",
+      "@type": "SportsEvent"
+    },
+    {
+      "name": "San Jose Sharks vs. Ottawa Senators",
+      "startDate": "2026-10-31T13:00:00-08:00",
+      "location": {
+        "name": "SAP Center"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "lowPrice": "60.24",
+        "highPrice": "5100.00"
+      },
+      "awayTeam": {
+        "name": "Ottawa Senators",
+        "url": "https://www.ticketnetwork.com/performers/ottawa-senators-780",
+        "@type": "SportsTeam"
+      },
+      "homeTeam": {
+        "name": "San Jose Sharks",
+        "url": "https://www.ticketnetwork.com/performers/san-jose-sharks-904",
+        "@type": "SportsTeam"
+      },
+      "url": "https://www.ticketnetwork.com/tickets/8139726/san-jose-sharks-vs.-ottawa-senators-tickets-sat-oct-31-2026-sap-center",
+      "@type": "SportsEvent"
+    },
+    {
+      "name": "San Jose Sharks vs. Calgary Flames",
+      "startDate": "2026-11-02T18:00:00-08:00",
+      "location": {
+        "name": "SAP Center"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "lowPrice": "30.28",
+        "highPrice": "1378.98"
+      },
+      "awayTeam": {
+        "name": "Calgary Flames",
+        "url": "https://www.ticketnetwork.com/performers/calgary-flames-188",
+        "@type": "SportsTeam"
+      },
+      "homeTeam": {
+        "name": "San Jose Sharks",
+        "url": "https://www.ticketnetwork.com/performers/san-jose-sharks-904",
+        "@type": "SportsTeam"
+      },
+      "url": "https://www.ticketnetwork.com/tickets/8139730/san-jose-sharks-vs.-calgary-flames-tickets-mon-nov-2-2026-sap-center",
+      "@type": "SportsEvent"
+    }
+  ]
+}
