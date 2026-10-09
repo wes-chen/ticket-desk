@@ -248,6 +248,23 @@ RECOVERED_PROVENANCE = (
 PROVENANCE_BY_SOURCE = {"paste": PASTE_PROVENANCE, "recovered": RECOVERED_PROVENANCE}
 
 
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--file", help="paste file; omit to read stdin")
+    ap.add_argument("--snapshots", help="ops:data/profile/snapshots.jsonl, for the "
+                                        "preseason credit the cross-check narrows with")
+    ap.add_argument("--append", help="append the emitted line to this path; refused if "
+                                     "it is inside this public repo")
+    ap.add_argument("--captured-by", default="manual", help="who ran the paste")
+    source = ap.add_mutually_exclusive_group()
+    source.add_argument("--source", choices=tuple(PROVENANCE_BY_SOURCE), default="paste",
+                        help="paste (default); recovered is for the 2026-09-03 recovery "
+                             "(ops#139) only; use --provenance for another source")
+    source.add_argument("--provenance", help="custom source description for this input")
+    ap.add_argument("--self-test", action="store_true")
+    return ap
+
+
 def store_line(rows: dict[str, dict], captured_by: str,
                captured_at: str | None = None,
                provenance: str = PASTE_PROVENANCE) -> dict:
@@ -423,6 +440,8 @@ def self_test() -> int:
     line = store_line(good_rows, "self-test", captured_at="2026-01-01T00:00:00Z")
     check("default store line identifies unverified fresh input",
           line["provenance"] == PASTE_PROVENANCE)
+    check("paste provenance makes no recovery or account claim",
+          all(word not in PASTE_PROVENANCE.lower() for word in ("recover", "wesley")))
     recovered = store_line(good_rows, "self-test", captured_at="2026-01-01T00:00:00Z",
                            provenance=PROVENANCE_BY_SOURCE["recovered"])
     check("explicit recovered source names the git history",
@@ -436,10 +455,13 @@ def self_test() -> int:
           custom["provenance"] == "recovered from commit deadbeef",
           custom["provenance"])
     # Exercise the CLI's record path, not only store_line's default.
-    import argparse
     import contextlib
     import io
     from unittest import mock
+    defaults = build_parser().parse_args([])
+    check("CLI default source is paste", defaults.source == "paste", defaults.source)
+    check("CLI default has no provenance override", defaults.provenance is None,
+          str(defaults.provenance))
     with tempfile.TemporaryDirectory() as d:
         paste = pathlib.Path(d) / "paste.txt"
         paste.write_text(GOOD)
@@ -448,9 +470,12 @@ def self_test() -> int:
             ("recovered", None, RECOVERED_PROVENANCE),
             ("paste", "independent fixture source", "independent fixture source"),
         ]:
-            args = argparse.Namespace(file=str(paste), snapshots=None, append=None,
-                                      captured_by="self-test", source=source,
-                                      provenance=override)
+            flags = ["--file", str(paste), "--captured-by", "self-test"]
+            if source != "paste":
+                flags.extend(["--source", source])
+            if override is not None:
+                flags.extend(["--provenance", override])
+            args = build_parser().parse_args(flags)
             output = io.StringIO()
             with mock.patch.dict(run.__globals__, {
                 "tier_counts": lambda: COUNTS,
@@ -475,19 +500,7 @@ def self_test() -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--file", help="paste file; omit to read stdin")
-    ap.add_argument("--snapshots", help="ops:data/profile/snapshots.jsonl, for the "
-                                        "preseason credit the cross-check narrows with")
-    ap.add_argument("--append", help="append the emitted line to this path; refused if "
-                                     "it is inside this public repo")
-    ap.add_argument("--captured-by", default="manual", help="who ran the paste")
-    source = ap.add_mutually_exclusive_group()
-    source.add_argument("--source", choices=tuple(PROVENANCE_BY_SOURCE), default="paste",
-                        help="paste (default) or explicitly recovered from ops git history")
-    source.add_argument("--provenance", help="custom source description for this input")
-    ap.add_argument("--self-test", action="store_true")
-    args = ap.parse_args()
+    args = build_parser().parse_args()
     return self_test() if args.self_test else run(args)
 
 
