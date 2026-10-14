@@ -240,22 +240,42 @@ def monotone_warnings(rows: dict[str, dict]) -> list[str]:
     return out
 
 
-DEFAULT_PROVENANCE = (
-    "Manual paste by Wesley into ops#139, graded by "
-    "scripts/validate_tier_credits.py (ops#140). Values read off the app profile "
-    "screen, which reads browser localStorage."
+PASTE_PROVENANCE = (
+    "Supplied to scripts/validate_tier_credits.py via file or stdin; "
+    "the original source was not independently verified."
 )
+RECOVERED_PROVENANCE = (
+    "Recovered from the 2026-09-03 ops repository git history; graded by "
+    "scripts/validate_tier_credits.py (ops#140) and recorded in the private "
+    "append-only ops:data/profile/snapshots.jsonl store."
+)
+PROVENANCE_BY_SOURCE = {"paste": PASTE_PROVENANCE, "recovered": RECOVERED_PROVENANCE}
+
+
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--file", help="paste file; omit to read stdin")
+    ap.add_argument("--snapshots", help="ops:data/profile/snapshots.jsonl, for the "
+                                        "preseason credit the cross-check narrows with")
+    ap.add_argument("--append", help="append the emitted line to this path; refused if "
+                                     "it is inside this public repo")
+    ap.add_argument("--captured-by", default="manual", help="who ran the paste")
+    source = ap.add_mutually_exclusive_group()
+    source.add_argument("--source", choices=tuple(PROVENANCE_BY_SOURCE), default="paste",
+                        help="paste (default); recovered is for the 2026-09-03 recovery "
+                             "(ops#139) only; use --provenance for another source")
+    source.add_argument("--provenance", help="custom source description for this input")
+    ap.add_argument("--self-test", action="store_true")
+    return ap
 
 
 def store_line(rows: dict[str, dict], captured_by: str,
                captured_at: str | None = None,
-               provenance: str = DEFAULT_PROVENANCE) -> dict:
+               provenance: str = PASTE_PROVENANCE) -> dict:
     """The exact snapshots.jsonl line to append. A value in an issue is not a record.
 
-    `provenance` is overridable because the paste is not the only way these values can
-    arrive. They were in fact RECOVERED from git history rather than pasted, and a line
-    claiming Wesley typed them would be a false record of where a load-bearing number
-    came from - the precise class of confident-looking wrongness rule 4 exists to stop.
+    A new file or stdin input does not establish its own earlier source. The recovered
+    historic source is selected explicitly when that is the source being recorded.
     """
     at = captured_at or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     # The line carries the WEAKEST confidence of its five rows, not the strongest:
@@ -311,7 +331,8 @@ def run(args) -> int:
               file=sys.stderr)
         return 1
 
-    line = store_line(rows, args.captured_by, provenance=args.provenance)
+    provenance = args.provenance or PROVENANCE_BY_SOURCE[args.source]
+    line = store_line(rows, args.captured_by, provenance=provenance)
     if args.append:
         dest = pathlib.Path(args.append).resolve()
         if dest == ROOT or ROOT in dest.parents:
@@ -422,12 +443,55 @@ def self_test() -> int:
     check("preseason_credit tolerates absence", preseason_credit(None) is None)
 
     line = store_line(good_rows, "self-test", captured_at="2026-01-01T00:00:00Z")
-    check("store line carries provenance", "ops#139" in line["provenance"])
+    check("default store line identifies unverified fresh input",
+          line["provenance"] == PASTE_PROVENANCE)
+    check("paste provenance makes no recovery or account claim",
+          all(word not in PASTE_PROVENANCE.lower() for word in ("recover", "wesley")))
+    recovered = store_line(good_rows, "self-test", captured_at="2026-01-01T00:00:00Z",
+                           provenance=PROVENANCE_BY_SOURCE["recovered"])
+    check("explicit recovered source names the git history",
+          "recovered from the 2026-09-03 ops repository git history" in
+          recovered["provenance"].lower())
+    check("explicit recovered source names the private append-only store",
+          "append-only ops:data/profile/snapshots.jsonl" in recovered["provenance"])
     custom = store_line(good_rows, "self-test", captured_at="2026-01-01T00:00:00Z",
                         provenance="recovered from commit deadbeef")
     check("provenance is overridable",
           custom["provenance"] == "recovered from commit deadbeef",
           custom["provenance"])
+    # Exercise the CLI's record path, not only store_line's default.
+    import contextlib
+    import io
+    from unittest import mock
+    defaults = build_parser().parse_args([])
+    check("CLI default source is paste", defaults.source == "paste", defaults.source)
+    check("CLI default has no provenance override", defaults.provenance is None,
+          str(defaults.provenance))
+    with tempfile.TemporaryDirectory() as d:
+        paste = pathlib.Path(d) / "paste.txt"
+        paste.write_text(GOOD)
+        for source, override, expected in [
+            ("paste", None, PASTE_PROVENANCE),
+            ("recovered", None, RECOVERED_PROVENANCE),
+            ("paste", "independent fixture source", "independent fixture source"),
+        ]:
+            flags = ["--file", str(paste), "--captured-by", "self-test"]
+            if source != "paste":
+                flags.extend(["--source", source])
+            if override is not None:
+                flags.extend(["--provenance", override])
+            args = build_parser().parse_args(flags)
+            output = io.StringIO()
+            with mock.patch.dict(run.__globals__, {
+                "tier_counts": lambda: COUNTS,
+                "preseason_credit": lambda _: None,
+                "grade": lambda *_: (good_rows, [], [], True),
+            }), contextlib.redirect_stdout(output):
+                result = run(args)
+            emitted = json.loads(output.getvalue().splitlines()[-1])
+            check(f"{source} CLI record succeeds", result == 0)
+            check(f"{source} CLI record uses selected provenance",
+                  emitted["provenance"] == expected)
     check("store line worst-cases confidence", line["confidence"] == "assumed",
           line["confidence"])
     check("store line is JSON-serialisable", json.dumps(line).startswith("{"))
@@ -441,18 +505,7 @@ def self_test() -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--file", help="paste file; omit to read stdin")
-    ap.add_argument("--snapshots", help="ops:data/profile/snapshots.jsonl, for the "
-                                        "preseason credit the cross-check narrows with")
-    ap.add_argument("--append", help="append the emitted line to this path; refused if "
-                                     "it is inside this public repo")
-    ap.add_argument("--captured-by", default="manual", help="who ran the paste")
-    ap.add_argument("--provenance", default=DEFAULT_PROVENANCE,
-                    help="where the values actually came from; override when they were "
-                         "not typed by Wesley (e.g. recovered from git history)")
-    ap.add_argument("--self-test", action="store_true")
-    args = ap.parse_args()
+    args = build_parser().parse_args()
     return self_test() if args.self_test else run(args)
 
 
