@@ -1,0 +1,90 @@
+{
+  "source": "https://www.tickpick.com/nhl/san-jose-sharks-tickets/",
+  "captured": "2026-10-14",
+  "events": [
+    {
+      "@type": "SportsEvent",
+      "name": "Nashville Predators vs. San Jose Sharks",
+      "startDate": "2026-10-15T19:00:00",
+      "url": "https://www.tickpick.com/buy-nashville-predators-vs-san-jose-sharks-tickets-bridgestone-arena-10-15-26-7pm/8139377/",
+      "location": {
+        "@type": "EventVenue",
+        "name": "Bridgestone Arena",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Nashville",
+          "addressRegion": "TN",
+          "addressCountry": "US"
+        },
+        "url": "https://www.tickpick.com/venues/bridgestone-arena/tickets/"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "url": "https://www.tickpick.com/buy-nashville-predators-vs-san-jose-sharks-tickets-bridgestone-arena-10-15-26-7pm/8139377/",
+        "lowPrice": 28,
+        "price": 28,
+        "highPrice": 1916,
+        "validFrom": "2026-10-14T19:00:46.041Z",
+        "validThrough": "2026-10-15T19:00:00.000Z"
+      }
+    },
+    {
+      "@type": "SportsEvent",
+      "name": "San Jose Sharks vs. Buffalo Sabres",
+      "startDate": "2026-10-27T19:30:00",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-buffalo-sabres-tickets-sap-center-10-27-26-7pm/8139722/",
+      "location": {
+        "@type": "EventVenue",
+        "name": "SAP Center",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "San Jose",
+          "addressRegion": "CA",
+          "addressCountry": "US"
+        },
+        "url": "https://www.tickpick.com/venues/sap-center/tickets/"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-buffalo-sabres-tickets-sap-center-10-27-26-7pm/8139722/",
+        "lowPrice": 32,
+        "price": 32,
+        "highPrice": 2882,
+        "validFrom": "2026-10-14T19:00:46.041Z",
+        "validThrough": "2026-10-27T19:30:00.000Z"
+      }
+    },
+    {
+      "@type": "SportsEvent",
+      "name": "San Jose Sharks vs. Vancouver Canucks",
+      "startDate": "2026-10-29T19:00:00",
+      "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-vancouver-canucks-tickets-sap-center-10-29-26-7pm/8139724/",
+      "location": {
+        "@type": "EventVenue",
+        "name": "SAP Center",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "San Jose",
+          "addressRegion": "CA",
+          "addressCountry": "US"
+        },
+        "url": "https://www.tickpick.com/venues/sap-center/tickets/"
+      },
+      "offers": {
+        "@type": "AggregateOffer",
+        "availability": "https://schema.org/InStock",
+        "priceCurrency": "USD",
+        "url": "https://www.tickpick.com/buy-san-jose-sharks-vs-vancouver-canucks-tickets-sap-center-10-29-26-7pm/8139724/",
+        "lowPrice": 33,
+        "price": 33,
+        "highPrice": 1355,
+        "validFrom": "2026-10-14T19:00:46.041Z",
+        "validThrough": "2026-10-29T19:00:00.000Z"
+      }
+    }
+  ]
+}
