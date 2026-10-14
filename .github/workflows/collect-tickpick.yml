@@ -173,7 +173,7 @@ jobs:
 
       # continue-on-error preserves data but masks collector failures from the job.
       # ops#351 showed why a red gap check alone cannot name a refusing source.
-      # Keep this last so artifact upload and the summary still run on a bad day.
+      # Report every raw collector outcome after artifact upload and summary.
       - name: Collectors must not refuse silently
         if: always()
         env:

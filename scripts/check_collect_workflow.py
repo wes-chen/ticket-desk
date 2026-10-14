@@ -25,14 +25,33 @@ REQUIRED = ("Self-test", "Re-resolve event ids", *COLLECTORS, SUMMARY,
 
 def steps(source: str) -> list[tuple[str, str]]:
     """Split job steps at their indentation, including unnamed setup steps."""
-    matches = list(re.finditer(r"(?m)^      - (?:name|uses): (.+)$", source))
-    return [(m.group(1), source[m.end():matches[i + 1].start() if i + 1 < len(matches) else len(source)])
+    matches = list(re.finditer(r"(?m)^      - (name|uses|run): (.+)$", source))
+    return [(m.group(2) if m.group(1) != "run" else f"unnamed run {i}",
+             (f"\n        run: {m.group(2)}" if m.group(1) == "run" else "") +
+             source[m.end():matches[i + 1].start() if i + 1 < len(matches) else len(source)])
             for i, m in enumerate(matches)]
 
 
 def field(block: str, key: str) -> str | None:
     match = re.search(rf"(?m)^        {re.escape(key)}: (.+)$", block)
     return match.group(1).strip() if match else None
+
+
+def fatal_failure(block: str) -> bool:
+    """Only an absent or literal false mask leaves a step's failure fatal.
+
+    Expressions can evaluate to true at runtime. Reject those and unknown YAML
+    spellings rather than predicting their value from the workflow text.
+    """
+    values = re.findall(r"(?m)^        continue-on-error:[ \t]*(.*)$", block)
+    return len(values) <= 1 and all(value.strip() in ("false", "'false'", '"false"') for value in values)
+
+
+def run_commands(block: str) -> tuple[str, ...]:
+    matches = re.findall(r"(?m)^        run: (.*)$", block)
+    if len(matches) != 1:
+        return ()
+    return (matches[0],) if matches[0] != "|" else tuple(re.findall(r"(?m)^          (.+)$", block))
 
 
 def condition(expr: str | None, status: str, outcomes: dict[str, str]) -> bool:
@@ -191,7 +210,7 @@ def check(source: str) -> list[str]:
             min(names.index(name) for name in COLLECTORS), "pre-collection order")
     require(names[:2] == list(SETUP), "checkout and Python setup precede Self-test")
     for name in SETUP:
-        require(names.count(name) == 1 and (name not in blocks or field(blocks[name], "continue-on-error") != "true"),
+        require(names.count(name) == 1 and (name not in blocks or fatal_failure(blocks[name])),
                 f"{name} failure stays fatal")
     require(max(names.index(name) for name in COLLECTORS) < names.index(SUMMARY) <
             names.index(CROSS_CHECK) < names.index(COMMIT) < names.index(GAPS) <
@@ -199,7 +218,7 @@ def check(source: str) -> list[str]:
     require(names[-1] == GUARD, "refusal guard is final")
     require(field(blocks["Self-test"], "id") == "selftest", "Self-test outcome id")
     require(field(blocks["Re-resolve event ids"], "id") == "resolve", "Re-resolve outcome id")
-    require(field(blocks["Self-test"], "continue-on-error") != "true", "Self-test failure stays fatal")
+    require(fatal_failure(blocks["Self-test"]), "Self-test failure stays fatal")
     require(field(blocks[RESOLVE], "continue-on-error") == "true", "resolver refusal allows other sources")
     for name, commands in {
         "Self-test": ("python3 scripts/market_store.py --self-test",
@@ -212,18 +231,26 @@ def check(source: str) -> list[str]:
         SUMMARY: ("python3 scripts/summarize_market.py",),
         CROSS_CHECK: ("python3 scripts/check_tier_market.py",),
     }.items():
-        block = blocks[name]
-        match = re.search(r"(?m)^        run: (.*)$", block)
-        actual = () if not match else ((match.group(1),) if match.group(1) != "|" else
-                 tuple(re.findall(r"(?m)^          (.+)$", block)))
-        require(actual == commands, f"{name} required commands")
+        require(run_commands(blocks[name]) == commands, f"{name} required commands")
     for name in SOURCES:
         block = blocks["Collect " + name]
         require(field(block, "id") == name.lower(), f"{name} outcome id")
         require(field(block, "continue-on-error") == "true", f"{name} failure captured")
+        require(run_commands(block) == (f"python3 scripts/collect_{name.lower()}.py",),
+                f"{name} required command")
     for name in (SUMMARY, CROSS_CHECK, COMMIT, GAPS):
-        require(field(blocks[name], "continue-on-error") != "true", f"{name} failure stays red")
+        require(fatal_failure(blocks[name]), f"{name} failure stays red")
+    require(run_commands(blocks[GAPS]) == ("python3 scripts/check_data_freshness.py --strict",),
+            "gap check required command")
+    for name, block in ordered:
+        if name != COMMIT:
+            require(not re.search(r"\bgit\s+(?:push|commit)\b", "\n".join(run_commands(block))),
+                    f"{name} cannot commit or push")
     require(commit_behavior(blocks[COMMIT]), "aggregate commit stages, commits and pushes without masking failure")
+    commit_script = "\n".join(run_commands(blocks[COMMIT]))
+    require(sum(line.strip().startswith("git pull ") for line in commit_script.splitlines()) == 1 and
+            any(line.strip() == "git pull --rebase --autostash" for line in commit_script.splitlines()),
+            "rebase pull stays fatal")
     guard = blocks[GUARD]
     for name in ("Resolve",) + SOURCES:
         require(bool(re.search(rf"(?m)^          {name.upper()}: \$\{{\{{ steps\.{name.lower()}\.outcome \}}\}}$", guard)),
@@ -290,6 +317,10 @@ def self_test(source: str) -> int:
         end = text.find("      - name:", pos + 10)
         return text[:end] + block + text[end:]
 
+    def mask(text: str, step: str, value: str) -> str:
+        anchor = f"      - {'uses' if step in SETUP else 'name'}: {step}\n"
+        return text.replace(anchor, anchor + f"        continue-on-error: {value}\n", 1)
+
     mutations = (
         ("TickPick after resolver failure", change_condition(source, COLLECTORS[0], "always()")),
         ("secondary after Self-test failure or cancellation", change_condition(source, COLLECTORS[1], "always()")),
@@ -318,12 +349,49 @@ def self_test(source: str) -> int:
                                                   "      - name: Commit aggregates\n        continue-on-error: true\n", 1)),
         ("gap failure masked", source.replace("      - name: Check for gaps\n",
                                                "      - name: Check for gaps\n        continue-on-error: true\n", 1)),
+        *((f"{step} expression mask {value}", mask(source, step, value))
+          for step in (*SETUP, "Self-test", COMMIT, GAPS)
+          for value in ("${{ true }}", "${{ 'true' }}", "${{ inputs.mask }}"))
+    ) + (
+        *((f"{step} quoted mask {value}", mask(source, step, value))
+          for step in (*SETUP, "Self-test", COMMIT, GAPS)
+          for value in ("'true'", '"true"')),
+    ) + (
+        *((f"{name} command masked", source.replace(f"run: python3 scripts/collect_{name.lower()}.py\n",
+                                                  f"run: python3 scripts/collect_{name.lower()}.py || true\n", 1))
+          for name in SOURCES),
+    ) + (
+        *((f"{name} command semicolon mask", source.replace(f"run: python3 scripts/collect_{name.lower()}.py\n",
+                                                         f"run: python3 scripts/collect_{name.lower()}.py; true\n", 1))
+          for name in SOURCES),
+    ) + (
+        *((f"{name} command bypassed", source.replace(f"run: python3 scripts/collect_{name.lower()}.py\n",
+                                                    "run: true\n", 1))
+          for name in SOURCES),
+    ) + (
+        ("gap strict removed", source.replace("run: python3 scripts/check_data_freshness.py --strict\n",
+                                               "run: python3 scripts/check_data_freshness.py\n", 1)),
+        ("gap failure masked in shell", source.replace("run: python3 scripts/check_data_freshness.py --strict\n",
+                                                       "run: python3 scripts/check_data_freshness.py --strict || true\n", 1)),
+        ("pull failure masked", source.replace("            git pull --rebase --autostash\n",
+                                               "            git pull --rebase --autostash || true\n", 1)),
+        ("extra push before commit", source.replace("      - name: Commit aggregates\n",
+                                                    "      - name: Extra push\n        if: always()\n        run: git push\n\n      - name: Commit aggregates\n", 1)),
+        ("extra commit before commit", source.replace("      - name: Commit aggregates\n",
+                                                      "      - name: Extra commit\n        if: always()\n        run: git commit -am x\n\n      - name: Commit aggregates\n", 1)),
+        ("unnamed push before commit", source.replace("      - name: Commit aggregates\n",
+                                                     "      - run: git push\n\n      - name: Commit aggregates\n", 1)),
         ("guard disabled", change_condition(source, GUARD, "success()")),
     )
     for label, mutant in mutations:
         if mutant == source or not check(mutant):
             print(f"mutation survived: {label}", file=sys.stderr)
             return 1
+    for step in (*SETUP, "Self-test", COMMIT, GAPS):
+        for value in ("false", "'false'", '"false"'):
+            if check(mask(source, step, value)):
+                print(f"literal false rejected on {step}: {value}", file=sys.stderr)
+                return 1
     guard = dict(steps(source))[GUARD]
     script = guard.split("        run: |\n", 1)[1]
     script = "\n".join(line[10:] for line in script.splitlines()) + "\n"
