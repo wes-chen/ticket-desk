@@ -49,11 +49,13 @@ jobs:
           python3 scripts/collect_scorebig.py --self-test
           python3 scripts/summarize_market.py --self-test
 
-      # Cheap and it catches a renamed or repriced event before the collector writes a
-      # row against a stale id. Fails the run rather than collecting the wrong game.
+      # Cheap and it catches a renamed or repriced event before TickPick writes a row
+      # against a stale id. A refusal skips TickPick, lets the other sources run, and
+      # makes the final guard fail the job with the resolver named.
       - name: Re-resolve event ids
         id: resolve
         run: python3 scripts/collect_tickpick.py --resolve
+        continue-on-error: true
 
       # A refused source must not skip the others: each day of public asks is
       # unbackfillable. Capture each raw outcome, then fail after persisting any
@@ -101,19 +103,20 @@ jobs:
       # regenerated in the same run that adds a day to the store - otherwise the
       # deployed dashboard silently lags the series by a day.
       - name: Summarise
-        if: ${{ !cancelled() && success() && steps.selftest.outcome == 'success' && steps.resolve.outcome == 'success' }}
+        if: ${{ !cancelled() && success() && steps.selftest.outcome == 'success' }}
         run: python3 scripts/summarize_market.py
 
       # Independent check on the hand-transcribed tier table. Every new day of prices
       # makes it stronger, and a misfiled game shows up as an outlier.
       - name: Cross-check tiers against the market
-        if: ${{ !cancelled() && success() && steps.selftest.outcome == 'success' && steps.resolve.outcome == 'success' }}
+        if: ${{ !cancelled() && success() && steps.selftest.outcome == 'success' }}
         run: python3 scripts/check_tier_market.py
 
-      # Persist the observations before the diagnostic gate below. Any source regression
-      # must not discard another source's valid series: those days cannot be backfilled.
+      # Persist observations before the diagnostic gate below so a source refusal does
+      # not discard another source's valid day. A Summarise or tier cross-check failure
+      # still drops the day's commit, as on main.
       - name: Commit aggregates
-        if: ${{ !cancelled() && success() && steps.selftest.outcome == 'success' && steps.resolve.outcome == 'success' }}
+        if: ${{ !cancelled() && success() && steps.selftest.outcome == 'success' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -174,17 +177,18 @@ jobs:
       - name: Collectors must not refuse silently
         if: always()
         env:
+          RESOLVE: ${{ steps.resolve.outcome }}
           TICKPICK: ${{ steps.tickpick.outcome }}
           GAMETIME: ${{ steps.gametime.outcome }}
           TICKETNETWORK: ${{ steps.ticketnetwork.outcome }}
           SCOREBIG: ${{ steps.scorebig.outcome }}
         run: |
           bad=0
-          for src in TICKPICK GAMETIME TICKETNETWORK SCOREBIG; do
+          for src in RESOLVE TICKPICK GAMETIME TICKETNETWORK SCOREBIG; do
             outcome="${!src}"
             echo "- ${src,,}: ${outcome:-not run}" >> "$GITHUB_STEP_SUMMARY"
             if [[ "$outcome" == "failure" ]]; then
-              echo "::error title=${src,,} collector refused::collect_${src,,}.py exited non-zero and wrote nothing today - read its step log for the PROBLEM(S) list"
+              echo "::error title=${src,,} refused::${src,,} exited non-zero - read its step log"
               bad=1
             fi
           done

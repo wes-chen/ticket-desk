@@ -2,6 +2,7 @@
 """Exercise the collector workflow's failure and cancellation order (ops#415)."""
 
 import pathlib
+import os
 import re
 import subprocess
 import sys
@@ -16,6 +17,8 @@ CROSS_CHECK = "Cross-check tiers against the market"
 COMMIT = "Commit aggregates"
 GAPS = "Check for gaps"
 GUARD = "Collectors must not refuse silently"
+RESOLVE = "Re-resolve event ids"
+SETUP = ("actions/checkout@v7", "actions/setup-python@v7")
 REQUIRED = ("Self-test", "Re-resolve event ids", *COLLECTORS, SUMMARY,
             CROSS_CHECK, COMMIT, GAPS, GUARD)
 
@@ -106,8 +109,9 @@ def condition(expr: str | None, status: str, outcomes: dict[str, str]) -> bool:
 
 
 def simulate(source: str, *, fail: str | None = None,
-             cancel_after: str | None = None, setup_failure: bool = False) -> tuple[str, set[str]]:
-    status = "failure" if setup_failure else "success"
+             cancel_during: str | None = None,
+             cancel_between: str | None = None) -> tuple[str, set[str]]:
+    status = "success"
     outcomes: dict[str, str] = {}
     ran: set[str] = set()
     for name, block in steps(source):
@@ -118,15 +122,56 @@ def simulate(source: str, *, fail: str | None = None,
             continue
         ran.add(name)
         refused = name == fail or (name == GUARD and any(
-            outcomes.get(src.lower()) == "failure" for src in SOURCES))
-        outcome = "failure" if refused else "success"
+            outcomes.get(src.lower()) == "failure" for src in SOURCES + ("Resolve",)))
+        outcome = "cancelled" if name == cancel_during else "failure" if refused else "success"
         if ident:
             outcomes[ident] = outcome
         if refused and field(block, "continue-on-error") != "true" and status != "cancelled":
             status = "failure"
-        if name == cancel_after:
+        if name == cancel_during:
+            status = "cancelled"
+        if name == cancel_between:
             status = "cancelled"
     return status, ran
+
+
+def commit_behavior(block: str) -> bool:
+    """Execute the Commit body with a recording git; a failed push must stay fatal."""
+    if "        run: |\n" not in block:
+        return False
+    body = block.split("        run: |\n", 1)[1]
+    lines = []
+    for line in body.splitlines():
+        if line and not line.startswith("          "):
+            break
+        lines.append(line[10:])
+    script = "\n".join(lines) + "\n"
+    with tempfile.TemporaryDirectory() as temp:
+        tmp = pathlib.Path(temp)
+        fake_git = tmp / "git"
+        fake_git.write_text("#!/bin/bash\n"
+                            "printf '%s\\n' \"$*\" >> \"$GIT_LOG\"\n"
+                            "if [[ \"$1\" == status ]]; then echo ' M data/market/x'; fi\n"
+                            "if [[ \"$1\" == push && \"$FAIL_PUSH\" == 1 ]]; then exit 1; fi\n")
+        fake_git.chmod(0o755)
+        env = os.environ.copy()
+        env.update(PATH=f"{temp}:{env['PATH']}", GIT_LOG=str(tmp / "git.log"))
+        for fail_push in ("0", "1"):
+            (tmp / "git.log").write_text("")
+            env["FAIL_PUSH"] = fail_push
+            result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", script],
+                                    env=env, capture_output=True, text=True)
+            calls = (tmp / "git.log").read_text().splitlines()
+            expected = ("config user.name github-actions[bot]",
+                        "config user.email github-actions[bot]@users.noreply.github.com",
+                        "status --porcelain data/market/ data/tickpick_events.json",
+                        "add data/market/ data/tickpick_events.json")
+            if (calls[:4] != list(expected) or len(calls) != 7 or
+                    not calls[4].startswith("commit -m chore: tickpick prices ") or
+                    calls[5:] != ["pull --rebase --autostash", "push"] or
+                    (result.returncode == 0) == (fail_push == "1")):
+                return False
+    return True
 
 
 def check(source: str) -> list[str]:
@@ -144,25 +189,47 @@ def check(source: str) -> list[str]:
         return errors
     require(names.index("Self-test") < names.index("Re-resolve event ids") <
             min(names.index(name) for name in COLLECTORS), "pre-collection order")
+    require(names[:2] == list(SETUP), "checkout and Python setup precede Self-test")
+    for name in SETUP:
+        require(names.count(name) == 1 and (name not in blocks or field(blocks[name], "continue-on-error") != "true"),
+                f"{name} failure stays fatal")
     require(max(names.index(name) for name in COLLECTORS) < names.index(SUMMARY) <
             names.index(CROSS_CHECK) < names.index(COMMIT) < names.index(GAPS) <
             names.index(GUARD), "all collection and derivation precede commit and guard")
     require(names[-1] == GUARD, "refusal guard is final")
     require(field(blocks["Self-test"], "id") == "selftest", "Self-test outcome id")
     require(field(blocks["Re-resolve event ids"], "id") == "resolve", "Re-resolve outcome id")
+    require(field(blocks["Self-test"], "continue-on-error") != "true", "Self-test failure stays fatal")
+    require(field(blocks[RESOLVE], "continue-on-error") == "true", "resolver refusal allows other sources")
+    for name, commands in {
+        "Self-test": ("python3 scripts/market_store.py --self-test",
+                      "python3 scripts/collect_tickpick.py --self-test",
+                      "python3 scripts/collect_gametime.py --self-test",
+                      "python3 scripts/collect_ticketnetwork.py --self-test",
+                      "python3 scripts/collect_scorebig.py --self-test",
+                      "python3 scripts/summarize_market.py --self-test"),
+        RESOLVE: ("python3 scripts/collect_tickpick.py --resolve",),
+        SUMMARY: ("python3 scripts/summarize_market.py",),
+        CROSS_CHECK: ("python3 scripts/check_tier_market.py",),
+    }.items():
+        block = blocks[name]
+        match = re.search(r"(?m)^        run: (.*)$", block)
+        actual = () if not match else ((match.group(1),) if match.group(1) != "|" else
+                 tuple(re.findall(r"(?m)^          (.+)$", block)))
+        require(actual == commands, f"{name} required commands")
     for name in SOURCES:
         block = blocks["Collect " + name]
         require(field(block, "id") == name.lower(), f"{name} outcome id")
         require(field(block, "continue-on-error") == "true", f"{name} failure captured")
     for name in (SUMMARY, CROSS_CHECK, COMMIT, GAPS):
         require(field(blocks[name], "continue-on-error") != "true", f"{name} failure stays red")
-    require("git push" in blocks[COMMIT], "aggregate commit pushes")
+    require(commit_behavior(blocks[COMMIT]), "aggregate commit stages, commits and pushes without masking failure")
     guard = blocks[GUARD]
-    for name in SOURCES:
+    for name in ("Resolve",) + SOURCES:
         require(bool(re.search(rf"(?m)^          {name.upper()}: \$\{{\{{ steps\.{name.lower()}\.outcome \}}\}}$", guard)),
                 f"{name} raw outcome captured")
-    require("for src in TICKPICK GAMETIME TICKETNETWORK SCOREBIG; do" in guard,
-            "all sources checked")
+    require("for src in RESOLVE TICKPICK GAMETIME TICKETNETWORK SCOREBIG; do" in guard,
+            "resolver and all sources checked")
     require('if [[ "$outcome" == "failure" ]]; then' in guard and "exit $bad" in guard,
             "refusal makes job red")
 
@@ -172,9 +239,9 @@ def check(source: str) -> list[str]:
         ("TickPick refuses", {"fail": "Collect TickPick"}, "failure", normal),
         ("a secondary refuses", {"fail": "Collect Gametime"}, "failure", normal),
         ("Self-test fails", {"fail": "Self-test"}, "failure", {GAPS, GUARD}),
-        ("Re-resolve fails", {"fail": "Re-resolve event ids"}, "failure", {GAPS, GUARD}),
-        ("setup fails", {"setup_failure": True}, "failure", {GAPS, GUARD}),
-        ("cancelled", {"cancel_after": "Self-test"}, "cancelled", {GUARD}),
+        ("Re-resolve fails", {"fail": RESOLVE}, "failure", set(COLLECTORS[1:]) | {SUMMARY, CROSS_CHECK, COMMIT, GAPS, GUARD}),
+        ("checkout fails", {"fail": SETUP[0]}, "failure", {GAPS, GUARD}),
+        ("setup-python fails", {"fail": SETUP[1]}, "failure", {GAPS, GUARD}),
         ("Summarise fails", {"fail": SUMMARY}, "failure", set(COLLECTORS) | {SUMMARY, GAPS, GUARD}),
         ("Cross-check fails", {"fail": CROSS_CHECK}, "failure", set(COLLECTORS) | {SUMMARY, CROSS_CHECK, GAPS, GUARD}),
     )
@@ -186,6 +253,16 @@ def check(source: str) -> list[str]:
                     f"{label}: {status}, ran={sorted(actual)}")
         except (ValueError, IndexError) as exc:
             errors.append(f"{label}: {exc}")
+    protected = set(COLLECTORS + (SUMMARY, CROSS_CHECK, COMMIT, GAPS))
+    for name in names[:names.index(COMMIT)]:
+        later = protected & set(names[names.index(name) + 1:])
+        for kind in ("cancel_during", "cancel_between"):
+            try:
+                status, ran = simulate(source, **{kind: name})
+                require(status == "cancelled" and not (ran & later) and GUARD in ran,
+                        f"{kind} {name}: later steps ran={sorted(ran & later)}, guard={GUARD in ran}")
+            except (ValueError, IndexError) as exc:
+                errors.append(f"{kind} {name}: {exc}")
     return errors
 
 
@@ -217,9 +294,26 @@ def self_test(source: str) -> int:
         ("TickPick after resolver failure", change_condition(source, COLLECTORS[0], "always()")),
         ("secondary after Self-test failure or cancellation", change_condition(source, COLLECTORS[1], "always()")),
         ("commit after Self-test failure or cancellation", change_condition(source, COMMIT, "always()")),
+        ("commit after cancellation with !failure()", change_condition(
+            source, COMMIT, "${{ !failure() && steps.selftest.outcome == 'success' }}")),
+        ("checkout failure masked", source.replace("      - uses: actions/checkout@v7\n",
+                                                    "      - uses: actions/checkout@v7\n        continue-on-error: true\n", 1)),
+        ("Python setup failure masked", source.replace("      - uses: actions/setup-python@v7\n",
+                                                        "      - uses: actions/setup-python@v7\n        continue-on-error: true\n", 1)),
+        ("resolver bypassed", source.replace("run: python3 scripts/collect_tickpick.py --resolve",
+                                               "run: true", 1)),
+        ("Self-test bypassed", source.replace("python3 scripts/market_store.py --self-test",
+                                                "true", 1)),
+        ("Summarise bypassed", source.replace("run: python3 scripts/summarize_market.py",
+                                                "run: true", 1)),
         ("ScoreBig after commit", move_after(source, COLLECTORS[3], COMMIT)),
         ("Summarise after commit", move_after(source, SUMMARY, COMMIT)),
         ("push removed", source.replace("            git push\n", "", 1)),
+        ("push echoed", source.replace("            git push\n", "            echo git push\n", 1)),
+        ("push failure masked", source.replace("            git push\n", "            git push || true\n", 1)),
+        ("commit removed", source.replace('            git commit -m "chore: tickpick prices $(date -u +%Y-%m-%d)"\n', "", 1)),
+        ("stage narrowed", source.replace("            git add data/market/ data/tickpick_events.json\n",
+                                           "            git add data/market/tickpick.jsonl\n", 1)),
         ("commit failure masked", source.replace("      - name: Commit aggregates\n",
                                                   "      - name: Commit aggregates\n        continue-on-error: true\n", 1)),
         ("gap failure masked", source.replace("      - name: Check for gaps\n",
@@ -234,8 +328,9 @@ def self_test(source: str) -> int:
     script = guard.split("        run: |\n", 1)[1]
     script = "\n".join(line[10:] for line in script.splitlines()) + "\n"
     with tempfile.TemporaryDirectory() as temp:
-        for refused in (None, *SOURCES):
+        for refused in (None, "Resolve", *SOURCES):
             env = {name.upper(): "failure" if name == refused else "success" for name in SOURCES}
+            env["RESOLVE"] = "failure" if refused == "Resolve" else "success"
             env["GITHUB_STEP_SUMMARY"] = str(pathlib.Path(temp) / "summary")
             result = subprocess.run(["bash", "-e", "-c", script], env=env,
                                     capture_output=True, text=True)
