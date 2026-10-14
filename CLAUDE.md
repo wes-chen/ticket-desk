@@ -728,6 +728,16 @@ successes cannot be audited.
   events in a rolling window. `scripts/collect_tickpick.py` now fetches that single
   page with `urllib`. The browser result above was measured on 2026-09-05 against
   an event URL; browser access to the October team page has not been re-measured.
+  **The team-page window is not established as the next 20 NHL games (ops#420).**
+  Two logged-out `urllib` fetches on 2026-10-14 returned HTTP 200 and exactly 20
+  `SportsEvent` ld+json blocks each, including 11 SAP Center games, from October 15
+  through November 28. Compared by date against the public NHL season API, both
+  omitted the Sharks' October 19, 20, and 22 away games while including three later
+  games. The 20-block count is an observation, not proof of a fixed cap or a stable
+  eligibility rule. In particular, no measurement establishes that TickPick cannot
+  omit a future *home* game. A positive `coverage tickpick` floor derived from the
+  NHL's next 20 games would silently excuse genuine per-game holes, so none is
+  accepted until that eligibility and window rule is measured or decided (ops#421).
 - **Ticketmaster, SeatGeek and StubHub are still blocked**, and that part of ops#4 holds.
   TM serves a 403 IP-block page to a runner (naming the Azure IP) and a `tm-bl` device
   challenge to residential plain HTTP; SeatGeek 403s everywhere measured; StubHub returns
