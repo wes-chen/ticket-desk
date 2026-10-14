@@ -722,9 +722,11 @@ successes cannot be audited.
   | residential | TickPick 200, 1.4MB, 31 prices | TickPick 403 `Just a moment...` |
   | datacenter (Actions) | TickPick 200, 1.4MB, 31 prices | TickPick 403 |
 
-  So **TickPick collects fine from free CI over plain HTTP**, and reaching for Playwright
-  is what breaks it. `scripts/collect_tickpick.py` therefore uses `urllib` on purpose;
-  do not "upgrade" it to a real browser.
+  This 2026-09-05 result is now URL-specific. Measured 2026-10-14 (ops#415): event
+  detail pages return 403 over plain HTTP from both residential and Actions clients.
+  The logged-out team page still returns 200 and publishes 11 priced SAP Center
+  events in a rolling window. `scripts/collect_tickpick.py` now fetches that single
+  page with `urllib`; a browser still breaks the measured access.
 - **Ticketmaster, SeatGeek and StubHub are still blocked**, and that part of ops#4 holds.
   TM serves a 403 IP-block page to a runner (naming the Azure IP) and a `tm-bl` device
   challenge to residential plain HTTP; SeatGeek 403s everywhere measured; StubHub returns
@@ -757,8 +759,9 @@ successes cannot be audited.
 
   **Both now measured from a runner too** (2026-09-05, ops#39): TicketNetwork 200 /
   202,701B / 20 prices, ScoreBig 200 / 316,460B / 34 prices. Both collect daily. So the
-  reachability grid over plain HTTP is now **four for four** - TickPick, Gametime,
-  TicketNetwork and ScoreBig all work from residential *and* datacenter; Ticketmaster,
+  reachability grid over plain HTTP was **four for four** on those measured URLs in
+  September - TickPick, Gametime, TicketNetwork and ScoreBig worked from residential
+  *and* datacenter; TickPick event pages changed in October as recorded above. Ticketmaster,
   SeatGeek and StubHub refuse from both. The same run re-confirmed TickPick is blocked
   under headless Chromium from the runner while fine over plain HTTP, so the browser row
   of the 2x2 still holds.
@@ -794,8 +797,10 @@ successes cannot be audited.
   as expected. A day-over-day coverage gate fires on roughly every other run here, so
   `check_data_freshness.py` requires a drop to PERSIST before it is fatal, and reports a
   single-day dip as a warning. **Accepted, not fixed** still holds for the coverage
-  itself: TickPick and Gametime both cover 44/44, so this source is supplementary and a
-  residential proxy is not worth the 13 games. Eighth instance in this project of the
+  itself: at the time TickPick and Gametime both covered 44/44, so this source was
+  supplementary and a residential proxy was not worth the 13 games. TickPick's October
+  team-page move makes that coverage argument historical; its own freshness treatment
+  needs a separate decision. Eighth instance in this project of the
   conclusion being wrong rather than the thing measured - and the first where the fault
   was sample size rather than the tool.
 
@@ -962,11 +967,11 @@ python3 scripts/check_issues.py            # issue hygiene vs the live tracker (
 python3 scripts/hypotheses.py              # readiness of each registered hypothesis, then run
 python3 scripts/summarize_market.py        # derive data/market/summary.json
 
-python3 scripts/collect_tickpick.py        # TickPick -> data/market/tickpick.jsonl
+python3 scripts/collect_tickpick.py        # TickPick team-page rolling window -> data/market/tickpick.jsonl
 python3 scripts/collect_gametime.py        # second source, 44/44, AggregateOffer
 python3 scripts/collect_ticketnetwork.py   # third, ROLLING window - see the time-join warning
 python3 scripts/collect_scorebig.py        # fourth, ROLLING - declared UTC offset is wrong
-python3 scripts/collect_tickpick.py --resolve   # rebuild data/tickpick_events.json
+python3 scripts/collect_tickpick.py --resolve   # legacy workflow entry point; no longer needed for collection
 python3 scripts/resolve_tm_events.py       # TM Discovery ids -> data/tm_events.json
 
 python3 scripts/probe_sources.py --label local  # HTTP-level reachability (no browser needed)
@@ -1042,8 +1047,9 @@ its docstring on why a readiness estimate is data availability rather than stati
 power.
 
 `scripts/collect_tickpick.py` is the working price collector. Plain HTTP, no browser,
-44/44 home games, running daily in Actions. **Aggregates commit; raw ld+json goes to a
-90-day Actions artifact and never into git** (~102KB/day raw). It is NOT seat-level:
+a rolling team-page window (11 SAP Center games on 2026-10-14), running daily in Actions.
+**Aggregates commit; raw ld+json goes to a
+90-day Actions artifact and never into git**. It is NOT seat-level:
 TickPick's listing grid is behind an `/ajax/` path its `robots.txt` disallows, so
 section-level comps need a different source. It is also a **comp market, not the channel
 these tickets are sold on** - never read these numbers as achievable prices.

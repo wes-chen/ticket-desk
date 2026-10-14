@@ -78,7 +78,7 @@ def targets(sample_event: str | None) -> list[dict]:
         {
             "platform": "tickpick",
             "url": "https://www.tickpick.com/nhl/san-jose-sharks-tickets/",
-            "note": "all-in pricing, so no buyer-fee reverse engineering needed",
+            "note": "team page publishes a priced rolling window; event pages return 403 over plain HTTP (ops#415)",
         },
         {
             "platform": "gametime",
