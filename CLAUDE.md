@@ -726,7 +726,8 @@ successes cannot be audited.
   detail pages return 403 over plain HTTP from both residential and Actions clients.
   The logged-out team page still returns 200 and publishes 11 priced SAP Center
   events in a rolling window. `scripts/collect_tickpick.py` now fetches that single
-  page with `urllib`; a browser still breaks the measured access.
+  page with `urllib`. The browser result above was measured on 2026-09-05 against
+  an event URL; browser access to the October team page has not been re-measured.
 - **Ticketmaster, SeatGeek and StubHub are still blocked**, and that part of ops#4 holds.
   TM serves a 403 IP-block page to a runner (naming the Azure IP) and a `tm-bl` device
   challenge to residential plain HTTP; SeatGeek 403s everywhere measured; StubHub returns

@@ -47,7 +47,7 @@ STORES = [
     #
     # `script` exists so "is this source actually scheduled?" can be DERIVED from the
     # workflows rather than declared here. See scheduled_collectors().
-    ("tickpick", ROOT / "data" / "market" / "tickpick.jsonl", True, False,
+    ("tickpick", ROOT / "data" / "market" / "tickpick.jsonl", True, True,
      "collect_tickpick.py"),
     ("gametime", ROOT / "data" / "market" / "gametime.jsonl", False, False,
      "collect_gametime.py"),

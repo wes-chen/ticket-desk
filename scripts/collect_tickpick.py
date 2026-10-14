@@ -6,10 +6,17 @@ in October 2026 (ops#415). The logged-out team page still publishes priced Sport
 ld+json, but only for a rolling window. One page request replaces dozens of refused
 event requests. --resolve remains a no-op until the separately owned workflow removes
 its old resolver step; the event map is no longer used for collection.
+
+The logged-out team URL is allowed by the measured robots.txt; the listing grid's
+/ajax/ path is disallowed, so these are market-wide ranges, not seat-level comps.
+Fetch one page per run and use the shared polite HTTP client rather than a browser.
+Only daily aggregates enter git. Raw public ld+json goes to an Actions artifact,
+because keeping every scrape in git would preserve its full history forever.
 """
 
 import argparse
 import json
+import math
 import pathlib
 import re
 import sys
@@ -56,6 +63,17 @@ def offer(event: dict) -> dict:
         "currency": value.get("priceCurrency"),
         "availability": (value.get("availability") or "").rsplit("/", 1)[-1] or None,
     }
+
+
+def price_number(value: object) -> float | None:
+    """Convert a published price at the source boundary; reject invalid numbers."""
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) and number >= 0 else None
 
 
 def venue_name(event: dict) -> str:
@@ -121,18 +139,22 @@ def join(events: dict[str, dict], schedule: dict, today: str
         scheduled = datetime.fromisoformat(game["startTimeUTC"].replace("Z", "+00:00"))
         if start.tzinfo and start.astimezone(timezone.utc) != scheduled:
             problems.append(f"OFFSET MISMATCH: {game['date']} {event['startDate']}")
+            continue
         opponent = (game["opponent"]["name"] or "").split()[-1].lower()
         name = event.get("name") or ""
         if not opponent or opponent not in name.lower():
             problems.append(f"OPPONENT MISMATCH: {game['date']} {name!r}")
+            continue
         event_id = EVENT_ID_RE.search(event.get("url") or "")
         if not event_id:
             problems.append(f"NO EVENT ID: {game['date']}")
             continue
         prices = offer(event)
-        if not isinstance(prices["low"], (int, float)) or isinstance(prices["low"], bool):
-            problems.append(f"NO NUMERIC LOW: {game['date']}")
+        low, high = price_number(prices["low"]), price_number(prices["high"])
+        if low is None or high is None or high < low:
+            problems.append(f"INVALID PRICE RANGE: {game['date']}")
             continue
+        prices["low"], prices["high"] = low, high
         rows.append({
             "eventId": event_id.group(1), "gameId": game["gameId"],
             "date": game["date"], "source": "tickpick", "ok": True,
@@ -230,16 +252,77 @@ def self_test() -> int:
     assert any("NO EVENT ID" in e for e in
                join({**home, "2026-10-27T19:30": bad}, {"games": selected}, "2026-10-14")[1])
     bad = dict(events[1], offers={"lowPrice": "11111111"})
-    assert any("NO NUMERIC LOW" in e for e in
+    assert any("INVALID PRICE RANGE" in e for e in
                join({**home, "2026-10-27T19:30": bad}, {"games": selected}, "2026-10-14")[1])
+    assert offer(dict(events[1], offers=[events[1]["offers"]]))["low"] == 32
+    assert price_number("32.5") == 32.5
+    assert price_number(True) is None
+    assert price_number(float("nan")) is None
+    assert price_number(-1) is None
     with tempfile.TemporaryDirectory() as dirname:
         store = pathlib.Path(dirname) / "market.jsonl"
+        schedule_path = pathlib.Path(dirname) / "schedule.json"
+        schedule_path.write_text(json.dumps({"games": selected}))
         with patch.object(ms, "get", return_value=(html, None)), \
              patch.object(ms, "venue_today", return_value="2026-10-14"), \
-             patch.dict(globals(), {"SCHEDULE": pathlib.Path(dirname) / "schedule.json"}):
-            SCHEDULE.write_text(json.dumps({"games": selected}))
+             patch.dict(globals(), {"SCHEDULE": schedule_path}):
             assert collect(store, None) == 0
         assert len(ms.read_store(store)) == 2
+
+        def page(first: dict, second: dict) -> str:
+            return "".join(f'<script type="application/ld+json">{json.dumps(e)}</script>'
+                           for e in (first, second))
+
+        def refused(name: str, response: tuple[str | None, str | None],
+                    expected: str, *, today: str = "2026-10-14") -> None:
+            target = pathlib.Path(dirname) / f"{name}.jsonl"
+            with patch.object(ms, "get", return_value=response), \
+                 patch.object(ms, "venue_today", return_value=today), \
+                 patch.dict(globals(), {"SCHEDULE": schedule_path}):
+                from contextlib import redirect_stderr
+                from io import StringIO
+                err = StringIO()
+                with redirect_stderr(err):
+                    assert collect(target, None) == 1, name
+                assert expected in err.getvalue(), name
+            assert not target.exists(), name
+
+        first, second = events[1:3]
+        refused("opponent", (page(dict(first, name="wrong opponent"), second), None),
+                "OPPONENT MISMATCH")
+        refused("offset", (page(dict(first, startDate="2026-10-27T19:30:00-08:00"),
+                                second), None), "OFFSET MISMATCH")
+        refused("offers_string", (page(dict(first, offers="broken"), second), None),
+                "INVALID PRICE RANGE")
+        refused("fetch_error", (None, "body cap hit"), "body cap hit")
+        for name, changes in (
+            ("negative_low", {"lowPrice": -11111111}),
+            ("nan_low", {"lowPrice": float("nan")}),
+            ("text_low", {"lowPrice": "abc"}),
+            ("bool_low", {"lowPrice": True}),
+            ("negative_high", {"highPrice": -11111111}),
+            ("nan_high", {"highPrice": float("nan")}),
+            ("text_high", {"highPrice": "abc"}),
+            ("bool_high", {"highPrice": True}),
+            ("inverted", {"highPrice": 1}),
+        ):
+            changed = dict(first, offers={**first["offers"], **changes})
+            refused(name, (page(changed, second), None), "INVALID PRICE RANGE")
+
+        # A list-valued AggregateOffer is present in older event-page responses.
+        list_page = page(dict(first, offers=[first["offers"]]), second)
+        with patch.object(ms, "get", return_value=(list_page, None)), \
+             patch.object(ms, "venue_today", return_value="2026-10-14"), \
+             patch.dict(globals(), {"SCHEDULE": schedule_path}):
+            assert collect(pathlib.Path(dirname) / "list.jsonl", None) == 0
+        assert len(ms.read_store(pathlib.Path(dirname) / "list.jsonl")) == 2
+
+        # Once every scheduled home game is played, no fetch or write is needed.
+        with patch.object(ms, "get", side_effect=AssertionError("unexpected fetch")), \
+             patch.object(ms, "venue_today", return_value="2026-10-30"), \
+             patch.dict(globals(), {"SCHEDULE": schedule_path}):
+            assert collect(pathlib.Path(dirname) / "season-over.jsonl", None) == 0
+        assert not (pathlib.Path(dirname) / "season-over.jsonl").exists()
     print("self-test: passed")
     return 0
 
