@@ -20,14 +20,15 @@ Chromium is what breaks TickPick; do not "upgrade" this either. See ops#33.
 
 THREE THINGS THAT DIFFER FROM THE GAMETIME COLLECTOR, all measured rather than assumed:
 
-  * `startDate` carries an EXPLICIT UTC OFFSET ("2026-09-22T19:00:00-07:00"), unlike
-    Gametime's naive-UTC strings. So it is normalised to UTC and joined on startTimeUTC.
-    Joining on the local date instead would be off by one for every night game - and
-    every home game here is a night game.
+  * `startDate` originally carried a correct UTC offset. On 2026-10-09 the live
+    page instead declared -08:00 for October PDT games as well as November PST.
+    Its wall clock matches the NHL schedule. Interpret home-event wall time in
+    America/Los_Angeles, then join on UTC; do not trust the declared offset.
 
-  * Offers are `Offer` with a scalar `price`, not `AggregateOffer` with lowPrice/highPrice.
-    So this source yields a LOW only. `high` is genuinely absent, not null-because-broken,
-    and summarize_market must not read the missing high as a zero-width spread.
+  * Offers changed from Offer.price (numbers) to AggregateOffer.lowPrice (strings).
+    Both captured formats are accepted. We retain the low-only series; no high is
+    inferred for historical Offer records. The old price filter dropped all six
+    home events before the incorrect offset could even reach the join (ops#411).
 
   * COVERAGE IS A ROLLING WINDOW, not the full season. Measured: 29 of 44 home games,
     every one of the 15 missing ones late-season (2027-01-28 onward), and ZERO orphans.
@@ -41,6 +42,7 @@ paste in ops#23.
 
 import argparse
 import json
+import math
 import pathlib
 import re
 import sys
@@ -83,13 +85,21 @@ def venue_name(e: dict) -> str | None:
 
 
 def offer(e: dict) -> dict:
-    """TicketNetwork serves Offer.price - a scalar ask, not a range. `high` is absent on
-    purpose: inventing one would fabricate a spread this source never published."""
+    """Keep the low-only series across the measured Offer -> AggregateOffer change."""
     o = e.get("offers") or {}
     if isinstance(o, list):
         o = o[0] if o else {}
+    if not isinstance(o, dict):
+        o = {}
+    value = o.get("lowPrice") if o.get("@type") == "AggregateOffer" else o.get("price")
+    try:
+        low = float(value) if not isinstance(value, bool) else None
+    except (TypeError, ValueError):
+        low = None
+    if low is not None and (not math.isfinite(low) or low < 0):
+        low = None
     return {
-        "low": o.get("price"),
+        "low": low,
         "currency": o.get("priceCurrency"),
         "availability": (o.get("availability") or "").rsplit("/", 1)[-1] or None,
     }
@@ -103,7 +113,7 @@ def away_name(e: dict) -> str:
 
 
 def utc_key(start: str | None) -> str | None:
-    """Normalise an offset-bearing ISO timestamp to the schedule's startTimeUTC form.
+    """Convert venue wall time to UTC, ignoring the source's unreliable offset.
 
     Returns None for a date-only string ("2026-09-30"), which is what season-ticket
     packages carry. Those are filtered on price anyway; this is the second guard, because
@@ -118,7 +128,7 @@ def utc_key(start: str | None) -> str | None:
         return None
     if dt.tzinfo is None:
         return None
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return dt.replace(tzinfo=ms.PT).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def home_events(events: list[dict]) -> dict[str, dict]:
@@ -322,6 +332,43 @@ def self_test() -> int:
           utc_key("2026-09-22T19:00:00"), None)
     check("missing start is not a crash", utc_key(None), None)
     check("garbage start is not a crash", utc_key("not a date"), None)
+
+    # Captured new page: five PDT games and one PST game all declared -08:00.
+    current = json.loads((ROOT / "tests" / "fixtures" /
+                          "ticketnetwork_ldjson_20261009.json").read_text())["events"]
+    current_home = home_events(current)
+    expected_keys = ["2026-10-10T20:00:00Z", "2026-10-14T03:00:00Z",
+                     "2026-10-28T02:30:00Z", "2026-10-30T02:00:00Z",
+                     "2026-10-31T20:00:00Z", "2026-11-03T02:00:00Z"]
+    check("captured AggregateOffers survive and use venue DST", sorted(current_home), expected_keys)
+    check("captured string low becomes numeric", offer(current[0])["low"], 84.0)
+    check("aggregate does not change the low-only series", "high" in offer(current[0]), False)
+    check("correct PDT offset still works", utc_key("2026-10-10T13:00:00-07:00"), expected_keys[0])
+    for bad in ("NaN", "Infinity", "-1", "garbage", None, True):
+        check(f"invalid aggregate price {bad!r} is refused",
+              offer({"offers": {"@type": "AggregateOffer", "lowPrice": bad}})["low"], None)
+    current_schedule = {"games": [
+        {"gameId": i, "date": date, "startTimeUTC": key,
+         "opponent": {"name": name, "abbrev": abbrev}}
+        for i, (date, key, name, abbrev) in enumerate(zip(
+            ["2026-10-10", "2026-10-13", "2026-10-27", "2026-10-29", "2026-10-31", "2026-11-02"],
+            expected_keys, ["Edmonton Oilers", "Boston Bruins", "Buffalo Sabres",
+                            "Vancouver Canucks", "Ottawa Senators", "Calgary Flames"],
+            ["EDM", "BOS", "BUF", "VAN", "OTT", "CGY"]))]}
+    current_rows, current_problems, _ = join(current_home, current_schedule, "2026-10-09")
+    check("all captured home games join without problems", (len(current_rows), current_problems), (6, []))
+    with tempfile.TemporaryDirectory() as td:
+        sc = pathlib.Path(td) / "schedule.json"
+        store = pathlib.Path(td) / "store.jsonl"
+        sc.write_text(json.dumps(current_schedule))
+        page = "".join(f'<script type="application/ld+json">{json.dumps(e)}</script>' for e in current)
+        with patch.dict(globals(), {"SCHEDULE": sc}), \
+             patch.object(ms, "venue_today", return_value="2026-10-09"), \
+             patch.object(ms, "get", return_value=(page, None)):
+            check("captured new page collects successfully", collect(store, None), 0)
+        saved = [json.loads(line) for line in store.read_text().splitlines()] if store.exists() else []
+        check("new-format collection persists six numeric prices", len(saved), 6)
+        check("stored prices are numeric", all(isinstance(r["low"], (int, float)) for r in saved), True)
 
     # ---- filters, each with something real to reject ----
     home = home_events(evs)

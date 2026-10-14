@@ -866,24 +866,20 @@ successes cannot be audited.
   the join count, which is the number that actually matters. Seventh instance in this
   project of the instrument being the thing that was wrong.
 
-- **The two new sources disagree about time, and both are right in their own way. Do not
-  unify their joins.** Measured 2026-09-05:
+- **TicketNetwork's timestamp and offer formats changed (ops#411).** On 2026-09-05
+  its September offset was correctly -07:00; on 2026-10-09 the captured public page
+  declared -08:00 for five October PDT home games and one November PST game. The
+  wall times match the schedule. `collect_ticketnetwork.py` now interprets home-event
+  wall time in America/Los_Angeles before converting to UTC, preserving DST across
+  both measured formats. This is not evidence of year-round fixed-offset behavior.
+  ScoreBig still joins on venue wall time under its separately captured evidence.
 
-  | source | `startDate` | correct join |
-  | --- | --- | --- |
-  | TicketNetwork | `-07:00` in September - a real, DST-aware offset | normalise to UTC, join on `startTimeUTC` |
-  | ScoreBig | `-08:00` in **every** month, including September | **discard the offset**, join on local wall clock |
-
-  ScoreBig stamps a fixed `-08:00` year-round. Honouring it matched **10/44** games;
-  joining on wall clock matched **19/19**. The failure is silent - it keeps the PST games
-  and drops every PDT one, which reads as ordinary partial coverage rather than as a bug.
-  `collect_scorebig.py` therefore slices the timestamp string instead of parsing it,
-  because parsing invites honouring the tzinfo that is the problem. A later refactor that
-  "unifies" these two joins will break one of them (ops#36).
-
-  **ScoreBig also serves prices as strings** (`"15.20"`), where every other source serves
-  numbers. Coerced at that collector's boundary - untouched, it would have reached
-  `summarize_market.py`'s delta arithmetic, where `"9.00" > "15.20"` is true.
+  The immediate zero-event cause was the offer format: `Offer.price` became
+  `AggregateOffer.lowPrice`, with prices encoded as strings. The collector accepts
+  both and converts prices to finite, nonnegative numbers at its boundary. The
+  TicketNetwork series remains low-only. Its captured 2026-10-09 page contains ten
+  events, six at SAP Center, covering through November 2; the older horizon is no
+  longer evidence of current coverage.
 
 - **The Discovery API is NOT subject to the ops#4 block.** `resolve_tm_events.py`
   resolved all 44 events from a GitHub Actions runner. The block applies to TM's web

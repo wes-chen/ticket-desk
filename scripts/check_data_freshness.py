@@ -1461,15 +1461,17 @@ def self_test() -> int:
     # three ways so that
     # "tidying" these into bare dates is a failing test rather than a silent re-scoping:
     # the global set is exactly the two reviewed days; TickPick's own days are exactly the
-    # one; and the three-source lines do not name TickPick.
+    # one; and the ops#351 dates name only the other three sources. Later per-source
+    # accepts have separate causes and must not change this outage's assertion.
     check("the committed global (bare-date) accepts are exactly the reviewed ones",
           sorted(real_days), ["2026-09-09", "2026-09-10"])
     check("the committed file excuses TickPick's 2026-09-23 by a TickPick-only entry",
           sorted(real_src.get("tickpick", set())), ["2026-09-23"])
+    ops351_days = {f"2026-09-{x}" for x in range(23, 28)}
     check("...and the three-source outage lines stay separate from it",
-          {k: sorted(v) for k, v in real_src.items() if k != "tickpick"},
-          {k: [f"2026-09-{x}" for x in range(23, 28)]
-           for k in ("gametime", "ticketnetwork", "scorebig")})
+          {k: sorted(v & ops351_days) for k, v in real_src.items()
+           if k != "tickpick" and v & ops351_days},
+          {k: sorted(ops351_days) for k in ("gametime", "ticketnetwork", "scorebig")})
     check("the committed per-source days name only real sources",
           sorted(set(real_src) - {n for n, *_ in STORES}), [])
 
