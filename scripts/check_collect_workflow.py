@@ -1,8 +1,50 @@
 #!/usr/bin/env python3
-"""Exercise the collector workflow's failure and cancellation order (ops#415)."""
+"""Exercise the collector workflow's failure and cancellation order (ops#415).
 
-import pathlib
+The checker reads the workflow through a deliberately small CANONICAL GRAMMAR and
+fails closed on every line outside it. Four review rounds each found one more YAML
+spelling (a quoted key, a space before a colon, a `|-` block, a step starting with
+`- if:`, a flow mapping) that the earlier regex reader treated as absent while Actions
+read it as a real key. Enumerating spellings cannot close that class, because YAML
+has more of them than any list. So the rule is inverted: a line is either parsed
+completely by `parse()` below, or the check fails naming the line.
+
+The grammar, in full:
+
+- The whole file is printable ASCII plus newlines. No tabs, CR, BOM or non-ASCII
+  (YAML treats some of those as line breaks or indentation; Python splits differently).
+- Everything above the steps is pinned line for line (`HEADER`, `JOB_HEADER`), with
+  only the cron time free. That shuts out workflow-level `defaults` (a shell override
+  for every step) and `env` (`BASH_ENV` runs code before every step), and job-level
+  `continue-on-error`, `defaults`, `env` or `if`.
+- Every following line, to the end of the file, is part of the steps section:
+  a step starts at exactly `      - name: <scalar>` or `      - uses: <scalar>`; step
+  keys sit at exactly eight spaces, from an allowlist, written `key: value`; `with:`
+  and `env:` hold `key: value` children at exactly ten spaces; the only block scalar
+  is `run: |`, whose body starts at exactly ten spaces. No `shell` or
+  `working-directory` key exists in the grammar, so no step can carry one.
+- A scalar is plain (no leading YAML indicator, no `#`, no `: `), or single- or
+  double-quoted with no escapes. Anchors, aliases, merge keys, tags, flow
+  collections, folded or chomped blocks and comments after a value are all outside it.
+
+Anything the grammar accepts is a strict subset of YAML whose meaning is not in doubt,
+so the semantic checks below run on the structure Actions will see. PyYAML would
+read more spellings, but it is not installed in CI (`test.yml` installs nothing) and
+adding it would be a new external dependency; a real parser would also still need
+this checker to decide what the parsed values mean.
+
+The cost is that an unusual but valid spelling is rejected. That is deliberate: the
+fix is to write it canonically, which is one line, while a spelling read wrongly
+silently disables a failure the workflow exists to surface.
+
+What a text check cannot close: shell that hides a command (`g""it push`, a Python
+subprocess). The pinned steps carry exact commands; the free-text steps (Summary,
+upload) are only kept away from the literal word `git`.
+"""
+
+import dataclasses
 import os
+import pathlib
 import re
 import subprocess
 import sys
@@ -21,37 +63,181 @@ RESOLVE = "Re-resolve event ids"
 SETUP = ("actions/checkout@v7", "actions/setup-python@v7")
 REQUIRED = ("Self-test", "Re-resolve event ids", *COLLECTORS, SUMMARY,
             CROSS_CHECK, COMMIT, GAPS, GUARD)
+# Only these steps may set continue-on-error, and only to a bare `true`; every other
+# step's failure must stay fatal, so for them the key is absent or a bare `false`.
+MASKABLE = (RESOLVE, *COLLECTORS)
+# The actions this job uses today. Anything else (a third-party auto-commit action, a
+# local `./` action, a docker image) could push or mask without a `git` in sight.
+ACTIONS = frozenset({"actions/checkout@v7", "actions/setup-python@v7",
+                     "actions/upload-artifact@v7"})
+STEP_KEYS = frozenset({"name", "id", "if", "uses", "run", "with", "env",
+                       "continue-on-error"})
+# Everything above the steps, as regexes over its significant lines, in order. Pinned
+# whole rather than parsed: nothing here needs to vary but the cron time, and a
+# workflow-level `defaults`/`env` or a job-level `continue-on-error`/`defaults` would
+# change what every step runs or whether a failure turns the job red.
+HEADER = ("name: Collect market prices", "on:", "  schedule:",
+          r'    - cron: "[0-9*/,-]+ [0-9*/,-]+ [0-9*/,-]+ [0-9*/,-]+ [0-9*/,-]+"',
+          "  workflow_dispatch:", "permissions:", "  contents: write", "concurrency:",
+          "  group: collect-tickpick", "  cancel-in-progress: false", "jobs:")
+JOB_HEADER = ("  collect:", "    runs-on: ubuntu-latest", "    steps:")
+GUARD_ENV = {name.upper(): f"${{{{ steps.{name.lower()}.outcome }}}}"
+             for name in ("Resolve",) + SOURCES}
+PLAIN_START = frozenset("-?:,[]{}#&*!|>'\"%@`")
+BLOCK_INDENT = " " * 10
 
 
-def steps(source: str) -> list[tuple[str, str]]:
-    """Split job steps at their indentation, including unnamed setup steps."""
-    matches = list(re.finditer(r"(?m)^      - (name|uses|run): (.+)$", source))
-    return [(m.group(2) if m.group(1) != "run" else f"unnamed run {i}",
-             (f"\n        run: {m.group(2)}" if m.group(1) == "run" else "") +
-             source[m.end():matches[i + 1].start() if i + 1 < len(matches) else len(source)])
-            for i, m in enumerate(matches)]
+class GrammarError(ValueError):
+    pass
 
 
-def field(block: str, key: str) -> str | None:
-    match = re.search(rf"(?m)^        {re.escape(key)}: (.+)$", block)
-    return match.group(1).strip() if match else None
+@dataclasses.dataclass
+class Step:
+    name: str
+    line: int
+    text: str = ""
+    raw: dict = dataclasses.field(default_factory=dict)       # values as written
+    scalars: dict = dataclasses.field(default_factory=dict)   # quotes removed
+    maps: dict = dataclasses.field(default_factory=dict)      # with / env children
+    body: list = dataclasses.field(default_factory=list)      # `run: |` lines
+    block: bool = False
+
+    def field(self, key: str) -> str | None:
+        return self.scalars.get(key)
+
+    def script(self) -> str:
+        """The run text exactly as the shell receives it (`|` keeps one final newline)."""
+        if self.block:
+            return "\n".join(self.body).rstrip("\n") + "\n"
+        return self.scalars.get("run", "")
+
+    def commands(self) -> tuple[str, ...]:
+        return tuple(line for line in self.script().splitlines() if line.strip())
 
 
-def fatal_failure(block: str) -> bool:
-    """Only an absent or literal false mask leaves a step's failure fatal.
+def scalar(value: str, number: int) -> str:
+    """Decode one scalar of the canonical grammar, or refuse it."""
+    if value.startswith('"'):
+        if re.fullmatch(r'"[^"\\]*"', value):
+            return value[1:-1]
+    elif value.startswith("'"):
+        if re.fullmatch(r"'[^']*'", value):
+            return value[1:-1]
+    elif (value and value == value.strip() and value[0] not in PLAIN_START and
+          "#" not in value and ": " not in value and not value.endswith(":")):
+        return value
+    raise GrammarError(f"line {number}: value outside the canonical grammar: {value!r}")
 
-    Expressions can evaluate to true at runtime. Reject those and unknown YAML
-    spellings rather than predicting their value from the workflow text.
-    """
-    values = re.findall(r"(?m)^        continue-on-error:[ \t]*(.*)$", block)
-    return len(values) <= 1 and all(value.strip() in ("false", "'false'", '"false"') for value in values)
+
+def significant(line: str) -> bool:
+    return bool(line.strip()) and not line.lstrip().startswith("#")
 
 
-def run_commands(block: str) -> tuple[str, ...]:
-    matches = re.findall(r"(?m)^        run: (.*)$", block)
-    if len(matches) != 1:
-        return ()
-    return (matches[0],) if matches[0] != "|" else tuple(re.findall(r"(?m)^          (.+)$", block))
+def parse(source: str) -> list[Step]:
+    """Parse the workflow under the canonical grammar; raise naming the first bad line."""
+    if not source.endswith("\n"):
+        # YAML drops a block's final newline when the file has none; refuse rather
+        # than track a difference only the last step could see.
+        raise GrammarError("the file must end with a newline")
+    lines = source.split("\n")[:-1]
+    for number, line in enumerate(lines, 1):
+        if re.search(r"[^\x20-\x7e]", line):
+            raise GrammarError(f"line {number}: tab, CR or non-ASCII character")
+    i = 0
+    for expected in HEADER + JOB_HEADER:
+        while i < len(lines) and not significant(lines[i]):
+            i += 1
+        if i >= len(lines) or not re.fullmatch(expected, lines[i]):
+            raise GrammarError(f"line {i + 1}: workflow header differs from the pinned header")
+        i += 1
+
+    ordered: list[Step] = []
+    step: Step | None = None
+    parent: str | None = None      # `with` / `env` while their children may follow
+    in_block = first_block = False
+
+    def finish() -> None:
+        if step is None:
+            return
+        if ("uses" in step.raw) == ("run" in step.raw):
+            raise GrammarError(f"line {step.line}: {step.name}: exactly one of uses or run")
+        for key, children in step.maps.items():
+            if not children:
+                raise GrammarError(f"line {step.line}: {step.name}: empty {key} is null in YAML")
+        if "with" in step.maps and "uses" not in step.raw:
+            raise GrammarError(f"line {step.line}: {step.name}: with requires uses")
+        ordered.append(step)
+
+    while i < len(lines):
+        line, number = lines[i], i + 1
+        i += 1
+        if first_block:
+            # YAML infers a block's indentation from its first line; pin it, and refuse
+            # a leading blank line rather than reason about how it shifts that inference.
+            if not re.match(BLOCK_INDENT + r"\S", line):
+                raise GrammarError(f"line {number}: a run block starts at exactly ten spaces")
+            first_block = False
+        if in_block:
+            if not line.strip() or line.startswith(BLOCK_INDENT):
+                step.body.append(line[10:])
+                step.text += line + "\n"
+                continue
+            in_block = False        # a less-indented line ends the block, as in YAML
+        if not significant(line):
+            if step is not None:
+                step.text += line + "\n"
+            continue
+        match = re.fullmatch(r"      - (name|uses): (.*)", line)
+        if match:
+            finish()
+            value = scalar(match[2], number)
+            step = Step(name=value, line=number, text=line + "\n")
+            step.raw[match[1]], step.scalars[match[1]] = match[2], value
+            parent = None
+            continue
+        if step is None:
+            raise GrammarError(f"line {number}: a step starts with '- name:' or '- uses:': {line}")
+        step.text += line + "\n"
+        match = re.fullmatch(r"        ([a-z][a-z-]*):(?: (.*))?", line)
+        if match:
+            key, value = match.groups()
+            if key not in STEP_KEYS:
+                raise GrammarError(f"line {number}: step key outside the grammar: {key}")
+            if key in step.raw or key in step.maps:
+                raise GrammarError(f"line {number}: duplicate step key: {key}")
+            if key == "name" and "uses" in step.raw:
+                raise GrammarError(f"line {number}: a '- uses:' step takes no name; start it with '- name:'")
+            parent = None
+            if key in ("with", "env"):
+                if value is not None:
+                    raise GrammarError(f"line {number}: {key} must be a block mapping")
+                step.maps[key] = {}
+                parent = key
+            elif value is None:
+                raise GrammarError(f"line {number}: {key} requires a value")
+            elif key == "run" and value == "|":
+                step.raw["run"] = "|"
+                step.block = in_block = first_block = True
+            else:
+                step.raw[key], step.scalars[key] = value, scalar(value, number)
+            continue
+        match = re.fullmatch(BLOCK_INDENT + r"([A-Za-z_][A-Za-z0-9_-]*): (.*)", line)
+        if match and parent is not None:
+            if match[1] in step.maps[parent]:
+                raise GrammarError(f"line {number}: duplicate {parent} key: {match[1]}")
+            step.maps[parent][match[1]] = scalar(match[2], number)
+            continue
+        raise GrammarError(f"line {number}: outside the canonical steps grammar: {line}")
+    if first_block:
+        raise GrammarError("empty run block at end of file")
+    finish()
+    if not ordered:
+        raise GrammarError("no steps")
+    return ordered
+
+
+def steps(source: str) -> list[tuple[str, Step]]:
+    return [(step.name, step) for step in parse(source)]
 
 
 def condition(expr: str | None, status: str, outcomes: dict[str, str]) -> bool:
@@ -133,9 +319,9 @@ def simulate(source: str, *, fail: str | None = None,
     status = "success"
     outcomes: dict[str, str] = {}
     ran: set[str] = set()
-    for name, block in steps(source):
-        ident = field(block, "id")
-        if not condition(field(block, "if"), status, outcomes):
+    for step in parse(source):
+        name, ident = step.name, step.field("id")
+        if not condition(step.field("if"), status, outcomes):
             if ident:
                 outcomes[ident] = "skipped"
             continue
@@ -145,7 +331,7 @@ def simulate(source: str, *, fail: str | None = None,
         outcome = "cancelled" if name == cancel_during else "failure" if refused else "success"
         if ident:
             outcomes[ident] = outcome
-        if refused and field(block, "continue-on-error") != "true" and status != "cancelled":
+        if refused and step.raw.get("continue-on-error") != "true" and status != "cancelled":
             status = "failure"
         if name == cancel_during:
             status = "cancelled"
@@ -154,17 +340,10 @@ def simulate(source: str, *, fail: str | None = None,
     return status, ran
 
 
-def commit_behavior(block: str) -> bool:
+def commit_behavior(step: Step) -> bool:
     """Execute the Commit body with a recording git; a failed push must stay fatal."""
-    if "        run: |\n" not in block:
+    if not step.block:
         return False
-    body = block.split("        run: |\n", 1)[1]
-    lines = []
-    for line in body.splitlines():
-        if line and not line.startswith("          "):
-            break
-        lines.append(line[10:])
-    script = "\n".join(lines) + "\n"
     with tempfile.TemporaryDirectory() as temp:
         tmp = pathlib.Path(temp)
         fake_git = tmp / "git"
@@ -178,7 +357,7 @@ def commit_behavior(block: str) -> bool:
         for fail_push in ("0", "1"):
             (tmp / "git.log").write_text("")
             env["FAIL_PUSH"] = fail_push
-            result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", script],
+            result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", step.script()],
                                     env=env, capture_output=True, text=True)
             calls = (tmp / "git.log").read_text().splitlines()
             expected = ("config user.name github-actions[bot]",
@@ -193,10 +372,34 @@ def commit_behavior(block: str) -> bool:
     return True
 
 
+def guard_behavior(step: Step) -> bool:
+    """Run the guard on each raw outcome pattern; any refusal must exit non-zero."""
+    if not step.block:
+        return False
+    names = ("Resolve",) + SOURCES
+    cases = [{}] + [{name: "failure"} for name in names] + [
+        {"Resolve": "failure", "TickPick": "skipped"},
+        {"Resolve": "failure", "TickPick": "skipped", "ScoreBig": "failure"},
+        {"TickPick": "skipped"}]
+    with tempfile.TemporaryDirectory() as temp:
+        for case in cases:
+            env = {"PATH": os.environ["PATH"],
+                   "GITHUB_STEP_SUMMARY": str(pathlib.Path(temp) / "summary")}
+            env.update({name.upper(): case.get(name, "success") for name in names})
+            result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", step.script()],
+                                    env=env, capture_output=True, text=True)
+            if (result.returncode != 0) != ("failure" in case.values()):
+                return False
+    return True
+
+
 def check(source: str) -> list[str]:
-    ordered = steps(source)
-    names = [name for name, _ in ordered]
-    blocks = dict(ordered)
+    try:
+        ordered = parse(source)
+    except GrammarError as exc:
+        return [f"workflow grammar: {exc}"]
+    names = [step.name for step in ordered]
+    blocks = {step.name: step for step in ordered}
     errors: list[str] = []
 
     def require(ok: bool, message: str) -> None:
@@ -209,17 +412,27 @@ def check(source: str) -> list[str]:
     require(names.index("Self-test") < names.index("Re-resolve event ids") <
             min(names.index(name) for name in COLLECTORS), "pre-collection order")
     require(names[:2] == list(SETUP), "checkout and Python setup precede Self-test")
-    for name in SETUP:
-        require(names.count(name) == 1 and (name not in blocks or fatal_failure(blocks[name])),
-                f"{name} failure stays fatal")
     require(max(names.index(name) for name in COLLECTORS) < names.index(SUMMARY) <
             names.index(CROSS_CHECK) < names.index(COMMIT) < names.index(GAPS) <
             names.index(GUARD), "all collection and derivation precede commit and guard")
     require(names[-1] == GUARD, "refusal guard is final")
-    require(field(blocks["Self-test"], "id") == "selftest", "Self-test outcome id")
-    require(field(blocks["Re-resolve event ids"], "id") == "resolve", "Re-resolve outcome id")
-    require(fatal_failure(blocks["Self-test"]), "Self-test failure stays fatal")
-    require(field(blocks[RESOLVE], "continue-on-error") == "true", "resolver refusal allows other sources")
+    require(blocks["Self-test"].field("id") == "selftest", "Self-test outcome id")
+    require(blocks[RESOLVE].field("id") == "resolve", "Re-resolve outcome id")
+    for step in ordered:
+        mask = step.raw.get("continue-on-error")
+        if step.name in MASKABLE:
+            require(mask == "true", f"{step.name}: failure captured with a bare continue-on-error: true")
+        else:
+            # Absent or a bare `false` only. Quoted or expression values are refused
+            # rather than predicted: `${{ x }}` can be true at runtime.
+            require(mask in (None, "false"), f"{step.name}: failure stays fatal")
+        uses = step.field("uses")
+        require(uses is None or uses in ACTIONS, f"{step.name}: action {uses} is not allowlisted")
+        require("env" not in step.maps or step.name == GUARD, f"{step.name}: no step env")
+        if step.name != COMMIT:
+            # No step but Commit needs git at all. A word match closes the flag forms
+            # (`git -c x commit`, `git -C . push`) without trying to parse shell.
+            require(not re.search(r"\bgit\b", step.script()), f"{step.name} cannot invoke git")
     for name, commands in {
         "Self-test": ("python3 scripts/market_store.py --self-test",
                       "python3 scripts/collect_tickpick.py --self-test",
@@ -230,35 +443,21 @@ def check(source: str) -> list[str]:
         RESOLVE: ("python3 scripts/collect_tickpick.py --resolve",),
         SUMMARY: ("python3 scripts/summarize_market.py",),
         CROSS_CHECK: ("python3 scripts/check_tier_market.py",),
+        GAPS: ("python3 scripts/check_data_freshness.py --strict",),
+        **{f"Collect {name}": (f"python3 scripts/collect_{name.lower()}.py",) for name in SOURCES},
     }.items():
-        require(run_commands(blocks[name]) == commands, f"{name} required commands")
+        require(blocks[name].commands() == commands, f"{name} required commands")
     for name in SOURCES:
-        block = blocks["Collect " + name]
-        require(field(block, "id") == name.lower(), f"{name} outcome id")
-        require(field(block, "continue-on-error") == "true", f"{name} failure captured")
-        require(run_commands(block) == (f"python3 scripts/collect_{name.lower()}.py",),
-                f"{name} required command")
-    for name in (SUMMARY, CROSS_CHECK, COMMIT, GAPS):
-        require(fatal_failure(blocks[name]), f"{name} failure stays red")
-    require(run_commands(blocks[GAPS]) == ("python3 scripts/check_data_freshness.py --strict",),
-            "gap check required command")
-    for name, block in ordered:
-        if name != COMMIT:
-            require(not re.search(r"\bgit\s+(?:push|commit)\b", "\n".join(run_commands(block))),
-                    f"{name} cannot commit or push")
+        require(blocks["Collect " + name].field("id") == name.lower(), f"{name} outcome id")
     require(commit_behavior(blocks[COMMIT]), "aggregate commit stages, commits and pushes without masking failure")
-    commit_script = "\n".join(run_commands(blocks[COMMIT]))
-    require(sum(line.strip().startswith("git pull ") for line in commit_script.splitlines()) == 1 and
-            any(line.strip() == "git pull --rebase --autostash" for line in commit_script.splitlines()),
+    commit_script = blocks[COMMIT].commands()
+    require(sum(line.strip().startswith("git pull ") for line in commit_script) == 1 and
+            any(line.strip() == "git pull --rebase --autostash" for line in commit_script),
             "rebase pull stays fatal")
     guard = blocks[GUARD]
-    for name in ("Resolve",) + SOURCES:
-        require(bool(re.search(rf"(?m)^          {name.upper()}: \$\{{\{{ steps\.{name.lower()}\.outcome \}}\}}$", guard)),
-                f"{name} raw outcome captured")
-    require("for src in RESOLVE TICKPICK GAMETIME TICKETNETWORK SCOREBIG; do" in guard,
-            "resolver and all sources checked")
-    require('if [[ "$outcome" == "failure" ]]; then' in guard and "exit $bad" in guard,
-            "refusal makes job red")
+    require(guard.maps.get("env") == GUARD_ENV, "every raw collector outcome captured")
+    require(guard.commands()[-1:] == ("exit $bad",), "guard ends with a bare exit $bad")
+    require(guard_behavior(guard), "refusal makes job red")
 
     normal = set(COLLECTORS + (SUMMARY, CROSS_CHECK, COMMIT, GAPS, GUARD))
     scenarios = (
@@ -298,15 +497,20 @@ def self_test(source: str) -> int:
     if errors:
         print("baseline workflow invalid: " + ", ".join(errors), file=sys.stderr)
         return 1
+    S = source
+
+    def rep(old: str, new: str, text: str = S) -> str:
+        assert old in text, old
+        return text.replace(old, new, 1)
+
     def change_condition(text: str, name: str, replacement: str) -> str:
-        block = dict(steps(text))[name]
-        current = field(block, "if")
+        step = dict(steps(text))[name]
+        current = step.raw.get("if")
         if current is None:
-            return text.replace(f"      - name: {name}\n",
-                                f"      - name: {name}\n        if: {replacement}\n", 1)
-        else:
-            changed = block.replace(f"        if: {current}\n", f"        if: {replacement}\n", 1)
-        return text.replace(block, changed, 1)
+            first = step.text.split("\n", 1)[0] + "\n"
+            return rep(first, first + f"        if: {replacement}\n", text)
+        return rep(step.text, step.text.replace(f"        if: {current}\n",
+                                                f"        if: {replacement}\n", 1), text)
 
     def move_after(text: str, name: str, after: str) -> str:
         start = text.index(f"      - name: {name}\n")
@@ -317,95 +521,174 @@ def self_test(source: str) -> int:
         end = text.find("      - name:", pos + 10)
         return text[:end] + block + text[end:]
 
-    def mask(text: str, step: str, value: str) -> str:
-        anchor = f"      - {'uses' if step in SETUP else 'name'}: {step}\n"
-        return text.replace(anchor, anchor + f"        continue-on-error: {value}\n", 1)
+    def anchor(step: str) -> str:
+        return f"      - {'uses' if step in SETUP else 'name'}: {step}\n"
 
-    mutations = (
-        ("TickPick after resolver failure", change_condition(source, COLLECTORS[0], "always()")),
-        ("secondary after Self-test failure or cancellation", change_condition(source, COLLECTORS[1], "always()")),
-        ("commit after Self-test failure or cancellation", change_condition(source, COMMIT, "always()")),
+    def mask(text: str, step: str, value: str) -> str:
+        return rep(anchor(step), anchor(step) + f"        continue-on-error: {value}\n", text)
+
+    def add(step: str, lines: str) -> str:
+        return rep(anchor(step), anchor(step) + lines)
+
+    def before_commit(lines: str) -> str:
+        return rep(anchor(COMMIT), lines + "\n" + anchor(COMMIT))
+
+    gametime = "        run: python3 scripts/collect_gametime.py\n"
+    gaps = "        run: python3 scripts/check_data_freshness.py --strict\n"
+    push = "          git add -A\n          git commit -m x\n          git push\n"
+    fatal = (*SETUP, "Self-test", SUMMARY, COMMIT, GAPS, GUARD)
+    mutations = [
+        # Ordering, gating and command pins (earlier rounds).
+        ("TickPick after resolver failure", change_condition(S, COLLECTORS[0], "always()")),
+        ("secondary after Self-test failure or cancellation", change_condition(S, COLLECTORS[1], "always()")),
+        ("commit after Self-test failure or cancellation", change_condition(S, COMMIT, "always()")),
         ("commit after cancellation with !failure()", change_condition(
-            source, COMMIT, "${{ !failure() && steps.selftest.outcome == 'success' }}")),
-        ("checkout failure masked", source.replace("      - uses: actions/checkout@v7\n",
-                                                    "      - uses: actions/checkout@v7\n        continue-on-error: true\n", 1)),
-        ("Python setup failure masked", source.replace("      - uses: actions/setup-python@v7\n",
-                                                        "      - uses: actions/setup-python@v7\n        continue-on-error: true\n", 1)),
-        ("resolver bypassed", source.replace("run: python3 scripts/collect_tickpick.py --resolve",
-                                               "run: true", 1)),
-        ("Self-test bypassed", source.replace("python3 scripts/market_store.py --self-test",
-                                                "true", 1)),
-        ("Summarise bypassed", source.replace("run: python3 scripts/summarize_market.py",
-                                                "run: true", 1)),
-        ("ScoreBig after commit", move_after(source, COLLECTORS[3], COMMIT)),
-        ("Summarise after commit", move_after(source, SUMMARY, COMMIT)),
-        ("push removed", source.replace("            git push\n", "", 1)),
-        ("push echoed", source.replace("            git push\n", "            echo git push\n", 1)),
-        ("push failure masked", source.replace("            git push\n", "            git push || true\n", 1)),
-        ("commit removed", source.replace('            git commit -m "chore: tickpick prices $(date -u +%Y-%m-%d)"\n', "", 1)),
-        ("stage narrowed", source.replace("            git add data/market/ data/tickpick_events.json\n",
-                                           "            git add data/market/tickpick.jsonl\n", 1)),
-        ("commit failure masked", source.replace("      - name: Commit aggregates\n",
-                                                  "      - name: Commit aggregates\n        continue-on-error: true\n", 1)),
-        ("gap failure masked", source.replace("      - name: Check for gaps\n",
-                                               "      - name: Check for gaps\n        continue-on-error: true\n", 1)),
-        *((f"{step} expression mask {value}", mask(source, step, value))
-          for step in (*SETUP, "Self-test", COMMIT, GAPS)
-          for value in ("${{ true }}", "${{ 'true' }}", "${{ inputs.mask }}"))
-    ) + (
-        *((f"{step} quoted mask {value}", mask(source, step, value))
-          for step in (*SETUP, "Self-test", COMMIT, GAPS)
-          for value in ("'true'", '"true"')),
-    ) + (
-        *((f"{name} command masked", source.replace(f"run: python3 scripts/collect_{name.lower()}.py\n",
-                                                  f"run: python3 scripts/collect_{name.lower()}.py || true\n", 1))
-          for name in SOURCES),
-    ) + (
-        *((f"{name} command semicolon mask", source.replace(f"run: python3 scripts/collect_{name.lower()}.py\n",
-                                                         f"run: python3 scripts/collect_{name.lower()}.py; true\n", 1))
-          for name in SOURCES),
-    ) + (
-        *((f"{name} command bypassed", source.replace(f"run: python3 scripts/collect_{name.lower()}.py\n",
-                                                    "run: true\n", 1))
-          for name in SOURCES),
-    ) + (
-        ("gap strict removed", source.replace("run: python3 scripts/check_data_freshness.py --strict\n",
-                                               "run: python3 scripts/check_data_freshness.py\n", 1)),
-        ("gap failure masked in shell", source.replace("run: python3 scripts/check_data_freshness.py --strict\n",
-                                                       "run: python3 scripts/check_data_freshness.py --strict || true\n", 1)),
-        ("pull failure masked", source.replace("            git pull --rebase --autostash\n",
-                                               "            git pull --rebase --autostash || true\n", 1)),
-        ("extra push before commit", source.replace("      - name: Commit aggregates\n",
-                                                    "      - name: Extra push\n        if: always()\n        run: git push\n\n      - name: Commit aggregates\n", 1)),
-        ("extra commit before commit", source.replace("      - name: Commit aggregates\n",
-                                                      "      - name: Extra commit\n        if: always()\n        run: git commit -am x\n\n      - name: Commit aggregates\n", 1)),
-        ("unnamed push before commit", source.replace("      - name: Commit aggregates\n",
-                                                     "      - run: git push\n\n      - name: Commit aggregates\n", 1)),
-        ("guard disabled", change_condition(source, GUARD, "success()")),
-    )
+            S, COMMIT, "${{ !failure() && steps.selftest.outcome == 'success' }}")),
+        ("guard disabled", change_condition(S, GUARD, "success()")),
+        ("resolver bypassed", rep("run: python3 scripts/collect_tickpick.py --resolve", "run: true")),
+        ("Self-test bypassed", rep("python3 scripts/market_store.py --self-test", "true")),
+        ("Summarise bypassed", rep("run: python3 scripts/summarize_market.py", "run: true")),
+        ("ScoreBig after commit", move_after(S, COLLECTORS[3], COMMIT)),
+        ("Summarise after commit", move_after(S, SUMMARY, COMMIT)),
+        ("push removed", rep("            git push\n", "")),
+        ("push echoed", rep("            git push\n", "            echo git push\n")),
+        ("push failure masked", rep("            git push\n", "            git push || true\n")),
+        ("commit removed", rep('            git commit -m "chore: tickpick prices $(date -u +%Y-%m-%d)"\n', "")),
+        ("stage narrowed", rep("            git add data/market/ data/tickpick_events.json\n",
+                               "            git add data/market/tickpick.jsonl\n")),
+        ("pull failure masked", rep("            git pull --rebase --autostash\n",
+                                    "            git pull --rebase --autostash || true\n")),
+        ("gap strict removed", rep(gaps, "        run: python3 scripts/check_data_freshness.py\n")),
+        ("gap failure masked in shell", rep(gaps, gaps.replace("--strict", "--strict || true"))),
+        ("gap quoted || true", rep(gaps, '        run: "python3 scripts/check_data_freshness.py --strict || true"\n')),
+        *((f"{name} command {how}", rep(f"run: python3 scripts/collect_{name.lower()}.py\n", new(name)))
+          for name in SOURCES for how, new in (
+              ("masked", lambda n: f"run: python3 scripts/collect_{n.lower()}.py || true\n"),
+              ("semicolon mask", lambda n: f"run: python3 scripts/collect_{n.lower()}.py; true\n"),
+              ("bypassed", lambda n: "run: true\n"))),
+        ("collector mask removed", rep(gametime + "        continue-on-error: true\n", gametime)),
+        ("collector mask as expression", rep(gametime + "        continue-on-error: true\n",
+                                             gametime + "        continue-on-error: ${{ true }}\n")),
+        # Fatal steps: every value spelling and every key spelling (rounds four and five).
+        *((f"{step} mask {value}", mask(S, step, value))
+          for step in fatal
+          for value in ("true", "'true'", '"true"', "${{ true }}", "${{true}}", "${{ 'true' }}",
+                        "${{ inputs.mask }}", "${{ github.event_name == 'schedule' }}",
+                        "yes", "True", "true # x", "'false'", '"false"', "false # x")),
+        *((f"{step} {label}", add(step, lines))
+          for step in fatal for label, lines in (
+              ("quoted mask key", '        "continue-on-error": true\n'),
+              ("single-quoted mask key", "        'continue-on-error': true\n"),
+              ("space before mask colon", "        continue-on-error : true\n"),
+              ("folded mask value", "        continue-on-error: >-\n          true\n"),
+              ("explicit mask key", "        ? continue-on-error\n        : true\n"),
+              ("flow mask", "        {continue-on-error: true}\n"))),
+        # Push or commit outside Commit (round five).
+        *((f"named run: {indicator} push step before Commit",
+           before_commit(f"      - name: X\n        if: always()\n        run: {indicator}\n" + push))
+          for indicator in ("|", "|-", "|+", ">", ">-", "|2", "| # x")),
+        ("unnamed push before commit", before_commit("      - run: git push\n")),
+        ("extra push before commit", before_commit("      - name: Extra push\n        if: always()\n        run: git push\n")),
+        ("extra commit before commit", before_commit("      - name: Extra commit\n        if: always()\n        run: git commit -am x\n")),
+        ("git -c / -C flags", before_commit("      - name: X\n        if: always()\n"
+                                            "        run: git -c user.name=x commit -am x && git -C . push\n")),
+        ("if-first step pushes", before_commit("      - if: always()\n        run: git commit -am x && git push\n")),
+        ("id-first step pushes", before_commit("      - id: x\n        if: always()\n        run: git push\n")),
+        ("env-first step pushes", before_commit("      - env:\n          A: b\n        run: git push\n")),
+        ("two if-first steps after setup-python", rep('          python-version: "3.12"\n',
+                                                      '          python-version: "3.12"\n\n      - if: always()\n        run: echo hi\n\n'
+                                                      '      - if: always()\n        run: git commit -am x && git push\n')),
+        ("id-first push step after Summary", rep("      # continue-on-error preserves",
+                                                 "      - id: x\n        if: always()\n        run: git commit -am x && git push\n\n"
+                                                 "      # continue-on-error preserves")),
+        ("flow-style push step", before_commit("      - {name: X, if: always(), run: git commit -am x && git push}\n")),
+        ("action-based push", before_commit("      - name: X\n        if: always()\n        uses: stefanzweifel/git-auto-commit-action@v5\n")),
+        ("local action", before_commit("      - name: X\n        uses: ./push\n")),
+        ("Summary step pushes", rep('          echo "## TickPick collection', '          git push\n          echo "## TickPick collection')),
+        # Shell, directory and environment overrides on pinned steps.
+        ("Gametime shell override", rep(gametime, gametime + "        shell: bash -c 'true' {0}\n")),
+        ("Gaps shell override", rep(gaps, gaps + "        shell: bash -c 'true' {0}\n")),
+        ("Gametime working-directory", rep(gametime, gametime + "        working-directory: /tmp\n")),
+        ("Gaps working-directory", rep(gaps, gaps + "        working-directory: /tmp\n")),
+        ("collector BASH_ENV", rep(gametime, gametime + "        env:\n          BASH_ENV: ./x\n")),
+        ("workflow defaults shell", rep("jobs:\n", "defaults:\n  run:\n    shell: bash -c 'true' {0}\n\njobs:\n")),
+        ("workflow env", rep("jobs:\n", "env:\n  BASH_ENV: ./x\n\njobs:\n")),
+        ("quoted workflow defaults", rep("jobs:\n", '"defaults":\n  run:\n    working-directory: /tmp\n\njobs:\n')),
+        ("job continue-on-error", rep("    runs-on: ubuntu-latest\n", "    runs-on: ubuntu-latest\n    continue-on-error: true\n")),
+        ("job defaults", rep("    runs-on: ubuntu-latest\n", "    runs-on: ubuntu-latest\n    defaults:\n      run:\n        shell: sh\n")),
+        # The guard (round five; previously near-equivalent survivors).
+        ("guard exit masked", rep("          exit $bad\n", "          exit $bad || true\n")),
+        ("guard exit zero", rep("          exit $bad\n", "          exit 0\n")),
+        ("guard never sets bad", rep("              bad=1\n", "              bad=0\n")),
+        ("guard loses a source", rep("for src in RESOLVE TICKPICK GAMETIME", "for src in RESOLVE GAMETIME")),
+        ("guard env renamed", rep("          SCOREBIG: ${{ steps.scorebig.outcome }}\n",
+                                  "          SCOREBIG: ${{ steps.scorebig.conclusion }}\n")),
+        # Grammar edges: each is YAML some reader accepts, refused here.
+        ("tab in a value", rep("        id: selftest\n", "        id:\tselftest\n")),
+        ("CR line ending", rep("        id: selftest\n", "        id: selftest\r\n")),
+        ("non-breaking space indent", rep("        id: selftest\n", "        id: selftest\n")),
+        ("byte-order mark", "﻿" + S),
+        ("unicode line separator", rep("        id: selftest\n", "        id: selftest         continue-on-error: true\n")),
+        ("duplicate key", rep("        id: selftest\n", "        id: selftest\n        id: other\n")),
+        ("duplicate run", rep("        id: selftest\n", "        id: selftest\n        run: echo\n")),
+        ("anchor key", rep("        id: selftest\n", "        &a id: selftest\n")),
+        ("anchored value", rep("        id: selftest\n", "        id: &a selftest\n")),
+        ("alias value", rep("        id: selftest\n", "        id: *a\n")),
+        ("tagged value", rep("        id: selftest\n", "        id: !!str selftest\n")),
+        ("merge key", rep("        id: selftest\n", "        <<: *defaults\n        id: selftest\n")),
+        ("double-quoted escape", rep("        id: selftest\n", '        id: "self\\x74est"\n')),
+        ("comment after value", rep("        id: selftest\n", "        id: selftest # x\n")),
+        ("seven-space step", rep("      - name: Self-test\n", "       - name: Self-test\n")),
+        ("nine-space key", rep("        id: selftest\n", "         id: selftest\n")),
+        ("double space after colon", rep("        id: selftest\n", "        id:  selftest\n")),
+        ("trailing space", rep("        id: selftest\n", "        id: selftest \n")),
+        ("plain continuation line", rep(gametime, gametime + "          || true\n")),
+        ("indented first block line", rep("          python3 scripts/market_store.py --self-test\n",
+                                          "            python3 scripts/market_store.py --self-test\n")),
+        ("blank first block line", rep("        run: |\n          python3 scripts/market_store.py",
+                                       "        run: |\n\n          python3 scripts/market_store.py")),
+        ("body after an ending comment", rep("          python3 scripts/summarize_market.py --self-test\n",
+                                             "      # x\n          python3 scripts/summarize_market.py --self-test\n")),
+        ("uses step renamed by key", rep("      - uses: actions/checkout@v7\n",
+                                         "      - uses: actions/checkout@v7\n        name: Checkout\n")),
+        ("with on a run step", rep(gametime, gametime + "        with:\n          a: b\n")),
+        ("uses and run together", rep(gametime, gametime + "        uses: actions/checkout@v7\n")),
+        ("unknown step key", rep(gametime, gametime + "        timeout-minutes: 1\n")),
+        ("flow with mapping", rep("        with:\n          python-version: \"3.12\"\n",
+                                  "        with: {python-version: '3.12'}\n")),
+        ("second document", S + "---\njobs: {}\n"),
+        ("second job after steps", S + "  other:\n    runs-on: ubuntu-latest\n"),
+        ("job-level key after steps", S + "    continue-on-error: true\n"),
+        ("quoted top-level key", rep("jobs:\n", '"jobs":\n')),
+        ("duplicate top-level key", rep("jobs:\n", "permissions:\n  contents: read\n\njobs:\n")),
+    ]
+    killed = 0
     for label, mutant in mutations:
-        if mutant == source or not check(mutant):
+        if mutant == S or not check(mutant):
             print(f"mutation survived: {label}", file=sys.stderr)
             return 1
-    for step in (*SETUP, "Self-test", COMMIT, GAPS):
-        for value in ("false", "'false'", '"false"'):
-            if check(mask(source, step, value)):
-                print(f"literal false rejected on {step}: {value}", file=sys.stderr)
-                return 1
-    guard = dict(steps(source))[GUARD]
-    script = guard.split("        run: |\n", 1)[1]
-    script = "\n".join(line[10:] for line in script.splitlines()) + "\n"
-    with tempfile.TemporaryDirectory() as temp:
-        for refused in (None, "Resolve", *SOURCES):
-            env = {name.upper(): "failure" if name == refused else "success" for name in SOURCES}
-            env["RESOLVE"] = "failure" if refused == "Resolve" else "success"
-            env["GITHUB_STEP_SUMMARY"] = str(pathlib.Path(temp) / "summary")
-            result = subprocess.run(["bash", "-e", "-c", script], env=env,
-                                    capture_output=True, text=True)
-            if (result.returncode != 0) != (refused is not None):
-                print(f"guard verdict wrong for {refused or 'all success'}", file=sys.stderr)
-                return 1
-    print(f"workflow check passes; {len(mutations)} mutations rejected")
+        killed += 1
+    # Canonical rewrites that Actions reads identically must still pass, or the grammar
+    # would be a straitjacket rather than a reader.
+    rearranged = move_after(S, "Collect Gametime", "Collect TicketNetwork")
+    rearranged = rep(gametime + "        continue-on-error: true\n",
+                     "        continue-on-error: true\n\n        # comment between keys\n" + gametime,
+                     rearranged)
+    rearranged = rep("        id: selftest\n        run: |\n", "        run: |\n", rearranged)
+    rearranged = rep("          python3 scripts/summarize_market.py --self-test\n",
+                     "          python3 scripts/summarize_market.py --self-test\n        id: selftest\n",
+                     rearranged)
+    rearranged = rep("      - name: Collect ScoreBig\n", '      - name: "Collect ScoreBig"\n', rearranged)
+    rearranged = rep("        id: resolve\n", "        id: 'resolve'\n", rearranged)
+    rearranged = rep("permissions:\n", "# a header comment\npermissions:\n", rearranged)
+    valid = [("rearranged canonical workflow", rearranged)] + [
+        (f"{step} bare false", mask(S, step, "false")) for step in fatal]
+    for label, variant in valid:
+        problems = check(variant)
+        if variant == S or problems:
+            print(f"valid canonical form rejected: {label}: {problems}", file=sys.stderr)
+            return 1
+    print(f"workflow check passes; {killed} mutations rejected, {len(valid)} canonical variants accepted")
     return 0
 
 
