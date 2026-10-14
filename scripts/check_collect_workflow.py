@@ -37,9 +37,20 @@ The cost is that an unusual but valid spelling is rejected. That is deliberate: 
 fix is to write it canonically, which is one line, while a spelling read wrongly
 silently disables a failure the workflow exists to surface.
 
-What a text check cannot close: shell that hides a command (`g""it push`, a Python
-subprocess). The pinned steps carry exact commands; the free-text steps (Summary,
-upload) are only kept away from the literal word `git`.
+`if:` conditions are not evaluated. Each step's condition must be exactly one string
+from a pinned table (`PINNED_IF`); the scenario simulator looks up that string's meaning
+rather than parsing it. A hand-written evaluator was tried and read Actions expressions
+differently from Actions (case, type coercion, status calls inside literals); see the
+comment above `CONDITIONS`.
+
+What a text check cannot close: any step outside the pinned set is arbitrary shell.
+The pinned steps carry exact commands, but a free-text step (Summary, upload, or a new
+one) can hide a command (`g""it push`, a Python subprocess), rewrite a collector or
+checker the pinned steps then run (`sed -i`), or reach the job environment by
+indirection. The check keeps such steps away from the literal word `git` and from
+`GITHUB_ENV` / `GITHUB_PATH` (which set env, including `BASH_ENV`, or PATH for every
+later step), and refuses step `env`; it does not, and cannot, parse what the shell
+will do. Review of an added step is the remaining guard.
 """
 
 import dataclasses
@@ -240,77 +251,79 @@ def steps(source: str) -> list[tuple[str, Step]]:
     return [(step.name, step) for step in parse(source)]
 
 
+# `if:` conditions are PINNED, not evaluated (ops#415, round six). An earlier version
+# parsed Actions expressions with a hand-written evaluator, and review found three ways
+# it read a condition differently from Actions: Actions compares strings ignoring case
+# ('FAILURE' == 'failure'), coerces mismatched types to numbers (`success() == ''` is
+# true whenever the status is not success), and decides whether to add the implicit
+# success() from the parse tree, not from a regex that also matched inside a string
+# literal (`${{ 'always()' }}`). Making the evaluator more faithful would only move the
+# next disagreement somewhere else, so it is gone. Each condition the workflow uses is
+# listed below with its meaning written in Python, and a step's `if:` must be EXACTLY
+# one of the spellings allowed for that step. There is nothing to misread: an unlisted
+# string is an error naming the step, before the simulator ever sees it.
+#
+# The only spellings beyond what the workflow writes today are the documented
+# equivalents: an expression with or without `${{ }}`, and for a step that has no `if:`
+# today, `success()`, which Actions adds when the key is absent. The comparison is on
+# the decoded scalar - what Actions receives - so YAML quoting is free; the grammar
+# above decodes quotes unambiguously. Every other spelling, including a respaced one
+# Actions would read identically, is refused: one line to fix, against a gate that
+# silently stops gating.
+CONDITIONS = {
+    "success()": lambda status, out: status == "success",
+    "always()": lambda status, out: True,
+    "!cancelled()": lambda status, out: status != "cancelled",
+    "!cancelled() && steps.resolve.outcome == 'success'":
+        lambda status, out: status != "cancelled" and out.get("resolve") == "success",
+    "!cancelled() && success() && steps.selftest.outcome == 'success'":
+        lambda status, out: status == "success" and out.get("selftest") == "success",
+}
+SPELLINGS = {spelling: expr for expr in CONDITIONS
+             for spelling in (expr, f"${{{{ {expr} }}}}")}
+_RUN_ON_SUCCESS = (None, "success()")
+_GATED = "!cancelled() && success() && steps.selftest.outcome == 'success'"
+# The meaning each pinned step's condition must have; None is the key absent.
+PINNED_IF = {
+    **{action: _RUN_ON_SUCCESS for action in SETUP},
+    "Self-test": _RUN_ON_SUCCESS,
+    RESOLVE: _RUN_ON_SUCCESS,
+    COLLECTORS[0]: ("!cancelled() && steps.resolve.outcome == 'success'",),
+    **{collector: _RUN_ON_SUCCESS for collector in COLLECTORS[1:]},
+    SUMMARY: (_GATED,),
+    CROSS_CHECK: (_GATED,),
+    COMMIT: (_GATED,),
+    GAPS: ("!cancelled()",),
+    GUARD: ("always()",),
+}
+# Steps outside the pinned set (the artifact upload, the Summary, any new step) may run
+# on success or always. Neither reads a step outcome, and such a step can neither mask
+# its failure, nor reach git, nor touch the job environment (see check()).
+FREE_IF = (None, "success()", "always()")
+
+
+def allowed_if(step: Step) -> bool:
+    """True iff the step's `if:` is absent or one pinned spelling allowed for it."""
+    allowed = PINNED_IF.get(step.name, FREE_IF)
+    raw = step.field("if")
+    if raw is None:
+        return None in allowed
+    # Not `SPELLINGS.get(raw) in allowed`: an unlisted string would map to None, and
+    # None means "key absent", which most steps allow.
+    return raw in SPELLINGS and SPELLINGS[raw] in allowed
+
+
 def condition(expr: str | None, status: str, outcomes: dict[str, str]) -> bool:
-    """Evaluate the small Actions-expression subset used by this workflow.
+    """Look up a pinned condition's meaning; raise on anything unlisted.
 
-    Actions adds an implicit success() when no status function appears. Reject unknown
-    syntax rather than silently guessing how a changed workflow will execute.
+    A table lookup, not a parser: `check()` refuses an unlisted `if:` before simulating,
+    so the raise is a backstop rather than a path.
     """
-    expr = (expr or "success()").strip()
-    if expr.startswith("${{") and expr.endswith("}}"):
-        expr = expr[3:-2].strip()
-    tokens = re.findall(r"\s*(&&|\|\||==|!|\(|\)|'(?:[^']*)'|\"(?:[^\"]*)\"|[A-Za-z_][\w.]*)", expr)
-    if "".join(tokens).replace(" ", "") != re.sub(r"\s+", "", expr):
-        raise ValueError(f"unsupported condition: {expr}")
-    pos = 0
-
-    def atom() -> bool | str:
-        nonlocal pos
-        if pos >= len(tokens):
-            raise ValueError(f"incomplete condition: {expr}")
-        token = tokens[pos]
-        pos += 1
-        if token == "!":
-            return not bool(atom())
-        if token == "(":
-            value = either()
-            if pos >= len(tokens) or tokens[pos] != ")":
-                raise ValueError(f"unclosed condition: {expr}")
-            pos += 1
-            return value
-        if token in ("success", "failure", "cancelled", "always"):
-            if tokens[pos:pos + 2] != ["(", ")"]:
-                raise ValueError(f"bad status function: {expr}")
-            pos += 2
-            return {"success": status == "success", "failure": status == "failure",
-                    "cancelled": status == "cancelled", "always": True}[token]
-        if token.startswith("steps.") and token.endswith(".outcome"):
-            return outcomes.get(token.split(".")[1], "")
-        if token.startswith(("'", '"')):
-            return token[1:-1]
-        raise ValueError(f"unsupported condition token: {token}")
-
-    def comparison() -> bool:
-        nonlocal pos
-        left = atom()
-        if pos < len(tokens) and tokens[pos] == "==":
-            pos += 1
-            return left == atom()
-        return bool(left)
-
-    def both() -> bool:
-        nonlocal pos
-        value = comparison()
-        while pos < len(tokens) and tokens[pos] == "&&":
-            pos += 1
-            right = comparison()
-            value = value and right
-        return value
-
-    def either() -> bool:
-        nonlocal pos
-        value = both()
-        while pos < len(tokens) and tokens[pos] == "||":
-            pos += 1
-            right = both()
-            value = value or right
-        return value
-
-    value = either()
-    if pos != len(tokens):
-        raise ValueError(f"trailing condition tokens: {expr}")
-    has_status = bool(re.search(r"\b(?:success|failure|cancelled|always)\s*\(", expr))
-    return value and (has_status or status == "success")
+    if expr is None:
+        expr = "success()"
+    if expr not in SPELLINGS:
+        raise ValueError(f"condition is not pinned: {expr}")
+    return CONDITIONS[SPELLINGS[expr]](status, outcomes)
 
 
 def simulate(source: str, *, fail: str | None = None,
@@ -357,9 +370,11 @@ def commit_behavior(step: Step) -> bool:
         for fail_push in ("0", "1"):
             (tmp / "git.log").write_text("")
             env["FAIL_PUSH"] = fail_push
+            # cwd: the body is workflow text, and under `npm test` the caller's directory
+            # is the checkout - a mutated body must not write files into it.
             result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", step.script()],
-                                    env=env, capture_output=True, text=True)
-            calls = (tmp / "git.log").read_text().splitlines()
+                                    env=env, capture_output=True, text=True, cwd=temp)
+            calls =(tmp / "git.log").read_text().splitlines()
             expected = ("config user.name github-actions[bot]",
                         "config user.email github-actions[bot]@users.noreply.github.com",
                         "status --porcelain data/market/ data/tickpick_events.json",
@@ -387,7 +402,7 @@ def guard_behavior(step: Step) -> bool:
                    "GITHUB_STEP_SUMMARY": str(pathlib.Path(temp) / "summary")}
             env.update({name.upper(): case.get(name, "success") for name in names})
             result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c", step.script()],
-                                    env=env, capture_output=True, text=True)
+                                    env=env, capture_output=True, text=True, cwd=temp)
             if (result.returncode != 0) != ("failure" in case.values()):
                 return False
     return True
@@ -411,7 +426,12 @@ def check(source: str) -> list[str]:
         return errors
     require(names.index("Self-test") < names.index("Re-resolve event ids") <
             min(names.index(name) for name in COLLECTORS), "pre-collection order")
-    require(names[:2] == list(SETUP), "checkout and Python setup precede Self-test")
+    # An action version bump renames a `- uses:` step, so report it as what it is; the
+    # ordering message below would otherwise be the only clue, and a misleading one.
+    unlisted = [step.field("uses") for step in ordered
+                if step.field("uses") is not None and step.field("uses") not in ACTIONS]
+    if not unlisted:
+        require(names[:2] == list(SETUP), "checkout and Python setup precede Self-test")
     require(max(names.index(name) for name in COLLECTORS) < names.index(SUMMARY) <
             names.index(CROSS_CHECK) < names.index(COMMIT) < names.index(GAPS) <
             names.index(GUARD), "all collection and derivation precede commit and guard")
@@ -427,8 +447,19 @@ def check(source: str) -> list[str]:
             # rather than predicted: `${{ x }}` can be true at runtime.
             require(mask in (None, "false"), f"{step.name}: failure stays fatal")
         uses = step.field("uses")
-        require(uses is None or uses in ACTIONS, f"{step.name}: action {uses} is not allowlisted")
+        require(uses is None or uses in ACTIONS,
+                f"{step.name}: action {uses} is not allowlisted (a version bump updates ACTIONS and SETUP)")
+        require(allowed_if(step), f"{step.name}: if {step.field('if')!r} is not a pinned condition for this step")
         require("env" not in step.maps or step.name == GUARD, f"{step.name}: no step env")
+        # Writing to these files sets env or PATH for every LATER step - `BASH_ENV`
+        # through GITHUB_ENV runs code before each bash step, and a GITHUB_PATH entry can
+        # shadow python3 or git - which is the step-env channel above by another door.
+        # `::set-env` / `::add-path` are the disabled legacy spellings of the same thing.
+        # Any mention is refused, values and keys included, rather than parsing shell.
+        texts = [step.script(), *step.scalars.values(),
+                 *(f"{k} {v}" for children in step.maps.values() for k, v in children.items())]
+        require(not any(re.search(r"GITHUB_ENV|GITHUB_PATH|::set-env|::add-path", t, re.I) for t in texts),
+                f"{step.name}: may not touch GITHUB_ENV or GITHUB_PATH")
         if step.name != COMMIT:
             # No step but Commit needs git at all. A word match closes the flag forms
             # (`git -c x commit`, `git -C . push`) without trying to parse shell.
@@ -459,6 +490,10 @@ def check(source: str) -> list[str]:
     require(guard.commands()[-1:] == ("exit $bad",), "guard ends with a bare exit $bad")
     require(guard_behavior(guard), "refusal makes job red")
 
+    if unlisted or not all(allowed_if(step) for step in ordered):
+        # Simulating an unpinned condition would mean guessing what it means, and a
+        # renamed setup step would only add a confusing "checkout fails" line.
+        return errors
     normal = set(COLLECTORS + (SUMMARY, CROSS_CHECK, COMMIT, GAPS, GUARD))
     scenarios = (
         ("all succeed", {}, "success", normal),
@@ -661,6 +696,44 @@ def self_test(source: str) -> int:
         ("job-level key after steps", S + "    continue-on-error: true\n"),
         ("quoted top-level key", rep("jobs:\n", '"jobs":\n')),
         ("duplicate top-level key", rep("jobs:\n", "permissions:\n  contents: read\n\njobs:\n")),
+        # Conditions Actions reads differently from a hand-written evaluator (round six).
+        # Case: Actions compares strings ignoring case.
+        ("TickPick after resolver FAILURE (case)", change_condition(S, COLLECTORS[0],
+            "${{ !cancelled() && (steps.resolve.outcome == 'success' || steps.resolve.outcome == 'FAILURE') }}")),
+        ("Commit after Self-test FAILURE (case)", change_condition(S, COMMIT,
+            "${{ !cancelled() && (success() || steps.selftest.outcome == 'FAILURE') }}")),
+        ("TickPick outcome SUCCESS (case)", change_condition(S, COLLECTORS[0],
+            "${{ !cancelled() && steps.resolve.outcome == 'SUCCESS' }}")),
+        ("Gaps !Cancelled() (case)", change_condition(S, GAPS, "${{ !Cancelled() }}")),
+        ("guard ALWAYS() (case)", change_condition(S, GUARD, "ALWAYS()")),
+        ("Commit SUCCESS() (case)", change_condition(S, COMMIT,
+            "${{ !cancelled() && SUCCESS() && steps.selftest.outcome == 'success' }}")),
+        # Coercion: mismatched types compare as numbers, so false == '' is true.
+        ("Commit after cancellation (coercion)", change_condition(S, COMMIT,
+            "${{ (success() || success() == '') && steps.selftest.outcome == 'success' }}")),
+        ("TickPick after refusal (coercion)", change_condition(S, COLLECTORS[0],
+            "${{ !cancelled() && (steps.resolve.outcome == 'success' || false == '') }}")),
+        ("Summarise on cancel (coercion)", change_condition(S, SUMMARY,
+            "${{ !cancelled() == 0 || success() && steps.selftest.outcome == 'success' }}")),
+        # A status name inside a literal is not a status call: Actions adds success().
+        ("guard status inside a literal", change_condition(S, GUARD, "${{ 'always()' }}")),
+        ("Gaps status inside a literal", change_condition(S, GAPS, "${{ 'cancelled()' }}")),
+        # Pinned per step: a condition valid elsewhere is still refused here.
+        ("Gametime gated like TickPick", change_condition(S, COLLECTORS[1],
+            "${{ !cancelled() && steps.resolve.outcome == 'success' }}")),
+        ("Commit with no if", rep("      - name: Commit aggregates\n"
+                                  "        if: ${{ !cancelled() && success() && steps.selftest.outcome == 'success' }}\n",
+                                  "      - name: Commit aggregates\n")),
+        ("Summary step on failure()", change_condition(S, "Summary", "failure()")),
+        ("new step on !cancelled()", before_commit("      - name: X\n        if: ${{ !cancelled() }}\n        run: echo hi\n")),
+        # The job environment, written from a step (round six, non-blocking).
+        ("BASH_ENV via GITHUB_ENV", before_commit(
+            "      - name: Prep\n        run: echo \"BASH_ENV=$PWD/x.sh\" >> \"$GITHUB_ENV\"\n")),
+        ("python3 shadowed via GITHUB_PATH", before_commit(
+            "      - name: Prep\n        run: echo \"$PWD/bin\" >> \"$GITHUB_PATH\"\n")),
+        ("Summary writes GITHUB_ENV", rep('          echo "## TickPick collection',
+                                          '          echo X=1 >> $GITHUB_ENV\n          echo "## TickPick collection')),
+        ("legacy add-path command", before_commit("      - name: Prep\n        run: echo ::add-path::/tmp\n")),
     ]
     killed = 0
     for label, mutant in mutations:
@@ -668,6 +741,13 @@ def self_test(source: str) -> int:
             print(f"mutation survived: {label}", file=sys.stderr)
             return 1
         killed += 1
+    # A version bump must say what it is, not trip the ordering check (round six).
+    for action in sorted(ACTIONS):
+        bumped = check(S.replace(action, action[:-1] + "999"))
+        if (not any("not allowlisted" in e for e in bumped) or
+                any("precede" in e for e in bumped)):
+            print(f"bump of {action} misreported: {bumped}", file=sys.stderr)
+            return 1
     # Canonical rewrites that Actions reads identically must still pass, or the grammar
     # would be a straitjacket rather than a reader.
     rearranged = move_after(S, "Collect Gametime", "Collect TicketNetwork")
@@ -682,7 +762,14 @@ def self_test(source: str) -> int:
     rearranged = rep("        id: resolve\n", "        id: 'resolve'\n", rearranged)
     rearranged = rep("permissions:\n", "# a header comment\npermissions:\n", rearranged)
     valid = [("rearranged canonical workflow", rearranged)] + [
-        (f"{step} bare false", mask(S, step, "false")) for step in fatal]
+        (f"{step} bare false", mask(S, step, "false")) for step in fatal] + [
+        # The documented equivalents the pinned table admits.
+        ("guard if wrapped in ${{ }}", change_condition(S, GUARD, "${{ always() }}")),
+        ("Gametime explicit success()", change_condition(S, COLLECTORS[1], "success()")),
+        ("Self-test explicit ${{ success() }}", change_condition(S, "Self-test", "${{ success() }}")),
+        ("Gaps quoted bare !cancelled()", change_condition(S, GAPS, "'!cancelled()'")),
+        ("Commit bare expression", change_condition(
+            S, COMMIT, "\"!cancelled() && success() && steps.selftest.outcome == 'success'\""))]
     for label, variant in valid:
         problems = check(variant)
         if variant == S or problems:

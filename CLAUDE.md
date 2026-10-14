@@ -946,6 +946,11 @@ also how CI invokes it - `collect-tickpick.yml` calls the Python entry points ra
 npm, so a collector missing from `package.json` is not breakage. Verified by running each
 of these on 2026-09-15, after the ops#165 rewrite.
 
+`collect-tickpick.yml` is pinned by `scripts/check_collect_workflow.py` (run by
+`npm test`): its header, step commands, action versions and each step's `if:` must match
+the checker exactly, so an action version bump, a new step or a changed condition has to
+update the checker in the same PR.
+
 ```bash
 npm run build          # scripts/build.py: fresh dist/ from sources, THEN privacy + read-only checks
 npm run check:privacy  # the three privacy passes alone
