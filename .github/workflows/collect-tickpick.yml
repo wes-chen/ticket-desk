@@ -53,15 +53,20 @@ jobs:
       - name: Re-resolve event ids
         run: python3 scripts/collect_tickpick.py --resolve
 
+      # A refused source must not skip the others: each day of public asks is
+      # unbackfillable. Capture each raw outcome, then fail after persisting any
+      # successful observations so the run remains visibly red on refusal.
       - name: Collect TickPick
+        id: tickpick
+        if: always()
         run: python3 scripts/collect_tickpick.py
+        continue-on-error: true
 
       # Second source. Measured reachable over plain HTTP from both a residential and an
-      # Actions IP. continue-on-error because the PRIMARY series must not be lost to a
-      # secondary source's bad day - the summariser and the gap check both cope with one
-      # source missing, and a red run still surfaces it.
+      # Actions IP. The summariser and gap check cope with one source missing.
       - name: Collect Gametime
         id: gametime
+        if: always()
         run: python3 scripts/collect_gametime.py
         continue-on-error: true
 
@@ -83,11 +88,13 @@ jobs:
       # each per day - the cheapest sources in the project.
       - name: Collect TicketNetwork
         id: ticketnetwork
+        if: always()
         run: python3 scripts/collect_ticketnetwork.py
         continue-on-error: true
 
       - name: Collect ScoreBig
         id: scorebig
+        if: always()
         run: python3 scripts/collect_scorebig.py
         continue-on-error: true
 
@@ -95,17 +102,19 @@ jobs:
       # regenerated in the same run that adds a day to the store - otherwise the
       # deployed dashboard silently lags the series by a day.
       - name: Summarise
+        if: always()
         run: python3 scripts/summarize_market.py
 
       # Independent check on the hand-transcribed tier table. Every new day of prices
       # makes it stronger, and a misfiled game shows up as an outlier.
       - name: Cross-check tiers against the market
+        if: always()
         run: python3 scripts/check_tier_market.py
 
-      # Persist the observations before the diagnostic gate below. A primary collector
-      # failure stops the workflow before this point, but a secondary source regression
-      # must not discard today's valid TickPick series: that data cannot be backfilled.
+      # Persist the observations before the diagnostic gate below. Any source regression
+      # must not discard another source's valid series: those days cannot be backfilled.
       - name: Commit aggregates
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -118,39 +127,14 @@ jobs:
             echo "no change"
           fi
 
-      # STRICT here on purpose: in the collector's own run, a gap means the collector is
+      # STRICT here on purpose: in the collector's own run, a gap means a source is
       # broken, and a silent collector is worse than a noisy one. This runs after the
-      # aggregate commit so a secondary-source regression remains noisy without losing
-      # the non-backfillable primary observation. The deploy no longer runs data checks
-      # (static site since ops#165), so stale data cannot block the deploy that ships a fix.
+      # aggregate commit so a regression stays noisy without losing another source's
+      # non-backfillable observation. The deploy no longer runs data checks (static site
+      # since ops#165), so stale data cannot block the deploy that ships a fix.
       - name: Check for gaps
-        run: python3 scripts/check_data_freshness.py --strict
-
-      # continue-on-error above keeps a secondary source's bad day from costing the
-      # primary series - but it also makes the failing step report SUCCESS, so the run
-      # stays quiet about which collector refused. ops#351: three collectors wrote nothing
-      # for five days, their steps were green, and the only red was the gap check below,
-      # whose message pointed at a disabled workflow rather than at the collector. This
-      # step names each refusing collector and fails the run. It runs `always()` so it
-      # reports even when the gap check has already failed, and it sits after the
-      # aggregate commit, so it can never cost a day of data.
-      - name: Secondary collectors must not refuse silently
         if: always()
-        env:
-          GAMETIME: ${{ steps.gametime.outcome }}
-          TICKETNETWORK: ${{ steps.ticketnetwork.outcome }}
-          SCOREBIG: ${{ steps.scorebig.outcome }}
-        run: |
-          bad=0
-          for src in GAMETIME TICKETNETWORK SCOREBIG; do
-            outcome="${!src}"
-            echo "- ${src,,}: ${outcome:-not run}" >> "$GITHUB_STEP_SUMMARY"
-            if [[ "$outcome" == "failure" ]]; then
-              echo "::error title=${src,,} collector refused::collect_${src,,}.py exited non-zero and wrote nothing today - read its step log for the PROBLEM(S) list"
-              bad=1
-            fi
-          done
-          exit $bad
+        run: python3 scripts/check_data_freshness.py --strict
 
       # Not hidden-file-prefixed: upload-artifact@v4 silently excludes dotted paths and
       # uploaded nothing at all in ops#4, emitting only a warning.
@@ -184,3 +168,25 @@ jobs:
           else
             echo "- no store file" >> $GITHUB_STEP_SUMMARY
           fi
+
+      # continue-on-error preserves data but masks collector failures from the job.
+      # ops#351 showed why a red gap check alone cannot name a refusing source.
+      # Keep this last so artifact upload and the summary still run on a bad day.
+      - name: Collectors must not refuse silently
+        if: always()
+        env:
+          TICKPICK: ${{ steps.tickpick.outcome }}
+          GAMETIME: ${{ steps.gametime.outcome }}
+          TICKETNETWORK: ${{ steps.ticketnetwork.outcome }}
+          SCOREBIG: ${{ steps.scorebig.outcome }}
+        run: |
+          bad=0
+          for src in TICKPICK GAMETIME TICKETNETWORK SCOREBIG; do
+            outcome="${!src}"
+            echo "- ${src,,}: ${outcome:-not run}" >> "$GITHUB_STEP_SUMMARY"
+            if [[ "$outcome" == "failure" ]]; then
+              echo "::error title=${src,,} collector refused::collect_${src,,}.py exited non-zero and wrote nothing today - read its step log for the PROBLEM(S) list"
+              bad=1
+            fi
+          done
+          exit $bad
