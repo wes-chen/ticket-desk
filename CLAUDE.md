@@ -958,6 +958,14 @@ also how CI invokes it - `collect-tickpick.yml` calls the Python entry points ra
 npm, so a collector missing from `package.json` is not breakage. Verified by running each
 of these on 2026-09-15, after the ops#165 rewrite.
 
+`collect-tickpick.yml` is checked by `scripts/check_collect_workflow.py` (run by
+`npm test`). It pins the header except the cron time, the exact step list and order,
+the Self-test, resolver, collector and derivation commands, Commit and guard behavior,
+action versions, allowed `if:` spellings and `continue-on-error` values. Adding,
+removing or reordering a step, bumping an action or changing a pinned command or
+condition requires a checker update in the same PR. Comments, Summary text, the cron
+time, Python version and artifact retention setting remain editable without one.
+
 ```bash
 npm run build          # scripts/build.py: fresh dist/ from sources, THEN privacy + read-only checks
 npm run check:privacy  # the three privacy passes alone
