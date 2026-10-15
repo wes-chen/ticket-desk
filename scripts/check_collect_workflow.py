@@ -43,14 +43,11 @@ rather than parsing it. A hand-written evaluator was tried and read Actions expr
 differently from Actions (case, type coercion, status calls inside literals); see the
 comment above `CONDITIONS`.
 
-What a text check cannot close: any step outside the pinned set is arbitrary shell.
-The pinned steps carry exact commands, but a free-text step (Summary, upload, or a new
-one) can hide a command (`g""it push`, a Python subprocess), rewrite a collector or
-checker the pinned steps then run (`sed -i`), or reach the job environment by
-indirection. The check keeps such steps away from the literal word `git` and from
-`GITHUB_ENV` / `GITHUB_PATH` (which set env, including `BASH_ENV`, or PATH for every
-later step), and refuses step `env`; it does not, and cannot, parse what the shell
-will do. Review of an added step is the remaining guard.
+The exact ordered step list is pinned below. A new step must update that list, so
+review can inspect its commands and effect on the failure order. The existing Summary
+body is free text and can still hide a command (`g""it push`, a Python subprocess)
+or rewrite a collector or checker. The check keeps it away from the literal word
+`git` and from `GITHUB_ENV` / `GITHUB_PATH`, but cannot parse arbitrary shell.
 """
 
 import dataclasses
@@ -72,8 +69,8 @@ GAPS = "Check for gaps"
 GUARD = "Collectors must not refuse silently"
 RESOLVE = "Re-resolve event ids"
 SETUP = ("actions/checkout@v7", "actions/setup-python@v7")
-REQUIRED = ("Self-test", "Re-resolve event ids", *COLLECTORS, SUMMARY,
-            CROSS_CHECK, COMMIT, GAPS, GUARD)
+STEP_ORDER = (*SETUP, "Self-test", RESOLVE, *COLLECTORS, SUMMARY,
+              CROSS_CHECK, COMMIT, GAPS, "Upload raw payloads", "Summary", GUARD)
 # Only these steps may set continue-on-error, and only to a bare `true`; every other
 # step's failure must stay fatal, so for them the key is absent or a bare `false`.
 MASKABLE = (RESOLVE, *COLLECTORS)
@@ -81,6 +78,8 @@ MASKABLE = (RESOLVE, *COLLECTORS)
 # local `./` action, a docker image) could push or mask without a `git` in sight.
 ACTIONS = frozenset({"actions/checkout@v7", "actions/setup-python@v7",
                      "actions/upload-artifact@v7"})
+ACTION_FOR_STEP = {**{action: action for action in SETUP},
+                   "Upload raw payloads": "actions/upload-artifact@v7"}
 STEP_KEYS = frozenset({"name", "id", "if", "uses", "run", "with", "env",
                        "continue-on-error"})
 # Everything above the steps, as regexes over its significant lines, in order. Pinned
@@ -421,17 +420,27 @@ def check(source: str) -> list[str]:
         if not ok:
             errors.append(message)
 
-    require(all(names.count(name) == 1 for name in REQUIRED), "required steps present exactly once")
-    if not all(names.count(name) == 1 for name in REQUIRED):
+    unlisted = [step.field("uses") for step in ordered
+                if step.field("uses") is not None and step.field("uses") not in ACTIONS]
+    for action in unlisted:
+        errors.append(f"{action}: action is not allowlisted (a version bump updates ACTIONS and STEP_ORDER)")
+    for name in names:
+        require(name in STEP_ORDER, f"unexpected step: {name}")
+    for name in STEP_ORDER:
+        count = names.count(name)
+        require(count != 0, f"missing step: {name}")
+        require(count <= 1, f"duplicate step: {name}")
+    if errors:
+        return errors
+    for position, (actual, expected) in enumerate(zip(names, STEP_ORDER), 1):
+        require(actual == expected,
+                f"step {position} out of order: {actual}; expected {expected}")
+    if errors:
         return errors
     require(names.index("Self-test") < names.index("Re-resolve event ids") <
             min(names.index(name) for name in COLLECTORS), "pre-collection order")
-    # An action version bump renames a `- uses:` step, so report it as what it is; the
-    # ordering message below would otherwise be the only clue, and a misleading one.
-    unlisted = [step.field("uses") for step in ordered
-                if step.field("uses") is not None and step.field("uses") not in ACTIONS]
-    if not unlisted:
-        require(names[:2] == list(SETUP), "checkout and Python setup precede Self-test")
+    # Action version bumps are reported above before step-order checks return.
+    require(names[:2] == list(SETUP), "checkout and Python setup precede Self-test")
     require(max(names.index(name) for name in COLLECTORS) < names.index(SUMMARY) <
             names.index(CROSS_CHECK) < names.index(COMMIT) < names.index(GAPS) <
             names.index(GUARD), "all collection and derivation precede commit and guard")
@@ -439,6 +448,10 @@ def check(source: str) -> list[str]:
     require(blocks["Self-test"].field("id") == "selftest", "Self-test outcome id")
     require(blocks[RESOLVE].field("id") == "resolve", "Re-resolve outcome id")
     for step in ordered:
+        require(step.field("uses") == ACTION_FOR_STEP.get(step.name),
+                f"{step.name}: expected action {ACTION_FOR_STEP.get(step.name)!r}")
+        if step.name in SETUP:
+            require("name" not in step.raw, f"{step.name}: setup action must be unnamed")
         mask = step.raw.get("continue-on-error")
         if step.name in MASKABLE:
             require(mask == "true", f"{step.name}: failure captured with a bare continue-on-error: true")
@@ -574,6 +587,26 @@ def self_test(source: str) -> int:
     fatal = (*SETUP, "Self-test", SUMMARY, COMMIT, GAPS, GUARD)
     mutations = [
         # Ordering, gating and command pins (earlier rounds).
+        ("new step before Self-test", rep(anchor("Self-test"),
+             "      - name: Extra\n        run: echo hi\n\n" + anchor("Self-test"))),
+        ("new step before Commit", before_commit("      - name: Extra\n        run: echo hi\n")),
+        ("new step after guard", S + "\n      - name: Extra\n        run: echo hi\n"),
+        ("second checkout before Commit", before_commit("      - uses: actions/checkout@v7\n")),
+        ("named checkout", rep(anchor(SETUP[0]),
+            "      - name: actions/checkout@v7\n        uses: actions/checkout@v7\n")),
+        ("upload replaced by checkout", rep("        uses: actions/upload-artifact@v7\n",
+            "        uses: actions/checkout@v7\n")),
+        ("overwrite data before Commit", before_commit(
+            "      - name: Tidy\n        if: always()\n        run: rm -rf data/market\n")),
+        ("overwrite collector script", rep(anchor(COLLECTORS[0]),
+            "      - name: Patch\n        run: sed -i 's/x/y/' scripts/collect_gametime.py\n\n"
+            + anchor(COLLECTORS[0]))),
+        *((f"new SeatGeek collector {mask}", rep(anchor(SUMMARY),
+            "      - name: Collect SeatGeek\n        id: seatgeek\n"
+            "        run: python3 scripts/collect_seatgeek.py\n" + mask + "\n"
+            + anchor(SUMMARY))) for mask in ("", "        continue-on-error: true\n")),
+        ("removed collector", rep(dict(steps(S))[COLLECTORS[1]].text, "")),
+        ("collectors swapped", move_after(S, COLLECTORS[1], COLLECTORS[2])),
         ("TickPick after resolver failure", change_condition(S, COLLECTORS[0], "always()")),
         ("secondary after Self-test failure or cancellation", change_condition(S, COLLECTORS[1], "always()")),
         ("commit after Self-test failure or cancellation", change_condition(S, COMMIT, "always()")),
@@ -750,7 +783,7 @@ def self_test(source: str) -> int:
             return 1
     # Canonical rewrites that Actions reads identically must still pass, or the grammar
     # would be a straitjacket rather than a reader.
-    rearranged = move_after(S, "Collect Gametime", "Collect TicketNetwork")
+    rearranged = S
     rearranged = rep(gametime + "        continue-on-error: true\n",
                      "        continue-on-error: true\n\n        # comment between keys\n" + gametime,
                      rearranged)
