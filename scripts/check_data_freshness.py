@@ -107,7 +107,7 @@ COVERAGE_DROP_PERSIST_DAYS = 2
 
 # Outage days whose absence has been reviewed and consciously accepted.
 #
-# The gap check is right that a hole is permanent - TickPick has no historical endpoint,
+# The gap check is right that a hole is permanent - no source has a historical endpoint,
 # so a missed day is gone. But "permanent" cuts both ways: an unbackfillable hole makes
 # --strict fail on EVERY subsequent run, forever, for a reason no future run can fix. Six
 # consecutive red collector runs is what that looks like, and a permanently red gate
@@ -280,7 +280,8 @@ def analyse(rows: list[dict], games: list[dict], today: date,
         findings.append(("fatal" if len(missing) > 1 else "warn",
                          f"{len(missing)} day(s) missing inside the series: "
                          f"{missing[:5]}{'...' if len(missing) > 5 else ''}. "
-                         f"Not backfillable - TickPick has no historical endpoint."))
+                         f"Not backfillable - no source here has a historical price "
+                         f"endpoint."))
 
     # Per-game holes. Only meaningful once the game has appeared at all; a game that has
     # never been collected is a resolver problem, reported separately.
@@ -1454,6 +1455,12 @@ def self_test() -> int:
           any("missing inside the series" in m for _, m in a_named["findings"]), False)
     check("...and leaves an unnamed source's same day reported",
           any("missing inside the series" in m for _, m in a_other["findings"]), True)
+    # ops#423: analyse() runs for all four sources, so its gap message must not name one.
+    # It used to say "TickPick has no historical endpoint" on every source's gap.
+    gap_msgs = [m for _, m in a_other["findings"] if "missing inside the series" in m]
+    check("the interior-gap message names no particular source",
+          (len(gap_msgs), [n for n, *_ in STORES if any(n in m.lower() for m in gap_msgs)]),
+          (1, []))
 
     # THE COMMITTED FILE, not a fixture: TickPick's 09-23 is excused by its OWN line with
     # its own cause (the collector refused at "Re-resolve event ids" on the played,
@@ -1482,6 +1489,25 @@ def self_test() -> int:
     check("the ops#411 accepts name TicketNetwork and nothing else",
           {k: sorted(v & ops411_days) for k, v in real_src.items() if v & ops411_days},
           {"ticketnetwork": sorted(ops411_days)})
+    # ops#415, pinned LINE BY LINE (ops#423). load_accepted() merges lines into per-source
+    # sets, and gametime/ticketnetwork/scorebig lost 10-12..10-14 under a different cause
+    # (skipped by the pre-PR-46 workflow) from TickPick (event pages 403). So the set view
+    # cannot see a source moved onto the other cause's line; the raw lines can. TickPick
+    # stands alone on the 403 lines, the other three on the skip lines, and TickPick has
+    # no October accept outside those three reviewed days.
+    ops415_days = [f"2026-10-{x}" for x in (12, 13, 14)]
+    ops415_lines = sorted(
+        (m.group(1), " ".join(sorted(m.group(2).split())))
+        for m in (SOURCE_DATE_RE.match(ln.split("#", 1)[0].strip())
+                  for ln in ACCEPTED_GAPS_FILE.read_text().splitlines())
+        if m and m.group(1) in ops415_days)
+    check("the ops#415 accepts keep TickPick alone on its 403 lines",
+          ops415_lines,
+          sorted([(d, "tickpick") for d in ops415_days]
+                 + [(d, "gametime scorebig ticketnetwork") for d in ops415_days]))
+    check("TickPick has no October accept outside the reviewed ops#415 days",
+          sorted(d for d in real_src.get("tickpick", set()) if d.startswith("2026-10")),
+          ops415_days)
     check("the committed per-source days name only real sources",
           sorted(set(real_src) - {n for n, *_ in STORES}), [])
 

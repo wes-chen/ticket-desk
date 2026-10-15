@@ -259,6 +259,9 @@ def self_test() -> int:
     assert price_number(True) is None
     assert price_number(float("nan")) is None
     assert price_number(-1) is None
+    # isfinite is load-bearing: float() accepts "Infinity", and inf >= 0 (ops#423, M24).
+    assert price_number(float("inf")) is None
+    assert price_number("Infinity") is None
     with tempfile.TemporaryDirectory() as dirname:
         store = pathlib.Path(dirname) / "market.jsonl"
         schedule_path = pathlib.Path(dirname) / "schedule.json"
@@ -305,6 +308,9 @@ def self_test() -> int:
             ("text_high", {"highPrice": "abc"}),
             ("bool_high", {"highPrice": True}),
             ("inverted", {"highPrice": 1}),
+            # An infinite LOW is already refused by high < low; only an infinite HIGH
+            # reaches the store if isfinite is dropped, so that is the case pinned.
+            ("inf_high", {"highPrice": float("inf")}),
         ):
             changed = dict(first, offers={**first["offers"], **changes})
             refused(name, (page(changed, second), None), "INVALID PRICE RANGE")
@@ -316,6 +322,30 @@ def self_test() -> int:
              patch.dict(globals(), {"SCHEDULE": schedule_path}):
             assert collect(pathlib.Path(dirname) / "list.jsonl", None) == 0
         assert len(ms.read_store(pathlib.Path(dirname) / "list.jsonl")) == 2
+
+        # The store holds the CONVERTED numbers, not the published strings (ops#423,
+        # M28), and a successful run writes the raw ld+json artifact to --raw-dir and
+        # nowhere else (M30). Absurd prices: rule 1, plausible means real.
+        text_page = page(dict(first, offers={**first["offers"], "lowPrice": "11111111",
+                                             "highPrice": "22222222.5"}), second)
+        text_store = pathlib.Path(dirname) / "text.jsonl"
+        raw_dir = pathlib.Path(dirname) / "raw"
+        with patch.object(ms, "get", return_value=(text_page, None)), \
+             patch.object(ms, "venue_today", return_value="2026-10-14"), \
+             patch.dict(globals(), {"SCHEDULE": schedule_path}):
+            assert collect(text_store, raw_dir) == 0
+        stored = {row["date"]: row for row in ms.read_store(text_store)}
+        assert stored[selected[0]["date"]]["low"] == 11111111.0
+        assert type(stored[selected[0]["date"]]["low"]) is float
+        assert stored[selected[0]["date"]]["high"] == 22222222.5
+        assert type(stored[selected[0]["date"]]["high"]) is float
+        raw_files = sorted(raw_dir.glob("tickpick-*.json"))
+        assert len(raw_files) == 1, raw_files
+        raw = json.loads(raw_files[0].read_text())
+        assert raw["observedAt"].endswith("Z")
+        assert sorted(e["startDate"] for e in raw["events"]) == sorted(
+            [first["startDate"], second["startDate"]])
+        assert not list(pathlib.Path(dirname).glob("tickpick-*.json"))
 
         # Once every scheduled home game is played, no fetch or write is needed.
         with patch.object(ms, "get", side_effect=AssertionError("unexpected fetch")), \
