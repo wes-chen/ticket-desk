@@ -199,3 +199,41 @@ coverage ticketnetwork 16
 2026-10-06 ticketnetwork
 2026-10-07 ticketnetwork
 2026-10-08 ticketnetwork
+
+# 2026-10-09 .. 2026-10-11 - TicketNetwork only, the same ops#411 cause as the four days
+# above. The collector step ran on all three days (runs 37984472664, 38078979008,
+# 38168111455) and each runner log shows "TOTAL FAILURE: the page parsed but yielded no
+# usable events at all" with "at SAP Center after dedupe: 0", so nothing was written. The
+# parse fix is public PR #45 (1bcebfb, merged 2026-10-14); its first scheduled run was
+# then skipped for the ops#415 reason below, and the first TicketNetwork rows after the
+# fix are 2026-10-15. The other three sources collected normally on these days.
+#
+# Unrecoverable: TicketNetwork has no historical price endpoint.
+2026-10-09 ticketnetwork  # AggregateOffer/offset parse failure, ops#411; fixed in PR #45
+2026-10-10 ticketnetwork  # AggregateOffer/offset parse failure, ops#411; fixed in PR #45
+2026-10-11 ticketnetwork  # AggregateOffer/offset parse failure, ops#411; fixed in PR #45
+
+# 2026-10-12 .. 2026-10-14 - all four sources, but TWO causes, so two entries per day
+# rather than a bare date (ops#415). Runs 38316812001, 38464121341 and 38622323870 each
+# failed at "Collect TickPick" and skipped every later collect, summarise and commit step.
+#
+# TickPick, cause understood: its event pages refuse plain HTTP from residential and
+# datacenter alike (ops#415 Finding, 2026-10-14; the team page still serves 200). Each
+# runner log shows "EVERY request got 403" and "store UNCHANGED - nothing written".
+# Fixed forward by public PR #47 (14af5de), which collects from the team page instead.
+#
+# Gametime, TicketNetwork, ScoreBig, cause understood: their steps were SKIPPED because
+# the workflow of the time ran nothing after a TickPick refusal, and committed nothing.
+# Gametime and ScoreBig were healthy. TicketNetwork's own parser was additionally still
+# broken on 10-12 and 10-13 (ops#411, above; PR #45 landed before the 10-14 run), so it
+# would have written nothing on those two days even if it had run. Fixed forward by
+# public PR #46 (a2dea03): each collector now runs independently and whatever succeeded
+# is committed. The first run after it wrote 2026-10-15 rows for all four.
+#
+# Unrecoverable: none of the four has a historical price endpoint.
+2026-10-12 tickpick  # event pages 403 plain HTTP everywhere, ops#415
+2026-10-13 tickpick  # event pages 403 plain HTTP everywhere, ops#415
+2026-10-14 tickpick  # event pages 403 plain HTTP everywhere, ops#415
+2026-10-12 gametime ticketnetwork scorebig  # skipped after TickPick refused, ops#415
+2026-10-13 gametime ticketnetwork scorebig  # skipped after TickPick refused, ops#415
+2026-10-14 gametime ticketnetwork scorebig  # skipped after TickPick refused, ops#415

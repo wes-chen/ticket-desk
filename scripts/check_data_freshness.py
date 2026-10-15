@@ -1462,16 +1462,26 @@ def self_test() -> int:
     # "tidying" these into bare dates is a failing test rather than a silent re-scoping:
     # the global set is exactly the two reviewed days; TickPick's own days are exactly the
     # one; and the ops#351 dates name only the other three sources. Later per-source
-    # accepts have separate causes and must not change this outage's assertion.
+    # accepts have separate causes and must not change this outage's assertion - so the
+    # TickPick pin is scoped to September, where 09-23 is its only reviewed day (ops#415
+    # later added TickPick-only October days with their own cause).
     check("the committed global (bare-date) accepts are exactly the reviewed ones",
           sorted(real_days), ["2026-09-09", "2026-09-10"])
     check("the committed file excuses TickPick's 2026-09-23 by a TickPick-only entry",
-          sorted(real_src.get("tickpick", set())), ["2026-09-23"])
+          sorted(d for d in real_src.get("tickpick", set()) if d.startswith("2026-09")),
+          ["2026-09-23"])
     ops351_days = {f"2026-09-{x}" for x in range(23, 28)}
     check("...and the three-source outage lines stay separate from it",
           {k: sorted(v & ops351_days) for k, v in real_src.items()
            if k != "tickpick" and v & ops351_days},
           {k: sorted(ops351_days) for k in ("gametime", "ticketnetwork", "scorebig")})
+    # ops#411: TicketNetwork's parse-failure days are TicketNetwork-only. The other three
+    # sources collected on 10-05..10-11, so naming any of them here would excuse a day
+    # they never lost, under a cause that does not apply to them.
+    ops411_days = {f"2026-10-{x:02d}" for x in range(5, 12)}
+    check("the ops#411 accepts name TicketNetwork and nothing else",
+          {k: sorted(v & ops411_days) for k, v in real_src.items() if v & ops411_days},
+          {"ticketnetwork": sorted(ops411_days)})
     check("the committed per-source days name only real sources",
           sorted(set(real_src) - {n for n, *_ in STORES}), [])
 
