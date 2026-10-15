@@ -47,6 +47,7 @@ import pathlib
 import re
 import sys
 import tempfile
+import traceback
 from datetime import datetime, timezone
 from unittest.mock import patch
 
@@ -321,6 +322,24 @@ def self_test() -> int:
         if got != want:
             fails.append(f"{label}: got {got!r}, want {want!r}")
 
+    # SAFETY NET (ops#423). A deleted guard used to crash this suite part-way, which
+    # still went red but threw away every failure recorded before the crash - so a
+    # mutant "killed" that way said nothing about which assertion caught it. A crash is
+    # now reported as one more failure, after the assertion failures it would have hid.
+    try:
+        _self_test_checks(check)
+    except Exception:  # noqa: BLE001 - reported, never swallowed: it counts as a failure
+        traceback.print_exc()
+        fails.append("self-test CRASHED after the checks above: "
+                     + traceback.format_exc().strip().splitlines()[-1])
+
+    for f in fails:
+        print(f"  FAIL {f}", file=sys.stderr)
+    print(f"self-test: {'FAILED' if fails else 'passed'} ({len(fails)} failure(s))")
+    return 1 if fails else 0
+
+
+def _self_test_checks(check) -> None:
     fx = json.loads((ROOT / "tests" / "fixtures" / "ticketnetwork_ldjson.json").read_text())
     evs = fx["events"]
 
@@ -344,9 +363,47 @@ def self_test() -> int:
     check("captured string low becomes numeric", offer(current[0])["low"], 84.0)
     check("aggregate does not change the low-only series", "high" in offer(current[0]), False)
     check("correct PDT offset still works", utc_key("2026-10-10T13:00:00-07:00"), expected_keys[0])
-    for bad in ("NaN", "Infinity", "-1", "garbage", None, True):
+    # The zone itself, pinned on both sides of the 2026-11-01 DST change and in the
+    # captured format (-08:00 declared on a PDT date). A fixed -08:00 is right in
+    # November and an hour late in October; America/Denver is an hour early in both.
+    # Before ops#423 those two mutants were caught only by a crash further down.
+    check("declared -08:00 on a PDT date is read as PDT wall time",
+          utc_key("2026-10-10T13:00:00-08:00"), "2026-10-10T20:00:00Z")
+    check("a PST date after the DST change is read as PST wall time",
+          utc_key("2026-11-02T18:00:00-08:00"), "2026-11-03T02:00:00Z")
+
+    def low_of(offers):
+        """offer()'s low for a synthetic event, or the exception it raised. A deleted
+        guard must turn this suite red on an assertion, not on a crash that hides every
+        failure recorded before it (ops#423)."""
+        try:
+            return offer({"offers": offers})["low"]
+        except Exception as exc:  # noqa: BLE001 - report it as a failure, do not crash
+            return f"raised {type(exc).__name__}"
+
+    for bad in ("NaN", "Infinity", "-1", "garbage", None, True, [11], {"x": 11}):
         check(f"invalid aggregate price {bad!r} is refused",
-              offer({"offers": {"@type": "AggregateOffer", "lowPrice": bad}})["low"], None)
+              low_of({"@type": "AggregateOffer", "lowPrice": bad}), None)
+    # A non-dict offers value (a bare string, number, or a list of one) is no offer.
+    for bad in ("broken", 11, ["broken"], [None]):
+        check(f"non-dict offers {bad!r} yields no price", low_of(bad), None)
+    try:
+        dropped = home_events([dict(current[0], offers="broken")])
+    except Exception as exc:  # noqa: BLE001
+        dropped = f"raised {type(exc).__name__}"
+    check("an event with non-dict offers is dropped, not a crash", dropped, {})
+    # The legacy Offer.price path, which the September store was collected through.
+    check("legacy Offer.price is still read", low_of({"@type": "Offer", "price": 16}), 16.0)
+    check("an untyped offer reads price", low_of({"price": "11.5"}), 11.5)
+    check("an AggregateOffer reads lowPrice, not price",
+          low_of({"@type": "AggregateOffer", "price": 11, "lowPrice": "22"}), 22.0)
+    # ZERO IS VALID. The contract recorded in CLAUDE.md (ops#411) is "finite,
+    # nonnegative", and no committed store has ever held a zero low, so nothing measured
+    # says a zero means anything other than a zero ask. Rejecting it would be a
+    # collection-behaviour change; pinned here so that change is a decision, not drift.
+    check("a zero aggregate low is kept",
+          low_of({"@type": "AggregateOffer", "lowPrice": "0"}), 0.0)
+    check("a zero legacy price is kept", low_of({"@type": "Offer", "price": 0}), 0.0)
     current_schedule = {"games": [
         {"gameId": i, "date": date, "startTimeUTC": key,
          "opponent": {"name": name, "abbrev": abbrev}}
@@ -395,8 +452,9 @@ def self_test() -> int:
     rows, problems, notes = join(home, sched, T0)
     check("both games join", len(rows), 2)
     check("clean join has no problems", problems, [])
-    check("row carries the source", rows[0]["source"], "ticketnetwork")
-    check("row carries a price", rows[0]["low"], 16)
+    # Guarded index: an empty join must be reported by "both games join", not crash here.
+    check("row carries the source", rows[0]["source"] if rows else None, "ticketnetwork")
+    check("row carries a price", rows[0]["low"] if rows else None, 16)
 
     # A game BEYOND the horizon is a note, not a problem - this source publishes a
     # rolling window and 15 of 44 games were legitimately unlisted when measured.
@@ -527,11 +585,6 @@ def self_test() -> int:
                             '<script type="application/ld+json">'
                             '{"@type":"SportsEvent","name":"x"}</script>')), 1)
     check("no ld+json at all is empty, not an error", sports_events("<html></html>"), [])
-
-    for f in fails:
-        print(f"  FAIL {f}", file=sys.stderr)
-    print(f"self-test: {'FAILED' if fails else 'passed'} ({len(fails)} failure(s))")
-    return 1 if fails else 0
 
 
 def main() -> int:

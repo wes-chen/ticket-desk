@@ -712,7 +712,9 @@ successes cannot be audited.
 
 ## 6. Known constraints
 
-- **The block follows the BROWSER, not the IP - for TickPick.** This rule used to read
+- **For TickPick the block followed the BROWSER, not the IP - on the event URL measured
+  2026-09-05. Since 2026-10-14 event pages refuse plain HTTP too; the team page does not
+  (ops#415).** This rule used to read
   "GitHub Actions cannot scrape... this is IP reputation, not fingerprinting", which was
   drawn from one cell of a 2x2 and was wrong as a generalisation. The full grid, measured
   2026-09-05 on the same URL:
@@ -722,9 +724,10 @@ successes cannot be audited.
   | residential | TickPick 200, 1.4MB, 31 prices | TickPick 403 `Just a moment...` |
   | datacenter (Actions) | TickPick 200, 1.4MB, 31 prices | TickPick 403 |
 
-  This 2026-09-05 result is now URL-specific. Measured 2026-10-14 (ops#415): event
-  detail pages return 403 over plain HTTP from both residential and Actions clients.
-  The logged-out team page still returns 200 and publishes 11 priced SAP Center
+  This 2026-09-05 result is now URL-specific. Measured 2026-10-14 (ops#415 Finding):
+  event detail pages return 403 over plain HTTP from both residential and Actions
+  clients. The logged-out team page still returns 200 over plain HTTP from both - a
+  runner probe and Wesley's machine, the same day - and publishes 11 priced SAP Center
   events in a rolling window. `scripts/collect_tickpick.py` now fetches that single
   page with `urllib`. The browser result above was measured on 2026-09-05 against
   an event URL; browser access to the October team page has not been re-measured.
