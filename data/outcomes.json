@@ -139,7 +139,6 @@
    "status": "attending",
    "tier": "B",
    "trend": [
-    169,
     null,
     190,
     190,
@@ -147,6 +146,7 @@
     180,
     193,
     150,
+    null,
     null,
     null,
     null,
@@ -170,7 +170,6 @@
    "status": "attending",
    "tier": "C",
    "trend": [
-    122,
     195,
     122,
     122,
@@ -182,6 +181,7 @@
     123,
     151,
     151,
+    null,
     null,
     null
    ]
@@ -201,7 +201,6 @@
    "status": "attending",
    "tier": "D",
    "trend": [
-    86,
     164,
     84,
     84,
@@ -214,6 +213,7 @@
     85,
     85,
     85,
+    88,
     88
    ]
   },
@@ -232,7 +232,6 @@
    "status": "attending",
    "tier": "D",
    "trend": [
-    94,
     150,
     91,
     91,
@@ -240,6 +239,7 @@
     91,
     91,
     91,
+    88,
     88,
     88,
     88,
@@ -253,9 +253,9 @@
    "date": "2026-10-31",
    "gameId": 2026020222,
    "logo": "https://assets.nhle.com/logos/nhl/svg/OTT_light.svg",
-   "marketCount": 7,
-   "marketMax": 220,
-   "marketMedian": 154,
+   "marketCount": 8,
+   "marketMax": 290,
+   "marketMedian": 174,
    "marketMin": 133,
    "marketWithheld": false,
    "opponent": "Ottawa Senators",
@@ -263,7 +263,6 @@
    "status": "undecided",
    "tier": "B",
    "trend": [
-    140,
     null,
     143,
     143,
@@ -276,7 +275,8 @@
     154,
     154,
     154,
-    154
+    154,
+    174
    ]
   },
   {
@@ -294,7 +294,6 @@
    "status": "undecided",
    "tier": "D",
    "trend": [
-    104,
     132,
     99,
     99,
@@ -307,6 +306,7 @@
     110,
     110,
     110,
+    106,
     106
    ]
   },
@@ -325,7 +325,6 @@
    "status": "undecided",
    "tier": "D",
    "trend": [
-    115,
     129,
     115,
     115,
@@ -333,6 +332,7 @@
     115,
     115,
     115,
+    110,
     110,
     110,
     110,
@@ -356,7 +356,6 @@
    "status": "undecided",
    "tier": "C",
    "trend": [
-    126,
     190,
     126,
     126,
@@ -368,6 +367,7 @@
     130,
     156,
     156,
+    158,
     158,
     158
    ]
@@ -387,7 +387,6 @@
    "status": "attending",
    "tier": "C",
    "trend": [
-    135,
     185,
     135,
     135,
@@ -399,6 +398,7 @@
     135,
     142,
     142,
+    135,
     135,
     135
    ]
@@ -418,7 +418,6 @@
    "status": "attending",
    "tier": "D",
    "trend": [
-    96,
     128,
     96,
     96,
@@ -431,6 +430,7 @@
     99,
     99,
     98,
+    98,
     98
    ]
   },
@@ -439,9 +439,9 @@
    "date": "2026-11-21",
    "gameId": 2026020372,
    "logo": "https://assets.nhle.com/logos/nhl/svg/SEA_light.svg",
-   "marketCount": 7,
+   "marketCount": 6,
    "marketMax": 225,
-   "marketMedian": 150,
+   "marketMedian": 152,
    "marketMin": 145,
    "marketWithheld": false,
    "opponent": "Seattle Kraken",
@@ -449,7 +449,6 @@
    "status": "undecided",
    "tier": "A",
    "trend": [
-    149,
     null,
     149,
     149,
@@ -462,7 +461,8 @@
     152,
     152,
     150,
-    150
+    150,
+    152
    ]
   },
   {
@@ -480,13 +480,13 @@
    "status": "undecided",
    "tier": "C",
    "trend": [
-    115,
     120,
     115,
     115,
     115,
     120,
     120,
+    119,
     119,
     119,
     119,
@@ -501,9 +501,9 @@
    "date": "2026-11-27",
    "gameId": 2026020410,
    "logo": "https://assets.nhle.com/logos/nhl/svg/VGK_light.svg",
-   "marketCount": 8,
-   "marketMax": 225,
-   "marketMedian": 198,
+   "marketCount": 9,
+   "marketMax": 235,
+   "marketMedian": 199,
    "marketMin": 180,
    "marketWithheld": false,
    "opponent": "Vegas Golden Knights",
@@ -511,7 +511,6 @@
    "status": "undecided",
    "tier": "A+",
    "trend": [
-    180,
     null,
     195,
     195,
@@ -524,7 +523,8 @@
     195,
     195,
     198,
-    198
+    198,
+    199
    ]
   },
   {
@@ -542,7 +542,6 @@
    "status": "attending",
    "tier": "D",
    "trend": [
-    99,
     107,
     99,
     99,
@@ -554,6 +553,7 @@
     94,
     94,
     94,
+    95,
     95,
     95
    ]
@@ -573,7 +573,6 @@
    "status": "undecided",
    "tier": "A",
    "trend": [
-    150,
     null,
     154,
     154,
@@ -585,6 +584,7 @@
     156,
     154,
     154,
+    163,
     163,
     163
    ]
@@ -604,7 +604,6 @@
    "status": "attending",
    "tier": "D",
    "trend": [
-    100,
     155,
     100,
     100,
@@ -616,6 +615,7 @@
     100,
     100,
     100,
+    106,
     106,
     106
    ]
@@ -635,7 +635,6 @@
    "status": "undecided",
    "tier": "A+",
    "trend": [
-    183,
     null,
     183,
     183,
@@ -643,6 +642,7 @@
     183,
     183,
     183,
+    182,
     182,
     182,
     182,
@@ -656,9 +656,9 @@
    "date": "2027-01-01",
    "gameId": 2026020653,
    "logo": "https://assets.nhle.com/logos/nhl/svg/PHI_light.svg",
-   "marketCount": 5,
-   "marketMax": 180,
-   "marketMedian": 171,
+   "marketCount": 6,
+   "marketMax": 199,
+   "marketMedian": 174,
    "marketMin": 160,
    "marketWithheld": false,
    "opponent": "Philadelphia Flyers",
@@ -666,7 +666,6 @@
    "status": "undecided",
    "tier": "A",
    "trend": [
-    155,
     null,
     155,
     155,
@@ -679,7 +678,8 @@
     155,
     155,
     171,
-    171
+    171,
+    174
    ]
   },
   {
@@ -697,7 +697,6 @@
    "status": "undecided",
    "tier": "A+",
    "trend": [
-    178,
     null,
     194,
     194,
@@ -705,6 +704,7 @@
     183,
     186,
     186,
+    184,
     184,
     184,
     184,
@@ -728,7 +728,6 @@
    "status": "undecided",
    "tier": "D",
    "trend": [
-    94,
     190,
     104,
     104,
@@ -738,6 +737,7 @@
     104,
     104,
     105,
+    104,
     104,
     104,
     104,
@@ -759,8 +759,8 @@
    "status": "undecided",
    "tier": "C",
    "trend": [
-    122,
     null,
+    122,
     122,
     122,
     122,
@@ -790,7 +790,6 @@
    "status": "attending",
    "tier": "A",
    "trend": [
-    175,
     null,
     204,
     204,
@@ -802,6 +801,7 @@
     211,
     211,
     211,
+    227,
     227,
     227
    ]
@@ -821,7 +821,6 @@
    "status": "undecided",
    "tier": "A+",
    "trend": [
-    170,
     null,
     170,
     170,
@@ -831,6 +830,7 @@
     170,
     170,
     178,
+    170,
     170,
     170,
     170,
@@ -852,8 +852,8 @@
    "status": "undecided",
    "tier": "B",
    "trend": [
-    136,
     null,
+    136,
     136,
     136,
     136,
@@ -883,7 +883,6 @@
    "status": "undecided",
    "tier": "A",
    "trend": [
-    156,
     null,
     156,
     156,
@@ -891,6 +890,7 @@
     156,
     156,
     null,
+    156,
     156,
     156,
     156,
@@ -914,7 +914,6 @@
    "status": "undecided",
    "tier": "C",
    "trend": [
-    102,
     null,
     102,
     102,
@@ -927,6 +926,7 @@
     108,
     108,
     108,
+    103,
     103
    ]
   },
@@ -945,7 +945,6 @@
    "status": "undecided",
    "tier": "A",
    "trend": [
-    153,
     null,
     153,
     153,
@@ -955,6 +954,7 @@
     null,
     157,
     170,
+    157,
     157,
     157,
     157,
@@ -976,7 +976,6 @@
    "status": "undecided",
    "tier": "C",
    "trend": [
-    117,
     null,
     117,
     117,
@@ -986,6 +985,7 @@
     null,
     117,
     120,
+    117,
     117,
     117,
     117,
@@ -1007,7 +1007,6 @@
    "status": "undecided",
    "tier": "A+",
    "trend": [
-    172,
     null,
     172,
     172,
@@ -1015,6 +1014,7 @@
     172,
     172,
     null,
+    172,
     172,
     172,
     172,
@@ -1038,7 +1038,6 @@
    "status": "undecided",
    "tier": "B",
    "trend": [
-    124,
     null,
     124,
     124,
@@ -1046,6 +1045,7 @@
     124,
     124,
     null,
+    124,
     124,
     124,
     124,
@@ -1069,7 +1069,6 @@
    "status": "undecided",
    "tier": "C",
    "trend": [
-    105,
     null,
     105,
     105,
@@ -1077,6 +1076,7 @@
     105,
     112,
     null,
+    112,
     112,
     112,
     112,
@@ -1100,7 +1100,6 @@
    "status": "undecided",
    "tier": "D",
    "trend": [
-    92,
     null,
     92,
     92,
@@ -1108,6 +1107,7 @@
     92,
     92,
     null,
+    92,
     92,
     92,
     92,
@@ -1131,7 +1131,6 @@
    "status": "undecided",
    "tier": "B",
    "trend": [
-    120,
     null,
     120,
     120,
@@ -1143,6 +1142,7 @@
     140,
     140,
     140,
+    158,
     158,
     158
    ]
@@ -1162,7 +1162,6 @@
    "status": "undecided",
    "tier": "A",
    "trend": [
-    151,
     null,
     151,
     151,
@@ -1170,6 +1169,7 @@
     151,
     151,
     null,
+    151,
     151,
     151,
     151,
@@ -1193,7 +1193,6 @@
    "status": "undecided",
    "tier": "A+",
    "trend": [
-    162,
     null,
     206,
     206,
@@ -1201,6 +1200,7 @@
     206,
     206,
     null,
+    206,
     206,
     206,
     206,
@@ -1224,7 +1224,6 @@
    "status": "undecided",
    "tier": "C",
    "trend": [
-    122,
     null,
     122,
     122,
@@ -1232,6 +1231,7 @@
     122,
     122,
     null,
+    122,
     122,
     122,
     122,
@@ -1255,7 +1255,6 @@
    "status": "undecided",
    "tier": "C",
    "trend": [
-    120,
     null,
     120,
     120,
@@ -1263,6 +1262,7 @@
     120,
     120,
     null,
+    120,
     120,
     120,
     120,
@@ -1286,7 +1286,6 @@
    "status": "undecided",
    "tier": "C",
    "trend": [
-    115,
     null,
     115,
     115,
@@ -1294,6 +1293,7 @@
     115,
     115,
     null,
+    115,
     115,
     115,
     115,
@@ -1317,7 +1317,6 @@
    "status": "undecided",
    "tier": "B",
    "trend": [
-    124,
     null,
     124,
     124,
@@ -1325,6 +1324,7 @@
     124,
     124,
     null,
+    124,
     124,
     124,
     124,
@@ -1348,7 +1348,6 @@
    "status": "undecided",
    "tier": "A+",
    "trend": [
-    174,
     null,
     174,
     174,
@@ -1356,6 +1355,7 @@
     174,
     174,
     null,
+    174,
     174,
     174,
     174,
@@ -1365,6 +1365,6 @@
    ]
   }
  ],
- "generated_at": "2026-10-16T15:00:57.040611+00:00",
+ "generated_at": "2026-10-17T15:00:18.654951+00:00",
  "season": "2026-27"
 }
