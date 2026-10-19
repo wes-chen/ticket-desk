@@ -190,7 +190,10 @@
 # source is not a data emergency. So N need only be BOUNDED generously, not fitted - three
 # weeks would do. Revisit when there are enough closed runs to bound it; that needs weeks,
 # not days, and do not re-reject it on the equivalence argument alone.
-coverage ticketnetwork 16
+# SUPERSEDED 2026-10-19: TicketNetwork's window shortened to ~5 games (see new
+# floor at end of file). Kept for history; the parser takes the last coverage line
+# per source.
+# coverage ticketnetwork 16
 
 # ops#411: TicketNetwork changed Offer.price to AggregateOffer.lowPrice and
 # declared PST for PDT games. The price filter discarded every home event;
@@ -237,3 +240,34 @@ coverage ticketnetwork 16
 2026-10-12 gametime ticketnetwork scorebig  # skipped after TickPick refused, ops#415
 2026-10-13 gametime ticketnetwork scorebig  # skipped after TickPick refused, ops#415
 2026-10-14 gametime ticketnetwork scorebig  # skipped after TickPick refused, ops#415
+
+# ---------------------------------------------------------------------------
+# Accepted coverage floor: TicketNetwork, 5 games (updated 2026-10-19).
+#
+# WHAT CHANGED. On ~2026-10-15 TicketNetwork's performer page stopped serving the
+# Nov 11 - Jan 30 block (21 games). Live probe 2026-10-19: the page serves 5 SAP
+# Center games (2026-10-27 .. 2026-11-09). The collector is healthy - it joins 5/44
+# and writes rows; the source shortened its window. This is source-side, not a
+# collector bug.
+#
+# The 16-game floor above is superseded. It documented the Sep flap (29 <-> 16);
+# that flap is over. The new normal is 5.
+#
+# WHY ACCEPTABLE. TicketNetwork is supplementary (TickPick and Gametime carry the
+# pricing signal). The floor still guards against FURTHER drops: 5 -> 4 is a
+# warning, and per-game holes still fire for games that leave outside a bloc.
+coverage ticketnetwork 5
+
+# ---------------------------------------------------------------------------
+# Accepted coverage floor: TickPick, 11 games (added 2026-10-19).
+#
+# WHAT CHANGED. On ~2026-10-15 TickPick's team page stopped serving games beyond
+# ~5 weeks out (27 games, Dec 2026 - Apr 2027, all with 30+ days of history).
+# Live probe 2026-10-19: the page serves 11 SAP Center events (2026-10-27 ..
+# 2026-11-27), zero beyond. The collector (team-page ld+json, PR #47) is healthy.
+# This is source-side, not a collector bug.
+#
+# WHY ACCEPTABLE. TickPick remains the primary comp source for the games it
+# serves. The floor guards against further drops. Per-game holes still fire for
+# games that vanish outside a group departure.
+coverage tickpick 11
