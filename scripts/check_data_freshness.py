@@ -1276,7 +1276,7 @@ def self_test() -> int:
     # coverage check for that source while printing a line that reads like protection.
     # Changing this pin is then a deliberate act with a diff, which is the whole point.
     check("the committed floors are exactly the reviewed ones",
-          real_floors, {"ticketnetwork": 16})
+          real_floors, {"ticketnetwork": 5, "tickpick": 11})
 
     # A floor of 0 exempts every level there is. It must not parse.
     with tempfile.TemporaryDirectory() as td:
