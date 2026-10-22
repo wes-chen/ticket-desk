@@ -47,6 +47,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCHEDULE = ROOT / "data" / "schedule.json"
 MARKET = ROOT / "data" / "market"
+OUTCOMES = ROOT / "data" / "outcomes.json"
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from check_tier_market import spearman  # noqa: E402  - one implementation, tie-corrected
@@ -150,6 +151,15 @@ def inventory() -> dict:
     games = json.loads(SCHEDULE.read_text())["games"]
     return {"observationDays": len(days), "dayList": sorted(days), "sources": sources,
             "rows": rows, "games": len(games)}
+
+
+def count_outcomes(path: pathlib.Path = OUTCOMES) -> int:
+    """Count recorded sales, the outcomes needed by the sell-through hypothesis.
+
+    The public feed has one row per game. Listed games have no sale result, while
+    attending and exchanged games cannot tell us what listing price sold.
+    """
+    return sum(g["status"] == "sold" for g in json.loads(path.read_text())["games"])
 
 
 def readiness(entry: dict, inv: dict, outcomes: int, games_played: int,
@@ -286,15 +296,13 @@ def h3_window_bias(latest: dict, games: list[dict], primary: str) -> dict:
 def run(readiness_only: bool, today: dt.date) -> int:
     inv = inventory()
     games = json.loads(SCHEDULE.read_text())["games"]
-    # Outcomes live in the browser, not the repo - see CLAUDE.md rule 1. Zero here means
-    # "not visible from the repo", NOT "none exist", and the report says so.
-    outcomes, played = 0, sum(1 for g in games if g["date"] < today.isoformat())
+    outcomes = count_outcomes()
+    played = sum(1 for g in games if g["date"] < today.isoformat())
 
     print(f"data: {inv['observationDays']} observation day(s) "
           f"{inv['dayList']}, {len(inv['sources'])} source(s) {inv['sources']}, "
           f"{inv['rows']} rows, {inv['games']} games, {played} played")
-    print(f"outcomes visible from the repo: {outcomes} "
-          f"(they live in browser storage by design - this is not a count of what exists)\n")
+    print(f"recorded sold-game outcomes in data/outcomes.json: {outcomes}\n")
 
     ready = []
     print("READINESS")
@@ -349,6 +357,46 @@ def self_test() -> int:
 
     today = dt.date(2026, 9, 5)
     inv1 = {"observationDays": 1, "sources": ["a", "b"], "dayList": ["2026-09-05"]}
+
+    # Match the committed feed's document and game-row shape, with absurd market
+    # values and labels only. A listed game is not a sell-through result.
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        feed = pathlib.Path(d) / "outcomes.json"
+        statuses = ["sold", "listed", "attending", "exchanged", "undecided", "sold"]
+        feed.write_text(json.dumps({
+            "season": "fixture", "generated_at": "2026-01-01T00:00:00Z",
+            "games": [{"abbrev": "FIX", "date": "2026-01-01",
+                       "gameId": 11111111 + i, "logo": "fixture",
+                       "marketCount": 11111111, "marketMax": None,
+                       "marketMedian": 11111111, "marketMin": None,
+                       "marketWithheld": False, "opponent": "Fixture",
+                       "puckTime": "2026-01-02T00:00:00Z", "status": status,
+                       "tier": "A", "trend": [None] * 7}
+                      for i, status in enumerate(statuses)],
+        }))
+        check("only sold games count as sell-through outcomes", count_outcomes(feed), 2)
+
+    # Exercise the report path too: a constant in run() would make the helper test
+    # pass while readiness still came from the wrong count.
+    import contextlib
+    import io
+    from unittest import mock
+    for count, mark, shortfall in [(2, "waiting", "6 more recorded outcome(s)"),
+                                   (8, "READY  ", None)]:
+        report = io.StringIO()
+        with mock.patch.dict(run.__globals__, {"count_outcomes": lambda: count}), \
+                contextlib.redirect_stdout(report):
+            run(True, today)
+        output = report.getvalue()
+        check(f"report uses counted outcomes at {count}",
+              f"recorded sold-game outcomes in data/outcomes.json: {count}" in output,
+              True)
+        h6_line = next(line for line in output.splitlines() if "H6-sell-through" in line)
+        check(f"counted outcomes reach readiness at {count}",
+              f"[{mark}] H6-sell-through" in h6_line, True)
+        if shortfall:
+            check("outcome shortfall reaches report", shortfall in h6_line, True)
 
     # Readiness arithmetic.
     cs = next(e for e in REGISTER if e["id"] == "H1-source-agreement")
