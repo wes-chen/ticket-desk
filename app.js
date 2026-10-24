@@ -27,6 +27,11 @@
     var d = new Date(iso.length <= 10 ? iso + "T12:00:00" : iso);
     return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   }
+  function fmtTime(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return "";
+    return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
   function median(vals) {
     if (!vals.length) return null;
     var s = vals.slice().sort(function (a, b) { return a - b; });
@@ -186,7 +191,8 @@
       spark = '<div class="spark"><div class="scap">trend building — new point each morning</div></div>';
     }
     el.innerHTML =
-      '<div class="gt">' + esc(g.abbrev) + " · " + esc(fmtDate(g.date)) + "</div>" +
+      '<div class="gt">' + esc(g.abbrev) + " · " + esc(fmtDate(g.date)) +
+      (g.puckTime ? " · " + esc(fmtTime(g.puckTime)) : "") + "</div>" +
       "<b>" + fmtMoney(med) + "</b>" +
       "<span>median" + rangeTxt + " · " + pairsTxt + "</span>" +
       tierRow + spark;
