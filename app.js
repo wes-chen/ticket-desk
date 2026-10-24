@@ -32,6 +32,10 @@
     if (isNaN(d)) return "";
     return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   }
+  function fmtWhen(g) {
+    var d = fmtDate(g.puckTime || g.date);
+    return g.puckTime ? d + " · " + fmtTime(g.puckTime) : d;
+  }
   function median(vals) {
     if (!vals.length) return null;
     var s = vals.slice().sort(function (a, b) { return a - b; });
@@ -77,7 +81,7 @@
       '<img src="' + esc(g.logo) + '" alt="' + esc(g.opponent) + ' logo" width="64" height="64">' +
       '<div><p class="kick">NEXT UP</p>' +
       '<h2>vs ' + esc(g.opponent) + '</h2>' +
-      '<p class="meta">' + esc(fmtDate(g.puckTime || g.date)) + ' · ' + esc(g.tier) + ' tier</p>' +
+      '<p class="meta">' + esc(fmtWhen(g)) + ' · ' + esc(g.tier) + ' tier</p>' +
       '<div class="cd" id="cd"><div><b data-cd="d">–</b><span>DAYS</span></div>' +
       '<div><b data-cd="h">–</b><span>HRS</span></div>' +
       '<div><b data-cd="m">–</b><span>MIN</span></div>' +
@@ -227,7 +231,7 @@
         var tc = TIER_CODE[g.tier] || g.tier;
         return '<span class="tcell"><button class="dot ' + STATUS_CLASS[g.status] + sel + '"' +
           ' data-game="' + g.gameId + '"' +
-          ' aria-label="' + esc(g.opponent) + " " + esc(g.date) + " — " + esc(g.tier) +
+          ' aria-label="' + esc(g.opponent) + " " + esc(fmtWhen(g)) + " — " + esc(g.tier) +
           " tier — " + esc(STATUS_LABEL[g.status]) + '">' +
           "<span>" + day + "</span></button>" +
           '<span class="tcode">' + esc(tc) + "</span></span>";
@@ -252,7 +256,7 @@
     el.innerHTML =
       '<img src="' + esc(g.logo) + '" alt="" width="40" height="40">' +
       '<div><div class="t1">vs ' + esc(g.opponent) + "</div>" +
-      '<div class="t2">' + esc(fmtDate(g.puckTime || g.date)) + " · " + esc(g.tier) + " · " + esc(statusLine) +
+      '<div class="t2">' + esc(fmtWhen(g)) + " · " + esc(g.tier) + " · " + esc(statusLine) +
       " · Market " + fmtMoney(g.marketMedian) + "</div></div>";
   }
 
@@ -272,7 +276,7 @@
       var rs = list.map(function (r) {
         var cls = r.d > 0 ? "up" : "down";
         var txt = (r.d > 0 ? "+$" : "-$") + Math.abs(Math.round(r.d));
-        return '<div class="mvrow"><span>' + esc(fmtDate(r.g.puckTime || r.g.date)) + " · " +
+        return '<div class="mvrow"><span>' + esc(fmtWhen(r.g)) + " · " +
           esc(r.g.abbrev) + '</span><span><b class="' + cls + '">' + txt +
           "</b><em>" + r.span + "d</em></span></div>";
       }).join("");
@@ -365,7 +369,7 @@
         var g = it.g, urgent = (it.cutoff - now) < 72 * 3600 * 1000;
         var tag = it.listed ? "Listed" : "No plan yet";
         return '<div class="qrow' + (urgent ? " urgent" : "") + '">' +
-          '<div class="qmain"><b>' + esc(g.team) + "</b><span> · " + esc(fmtDate(g.puckTime || g.date)) + "</span></div>" +
+          '<div class="qmain"><b>' + esc(g.team) + "</b><span> · " + esc(fmtWhen(g)) + "</span></div>" +
           '<div class="qcut">cutoff ' + fmtDur(it.cutoff - now) + "</div>" +
           '<div class="qsub">' + tag + " · " + esc(g.tier) + " tier</div></div>";
       }).join("");
