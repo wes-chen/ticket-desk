@@ -8,8 +8,12 @@ tier table. Sampling pixels removes the eye from the loop. What it does NOT remo
 the possibility of sampling the wrong pixels, so the tool scores itself.
 
 THE SELF-GATE, which is the point of this file. The arena is mirror-symmetric about the
-rink's LONG axis, so sections that mirror each other must carry identical band stacks.
-The tool computes that agreement and writes nothing unless it clears --min-agreement.
+rink's LONG axis EXCEPT at one measured lower-bowl corner - 104/112 and 106/110 genuinely
+differ on the chart (see THE CEILING below) - so every OTHER pair of sections that mirror
+each other must carry identical band stacks. The tool computes agreement over all pairs,
+those two included, and writes nothing unless it clears --min-agreement. A correct map
+therefore scores at most 22/24 against this oracle; what to do about that is the open
+decision ops#347, and this file does not pre-empt it.
 A 75%-correct section map committed as fact is worse than no map: it would silently
 misprice comps forever, and this repo has shipped enough confident wrong answers.
 
@@ -20,8 +24,9 @@ gives 0/10; against the long axis, 18/24. An earlier version of check_price_band
 assumed left-right and would have rejected correct data.
 
 THE SHARE GATE (default, no --coherent): 22/24 (92%) on the 300dpi chart at --centre
-1274 1355, upper ring exact at 13/13. Coverage refuses: 21/23 legend bands placed,
-missing CLUB 1 and PROMENADE ROW 1 CENTER.
+1274 1355 and the default --sample-step 0 (the fixed grid), upper ring exact at 13/13.
+Coverage refuses: 21/23 legend bands placed, missing CLUB 1 and PROMENADE ROW 1 CENTER.
+Its only two mismatches are 104/112 and 106/110 - the genuine asymmetry, not an error.
 
 WHY IT IS NOT A RESOLUTION LIMIT. This block used to say the residue was a raster limit
 needing a vector chart, and that was WRONG - a fifth instance of the instrument being
@@ -29,21 +34,30 @@ the thing at fault. Measured 2026-09-06 on the 2550x3300 chart, sampling every p
 setting min_share to 0 to see what the gate was actually discarding:
 
     band                      appears in   max share   where
-    CLUB 1                    14 sections      5.60%   110:5.6 106:5.3 107:3.8 109:3.8
+    CLUB 1                    14 sections      5.60%   120:5.6 124:5.3 123:3.8 121:3.8
     PROMENADE ROW 1 CENTER     6 sections      7.20%   115:7.2 101:5.0
-    GLASS                     12 sections      7.50%   126:7.5 112:5.9 118:5.7
-    TEAL                       8 sections     12.00%   126:12.0 124:7.8
+    GLASS                     12 sections      7.50%   104:7.5 118:5.9 112:5.7
+    TEAL                       8 sections     12.00%   104:12.0 106:7.8
+
+Section names corrected 2026-09-29 (see label_ring): this table was first recorded with
+every name mirrored left-right. The shares are the original measurements; re-measured on
+the refetched chart under the corrected labels at --sample-step 1, every share above
+reproduces at the section named here (the "appears in" counts do not all reproduce:
+CLUB 1 now reaches 20 sections and PROMENADE ROW 1 CENTER 7, every extra entry at or
+below 2.2%).
 
 The gate is min_share=0.07. So:
 
   - CLUB 1 is PRESENT on the chart and inside the sampled radial window - 86% of its
     pixels are - and appears coherently in four adjacent lower sections. It is excluded
     purely because it never reaches 7% of any one section's samples.
-  - Every remaining mirror mismatch is the same artefact seen twice. PROMENADE ROW 1
-    CENTER is 7.2% in 115 and 5.0% in 101, so it lands on one side of the gate and not
-    the other: that IS the 101/115 mismatch. GLASS 7.5% v 5.9% is the 126/118 mismatch.
-    TEAL 12.0% v 7.8% is 124/120. The mirror pairs do not disagree about the chart; they
-    disagree about a threshold.
+  - PROMENADE ROW 1 CENTER is 7.2% in 115 and 5.0% in 101, so it lands on one side of
+    the gate and not the other: that IS the 101/115 mismatch, a threshold artefact.
+    GLASS (7.5% in 104, 5.7% in its mirror 112) and TEAL (7.8% in 106, 0.3% in its
+    mirror 110) were read the same way when this was written. That reading was WRONG for
+    those two pairs: they disagree about the chart, not about a threshold - see THE
+    CEILING. (The original text quoted these pairs with other sections' shares, under
+    the mirrored names; the figures here are re-measured, 2026-09-29.)
 
 WHY SHARE IS THE WRONG STATISTIC. A band's share depends on how thick the OTHER bands in
 its section are, so a genuinely one-row band can never score well no matter the
@@ -97,8 +111,8 @@ because each looked right, and re-running them is the expensive way to find that
 again:
 
   1. PER-COLOUR coherence - score each colour's thickness and angular span on its own.
-     Reached 23/23 and then admitted CLUB 1 into upper-deck section 212 and LOWER 3 into
-     225. Those tails are real bands, just not that section's, and only the radial ORDER
+     Reached 23/23 and then admitted CLUB 1 into upper-deck section 218 and LOWER 3 into
+     205. Those tails are real bands, just not that section's, and only the radial ORDER
      exposes it. Per-colour scoring discards order. This is why radial_runs segments.
   2. A KNIFE EDGE AT 4px - the assumption that MIN_BAND_PX had merely relocated the old
      7%-share threshold. Falsified by measuring: the bands that differ across a mirror
@@ -125,55 +139,62 @@ mirror sections:
      pure noise the way the sector-margin sweep was, and JPEG colour smear on this
      particular chart IS costing some real agreement. But it stops eight points short of
      the 95% floor and stops improving, so tolerance alone does not close the residual
-     either - there is a second, tolerance-independent defect underneath it, which is
-     what (a) and (b) below are about.
+     either - there is a second, tolerance-independent defect underneath it. Two
+     hypotheses were carried for it: (a) SECTOR CLIPPING, a wedge reaching into a
+     neighbour, and (b) the lower bowl being GENUINELY not mirror-symmetric (penalty box
+     on one long side, benches on the other). See RESOLVED below.
 
 THE RESIDUAL. The prior session characterised every failing lower pair as having the
 same signature - one side carries exactly ONE extra thick band, sequences otherwise
 matching in order. Re-measured at --tol 14, 2026-09-13, that description does NOT hold
-cleanly: three of the four lower mismatches do show one extra band on one side (128 vs
-116: extra CLUB 4; 126 vs 118: extra LOWER 3, on the OPPOSITE side from what the earlier
-session's notes described for that same pair; 123 vs 121: extra UPPER GOAL 2), but the
-fourth carries TWO extras (114 vs 102: 102 has both CLUB 5 and UPPER GOAL 1 that 114
+cleanly: three of the four lower mismatches do show one extra band on one side (102 vs
+114: extra CLUB 4; 104 vs 112: extra LOWER 3, on the OPPOSITE side from what the earlier
+session's notes described for that same pair; 107 vs 109: extra UPPER GOAL 2), but the
+fourth carries TWO extras (116 vs 128: 128 has both CLUB 5 and UPPER GOAL 1 that 116
 lacks). Saying so because "one threshold, one clean signature" is a stronger and more
 falsifiable claim than the data supports - the residual is messier than either the issue
 or the prior session's notes suggested.
 
-A NEW OBSERVATION not covered by either hypothesis below: three of the four lower
-mismatches (123/121, 114/102, and 126/118 to a lesser extent) contain UPPER-deck legend
-names (UPPER GOAL 1, UPPER GOAL 2, UPPER ATTACK 1) inside LOWER-ring sections, whose
-radial window (0.46-0.92) does not overlap the upper window (0.95-1.18) by construction.
-That means either the two windows are each admitting real pixels of the OTHER ring's
-colours somewhere inside their own bounds (a genuine colour collision, not a window
-overlap), or the ellipse/centre geometry is placing some lower sectors' outer edge into
-territory the model believes is purely lower. Not diagnosed further here - it is a
-concrete, reproducible data point for whoever investigates hypothesis (a) next, since it
-implicates radial geometry rather than purely angular clipping.
+RESOLVED 2026-09-27 (ops#53) - BOTH (a) and (b) are true, in different places, and the
+upper-deck names seen inside lower sections are (a). Measured on the refetched chart, --coherent --tol 28
+--centre 1274 1355, section names corrected (see label_ring). The paragraphs above were
+first written with every name the LEFT-RIGHT MIRROR of the real section; they were
+corrected 2026-09-29, but commits and ops comments from before that carry the mirrored
+names (their "128 vs 116" is 102 vs 114).
+The three residual mismatches, by where the extra band's pixels actually sit:
 
-Two hypotheses remain live for the part of the residual that fits the original
-description:
+  - 102 vs 114, extra CLUB 4 in 102: only in the last 2 of 10 angular bins, the edge
+    facing 103, which is Club 4. SECTOR CLIPPING.
+  - 128 vs 116, extra CLUB 5 in 128: only in bin 0, the edge facing 127 (Club 5).
+    CLIPPING. Extra UPPER GOAL 1: a 6px run at r=0.917, the window's outer edge, on the
+    green aisle strip of upper section 227. RADIAL OVERREACH - that is the "upper-deck
+    name in a lower section" observation. Not a colour collision.
+  - 104 vs 112, extra LOWER 3 in 112: a 7px run in the bins facing 113. CLIPPING.
 
-  (a) Sector clipping - a label disc is not at the angular centre of its wedge, so the
-      sector reaches into a neighbour. Supported by the extra being a band its neighbour
-      genuinely has (101's extra CLUB 3 is 102/114's largest band). Weakened by the
-      margin sweep being non-monotonic, and now also by the cross-ring bleed above, which
-      an angular-only explanation does not cover.
-  (b) The lower bowl is GENUINELY not mirror-symmetric, and the 95% gate's premise is
-      wrong for it. The chart shows why it might be: the long axis has the PENALTY BOX on
-      the 115 side and AWAY/HOME BENCH on the 101 side, which really does displace
-      seating near centre ice. The upper ring scoring far better than the lower ring at
-      every tolerance measured fits this. If (b) is right, the fix is a different oracle
-      for the lower ring, NOT a lower gate.
+And clipping also produces WRONG AGREEMENT, which the gate cannot see: 102 and 114 both
+report LOWER 3, from pixels at x 843-1013 that lie in 103 and 113, not in either section.
 
-Distinguishing them needs one thing neither this tool nor the chart can supply: an
-independent statement of which bands section 101 actually contains. ops#19 later found
-that statement exists for SOME sections, in Ticketmaster's per-seat `Description` field
-(scripts/primary_store.py) - but coverage there depends on what happens to be for sale,
-so it is a partial, not a replacement oracle. ops#66 also confirmed the original
-higher-fidelity chart images pasted 2026-09-05 cannot be recovered; only this lossy
-JPEG-in-PDF export is reproducible. So this residual is NOT resolvable by more pixel
-tuning on the input this tool has - it needs either the Ticketmaster description data
-(partial) or a non-lossy chart export (ops#66, asked and declined).
+The discriminating experiment: keep only samples whose nearest label disc is the
+section's own (a Voronoi mask). Every centre-ice extra above disappears and 102/114 and
+116/128 agree. Masking is not the fix, though - it breaks the end sections (75-79%) and
+loses PROMENADE ROW 1 CENTER, because centre-ice sections are RECTANGLES and end sections
+are radial WEDGES, and no single disc-derived partition fits both.
+
+THE CEILING, which is the part that matters. Masking left one difference standing under
+every geometry tried: rink-side GLASS and TEAL in 104 and 106 with nothing matching in 112
+and 110. That is the chart. A ray profile along the boards from 202 to 218 degrees (the
+110/112 wedges) reads board line -> CLUB 4, with no GLASS or TEAL, while the reflected
+rays read GLASS -> TEAL at every angle. The top-left corner has a solid black block
+(tunnel) where the bottom-left has two rows of rink-side seating. So the lower bowl is
+GENUINELY not long-axis symmetric in at least 104/112 and 106/110, and a CORRECT map
+scores at most 22/24 = 92% against this oracle. A map that clears 95% must be wrong
+somewhere, and the current 88% already includes two such wrong agreements (GLASS/TEAL
+reported in 110 and 112, clipped in from 109 and 113).
+
+So neither more tuning nor a better extraction can reach 95% honestly against this
+oracle. What to do about that ceiling is a decision about the gate, not an extraction
+fix, and it is open as ops#347; this file records the evidence and deliberately leaves
+the choice unstated. Until it is decided, the refusal below stands.
 
 CONSEQUENTLY: --coherent stays OPT-IN and the tool still refuses to write a map either
 way. It is documented and tested because it is a real, verified improvement to admission
@@ -343,6 +364,43 @@ def anchor(ring, order, anchor_section, at_deg=90.0):
     k = min(range(len(ring)), key=lambda i: abs(((ring[i]["a"] - at_deg + 180) % 360) - 180))
     n = len(seq)
     return [(seq[(j - k) % n], ring[j]) for j in range(len(ring))]
+
+
+def label_ring(ring, order, anchor_section, at_deg=90.0):
+    """Attach labels to an angle-sorted ring, given `order` as config lists it.
+
+    THE DIRECTION IS A FACT, NOT A SEARCH (ops#53, 2026-09-27). config/price_bands.json's
+    `_ringsNote` states the listed order runs COUNTER-clockwise on screen (101 -> 128 ->
+    127 ...). anchor() walks discs by increasing atan2 angle, which with screen y pointing
+    DOWN is CLOCKWISE. Feeding it the listed order therefore labels every disc with its
+    left-right mirror: the disc this tool called "102" reads 128 on the chart, "107" reads
+    123, "210" reads 220 - checked by rendering the discs and reading the numerals.
+
+    main() used to pick the direction by mirror-agreement score. That CANNOT work: flipping
+    the direction relabels each disc with its reflection across the short axis, which maps
+    the set of long-axis mirror pairs onto itself, so both directions score identically on
+    every image. The tie went to "as-listed" by loop order, so the tool reported the right
+    agreement against the wrong section names - invisible to the gate by construction, the
+    same class of blind spot coverage() exists for. A map written that way would have put
+    the Attack end's bands on the Goal end.
+    """
+    return anchor(ring, list(reversed(order)), anchor_section, at_deg)
+
+
+def extract_ring(im, ring, order, axis, cx, cy, a, b, r_lo, r_hi, palette, **kw):
+    """Label one angle-sorted ring, extract its bands, score it. -> (ex, ok, n, bad)
+
+    The ONLY place discs get section names on main()'s path, and the reason it is a
+    function rather than inline in main(): review of the ops#53 fix found that main()
+    calling anchor() instead of label_ring() left the self-test fully green - the helper
+    was pinned, its wiring was not. As a named function the wiring is testable, and the
+    self-test pins both halves: this labels in the documented direction, and main() goes
+    through it rather than labelling on its own.
+    """
+    ex = sector_bands(im, label_ring(ring, order, axis[0]), cx, cy, a, b,
+                      r_lo, r_hi, palette, **kw)
+    _, ok, n, bad = agreement(ex, mirror_pairs(order, *axis))
+    return ex, ok, n, bad
 
 
 def sector_bands(im, pairs, cx, cy, a, b, r_lo, r_hi, palette, margin=0.30,
@@ -524,7 +582,7 @@ def mirror_pairs(order, a, b):
     Note the semantics carefully - a first version of this docstring said "about the
     axis through a and b", which is the PERPENDICULAR reflection and the wrong one.
     Passing ("101","115") gives the reflection across the rink's LONG axis: 101 and 115
-    map to each other, 102 to 104, and so on. That is the symmetry the chart actually
+    map to each other, 102 to 114, 128 to 116, and so on. That is the symmetry the chart actually
     has, because the two ENDS are priced differently ("Sharks attack twice") while the
     two SIDES are not.
     """
@@ -731,6 +789,55 @@ def self_test() -> int:
     check("a reversed ring anchors by name too", got["A"]["a"], 90)
     check("reversed ring walks the other way", got["D"]["a"], 180)
 
+    # label_ring(): config lists rings COUNTER-clockwise on screen, and screen y points
+    # down, so counter-clockwise from bottom-centre (90 deg) goes RIGHT (0 deg) first. The
+    # old code handed the listed order straight to anchor(), which put B on the LEFT -
+    # every label its own left-right mirror, measured on the real chart (ops#53).
+    got = dict(label_ring(ring, ["A", "B", "C", "D"], "A"))
+    check("label_ring: anchor still at bottom-centre", got["A"]["a"], 90)
+    check("label_ring: second listed section is to the RIGHT (screen ccw)", got["B"]["a"], 0)
+    check("label_ring: third is at the top", got["C"]["a"], 270)
+    check("label_ring: last listed is to the LEFT", got["D"]["a"], 180)
+
+    # Why this could not be left to the score: flipping direction maps the long-axis
+    # mirror-pair set onto itself, so agreement is IDENTICAL either way. Pinned so nobody
+    # reintroduces a direction search believing it measures something.
+    ring8 = [{"a": t, "r": 1.0, "x": 0, "y": 0} for t in range(0, 360, 45)]
+    order8 = ["1", "2", "3", "4", "5", "6", "7", "8"]
+    stacks = {45 * i: [{"band": f"B{i % 3}"}] for i in range(8)}
+    def score_as(pairs_):
+        ex_ = {s: stacks[int(d["a"])] for s, d in pairs_}
+        return agreement(ex_, mirror_pairs(order8, "1", "5"))[1]
+    check("both directions score identically - the search was blind",
+          score_as(anchor(ring8, order8, "1")), score_as(label_ring(ring8, order8, "1")))
+
+    # extract_ring(): the WIRING, not just the helper. A mutant with main() calling
+    # anchor() in place of label_ring() used to leave this suite green. Colour is a pure
+    # function of screen side - the right half RED, the left half BLUE - so the second
+    # listed section (screen ccw from bottom-centre = RIGHT) must come back RED.
+    class SideImg:
+        w, h = 200, 200
+        def px(self, x, y):
+            return (200, 30, 30) if x > 100 else (30, 30, 200)
+    side_pal = {"RED": (200, 30, 30), "BLUE": (30, 30, 200)}
+    ring4 = [{"a": t, "r": 1.0, "x": 0, "y": 0} for t in (0, 90, 180, 270)]
+    ex_w, _, _, _ = extract_ring(SideImg(), ring4, ["A", "B", "C", "D"], ("A", "C"),
+                                 100, 100, 80, 80, 0.3, 0.9, side_pal)
+    check("extract_ring: second listed section reads the RIGHT side",
+          [e["band"] for e in ex_w["B"]], ["RED"])
+    check("extract_ring: last listed section reads the LEFT side",
+          [e["band"] for e in ex_w["D"]], ["BLUE"])
+    # And main() must actually go through it. Checked on main()'s CALLS (parsed, so a
+    # comment naming a function does not count) because main() needs a real 50-disc
+    # chart to run end to end; a direct labelling call there would bypass every test
+    # above, which is exactly the mutant that survived review.
+    import ast, inspect, textwrap
+    called = {n.func.id for n in ast.walk(ast.parse(textwrap.dedent(inspect.getsource(main))))
+              if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+    check("main() labels rings only via extract_ring",
+          sorted(called & {"extract_ring", "anchor", "label_ring", "sector_bands"}),
+          ["extract_ring"])
+
     # Mirror pairing about the long axis.
     order = ["101", "102", "103", "104", "115", "116", "117", "118"]
     mp = mirror_pairs(order, "101", "115")
@@ -905,22 +1012,19 @@ def main() -> int:
                 # extents and no reason to share a window.
                 (inner, r["lower"], ("101", "115"), *args.lower_window, "lower"),
                 (outer, r["upper"], ("201", "215"), *args.upper_window, "upper")):
-            best = None
-            for dname, seq in (("as-listed", order), ("reversed", list(reversed(order)))):
-                ex = sector_bands(im, anchor(ring, seq, axis[0]), ccx, ccy, a, b,
-                                  lo, hi, pal, margin=args.sector_margin,
-                                  tol=args.tol, step=sample_step, coherent=coh)
-                _, o, n, bad = agreement(ex, mirror_pairs(seq, *axis))
-                if best is None or o > best[0]:
-                    best = (o, n, ex, dname, bad)
+            # One direction, from the config's documented screen orientation - see
+            # label_ring() for why scoring both directions could never choose.
+            ex, o, n, bad = extract_ring(im, ring, order, axis, ccx, ccy, a, b, lo, hi,
+                                         pal, margin=args.sector_margin, tol=args.tol,
+                                         step=sample_step, coherent=coh)
             if verbose:
-                print(f"  {label} ring, direction {best[3]}: {best[0]}/{best[1]}")
-                for x, y, A, B in best[4]:
+                print(f"  {label} ring: {o}/{n}")
+                for x, y, A, B in bad:
                     print(f"    MISMATCH {x} {A}")
                     print(f"             {y} {B}")
-            parts.update(best[2])
-            ok += best[0]
-            tot += best[1]
+            parts.update(ex)
+            ok += o
+            tot += n
         return ok, tot, parts
 
     # THE BOWL CENTRE IS THE MOST SENSITIVE PARAMETER IN THIS TOOL, by a wide margin.
@@ -968,11 +1072,14 @@ def main() -> int:
 
     if frac < args.min_agreement:
         print(f"\nREFUSING to write a map at {frac:.0%} agreement. The arena is "
-              f"mirror-symmetric, so disagreeing pairs mean the extraction is wrong "
-              f"somewhere - and a section map that is mostly right would misprice comps "
-              f"silently forever. See the module docstring's 'residual' section for the "
-              f"two live hypotheses (sector clipping vs genuine asymmetry) and why more "
-              f"tuning here has not closed it.", file=sys.stderr)
+              f"mirror-symmetric about its long axis EXCEPT the measured 104/112 and "
+              f"106/110 lower-bowl corner, so any other disagreeing pair means the "
+              f"extraction is wrong somewhere - and a section map that is mostly right "
+              f"would misprice comps silently forever. See the module docstring's "
+              f"'RESOLVED' section: the residual is sector clipping on top of that "
+              f"genuine asymmetry, which caps a CORRECT map at 22/24 against this "
+              f"oracle. How the gate should treat that is open (ops#347).",
+              file=sys.stderr)
         return 1
 
     out = args.out or (ROOT / "data" / "price_band_sections.json")
