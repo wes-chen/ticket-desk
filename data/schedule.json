@@ -104,8 +104,8 @@
         "logo": "https://assets.nhle.com/logos/nhl/svg/BUF_light.svg"
       },
       "tier": "D",
-      "ticketsLink": "https://www.ticketmaster.com/event/1C0064E79AC59B61?brand=sharks&artistid=806018&wt.mc_id=NHL_TEAM_SJS_SCHEDULE_GM5&utm_source=NHL.com&utm_medium=client&utm_campaign=NHL_TEAM_SJS&utm_content=SCHEDULE_GM5",
-      "tmEventId": "1C0064E79AC59B61"
+      "ticketsLink": null,
+      "tmEventId": null
     },
     {
       "gameId": 2026020213,
