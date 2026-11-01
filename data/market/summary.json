@@ -1,6 +1,6 @@
 {
   "_comment": "Derived from the per-source stores in data/market/ by scripts/summarize_market.py. low/high are the cheapest and priciest listings in the WHOLE ARENA, all-in, on TickPick - NOT a comp for any specific seat, and NOT the channel these tickets are sold on. See the script docstring.",
-  "generatedAt": "2026-10-31T19:13:30Z",
+  "generatedAt": "2026-11-01T19:31:31Z",
   "source": "tickpick",
   "sources": [
     "gametime",
@@ -12,32 +12,32 @@
     "perSource": {
       "gametime": {
         "games": 44,
-        "medianRatioToPrimary": 1.0351,
+        "medianRatioToPrimary": 1.0299,
         "minRatio": 0.5917,
         "maxRatio": 1.3281
       },
       "scorebig": {
-        "games": 28,
-        "medianRatioToPrimary": 1.5012,
+        "games": 29,
+        "medianRatioToPrimary": 1.3881,
         "minRatio": 0.6536,
         "maxRatio": 2.0238
       },
       "ticketnetwork": {
         "games": 31,
-        "medianRatioToPrimary": 1.0278,
+        "medianRatioToPrimary": 1.0235,
         "minRatio": 0.5167,
         "maxRatio": 2.0238
       }
     },
-    "commonGames": 28,
+    "commonGames": 29,
     "_comment": "Each secondary source's low divided by the primary's, PER SOURCE and never pooled. Pooling was wrong and is why this shape changed (ops#43/ops#44): the rolling-window sources publish only a forward slice, and that slice is measurably cheaper - ScoreBig's covered games had a $33 median low against $48 for the ones it omits, with the date ranges disjoint. A pooled median therefore mixed 'secondary sources ask more' with 'early-season games cost less' and was read as the first. Each source's figure now stands over its own games, with n stated. Sources agreeing on ORDER but differing in LEVEL is the expected shape - they price the same demand with different inventory and fee treatment (all six pairwise Spearman rho 0.98-0.99). A sudden move in one source's ratio means THAT SOURCE changed, not the market."
   },
   "priceBasis": "all_in_whole_arena",
   "isOwnChannel": false,
   "confidence": "measured",
-  "observationDays": 51,
+  "observationDays": 52,
   "firstObservedDate": "2026-09-05",
-  "lastObservedDate": "2026-10-31",
+  "lastObservedDate": "2026-11-01",
   "games": [
     {
       "gameId": 2026010032,
@@ -294,38 +294,10 @@
     {
       "gameId": 2026020235,
       "date": "2026-11-02",
-      "low": 24.0,
-      "high": 2725.0,
-      "observedDate": "2026-10-31",
-      "observations": 51,
-      "lowFirst": 23,
-      "lowFirstDate": "2026-09-05",
-      "lowDelta": 1.0,
-      "otherSources": {
-        "gametime": {
-          "low": 26,
-          "high": null,
-          "observedDate": "2026-10-31"
-        },
-        "ticketnetwork": {
-          "low": 42.44,
-          "high": null,
-          "observedDate": "2026-10-31"
-        },
-        "scorebig": {
-          "low": 42.44,
-          "high": 1218.69,
-          "observedDate": "2026-10-31"
-        }
-      }
-    },
-    {
-      "gameId": 2026020285,
-      "date": "2026-11-09",
       "low": 28.0,
-      "high": 1318.0,
-      "observedDate": "2026-10-31",
-      "observations": 51,
+      "high": 1521.0,
+      "observedDate": "2026-11-01",
+      "observations": 52,
       "lowFirst": 23,
       "lowFirstDate": "2026-09-05",
       "lowDelta": 5.0,
@@ -333,17 +305,45 @@
         "gametime": {
           "low": 29,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 46.19,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
+        },
+        "scorebig": {
+          "low": 46.19,
+          "high": 1272.44,
+          "observedDate": "2026-11-01"
+        }
+      }
+    },
+    {
+      "gameId": 2026020285,
+      "date": "2026-11-09",
+      "low": 29.0,
+      "high": 1700.0,
+      "observedDate": "2026-11-01",
+      "observations": 52,
+      "lowFirst": 23,
+      "lowFirstDate": "2026-09-05",
+      "lowDelta": 6.0,
+      "otherSources": {
+        "gametime": {
+          "low": 30,
+          "high": null,
+          "observedDate": "2026-11-01"
+        },
+        "ticketnetwork": {
+          "low": 46.19,
+          "high": null,
+          "observedDate": "2026-11-01"
         },
         "scorebig": {
           "low": 46.19,
           "high": 6706.19,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -351,9 +351,9 @@
       "gameId": 2026020298,
       "date": "2026-11-11",
       "low": 46.0,
-      "high": 2727.0,
-      "observedDate": "2026-10-31",
-      "observations": 51,
+      "high": 2711.0,
+      "observedDate": "2026-11-01",
+      "observations": 52,
       "lowFirst": 33,
       "lowFirstDate": "2026-09-05",
       "lowDelta": 13.0,
@@ -361,119 +361,119 @@
         "gametime": {
           "low": 47,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 68.69,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "scorebig": {
           "low": 68.69,
-          "high": 1711.19,
-          "observedDate": "2026-10-31"
+          "high": 1768.69,
+          "observedDate": "2026-11-01"
         }
       }
     },
     {
       "gameId": 2026020330,
       "date": "2026-11-15",
-      "low": 48.0,
+      "low": 46.0,
       "high": 2905.0,
-      "observedDate": "2026-10-31",
-      "observations": 51,
+      "observedDate": "2026-11-01",
+      "observations": 52,
       "lowFirst": 33,
       "lowFirstDate": "2026-09-05",
-      "lowDelta": 15.0,
+      "lowDelta": 13.0,
       "otherSources": {
         "gametime": {
-          "low": 49,
+          "low": 47,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
-          "low": 72.44,
+          "low": 68.69,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "scorebig": {
-          "low": 72.44,
+          "low": 68.69,
           "high": 1887.44,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
     {
       "gameId": 2026020343,
       "date": "2026-11-17",
-      "low": 30.0,
-      "high": 2617.0,
-      "observedDate": "2026-10-31",
-      "observations": 51,
+      "low": 29.0,
+      "high": 2615.0,
+      "observedDate": "2026-11-01",
+      "observations": 52,
       "lowFirst": 23,
       "lowFirstDate": "2026-09-05",
-      "lowDelta": 7.0,
+      "lowDelta": 6.0,
       "otherSources": {
         "gametime": {
-          "low": 32,
+          "low": 30,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 48.69,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "scorebig": {
           "low": 48.69,
           "high": 1758.69,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
     {
       "gameId": 2026020372,
       "date": "2026-11-21",
-      "low": 62.0,
-      "high": 1540.0,
-      "observedDate": "2026-10-31",
-      "observations": 51,
+      "low": 70.0,
+      "high": 1537.0,
+      "observedDate": "2026-11-01",
+      "observations": 52,
       "lowFirst": 54,
       "lowFirstDate": "2026-09-05",
-      "lowDelta": 8.0,
+      "lowDelta": 16.0,
       "otherSources": {
         "gametime": {
           "low": 65,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
-          "low": 112.44,
+          "low": 89.94,
           "high": null,
-          "observedDate": "2026-10-27"
+          "observedDate": "2026-11-01"
         },
         "scorebig": {
           "low": 89.94,
           "high": 1878.69,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
     {
       "gameId": 2026020384,
       "date": "2026-11-23",
-      "low": 38.0,
+      "low": 46.0,
       "high": 2916.0,
-      "observedDate": "2026-10-31",
-      "observations": 51,
+      "observedDate": "2026-11-01",
+      "observations": 52,
       "lowFirst": 37,
       "lowFirstDate": "2026-09-05",
-      "lowDelta": 1.0,
+      "lowDelta": 9.0,
       "otherSources": {
         "gametime": {
           "low": 40,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 63.69,
@@ -483,25 +483,25 @@
         "scorebig": {
           "low": 58.69,
           "high": 1887.44,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
     {
       "gameId": 2026020410,
       "date": "2026-11-27",
-      "low": 69.0,
-      "high": 2280.0,
-      "observedDate": "2026-10-31",
-      "observations": 51,
+      "low": 85.0,
+      "high": 2308.0,
+      "observedDate": "2026-11-01",
+      "observations": 52,
       "lowFirst": 69,
       "lowFirstDate": "2026-09-05",
-      "lowDelta": 0.0,
+      "lowDelta": 16.0,
       "otherSources": {
         "gametime": {
           "low": 74,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 87,
@@ -511,7 +511,7 @@
         "scorebig": {
           "low": 99.94,
           "high": 2747.44,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -520,8 +520,8 @@
       "date": "2026-12-08",
       "low": 29.0,
       "high": 2579.0,
-      "observedDate": "2026-10-31",
-      "observations": 36,
+      "observedDate": "2026-11-01",
+      "observations": 37,
       "lowFirst": 23,
       "lowFirstDate": "2026-09-05",
       "lowDelta": 6.0,
@@ -529,7 +529,7 @@
         "gametime": {
           "low": 30,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 30,
@@ -539,7 +539,7 @@
         "scorebig": {
           "low": 48.69,
           "high": 6706.19,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -557,7 +557,7 @@
         "gametime": {
           "low": 60,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 52,
@@ -567,7 +567,7 @@
         "scorebig": {
           "low": 82.44,
           "high": 2029.94,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -585,7 +585,7 @@
         "gametime": {
           "low": 31,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 28,
@@ -595,7 +595,7 @@
         "scorebig": {
           "low": 48.69,
           "high": 1747.44,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -613,7 +613,7 @@
         "gametime": {
           "low": 83,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 84,
@@ -623,7 +623,7 @@
         "scorebig": {
           "low": 112.44,
           "high": 6706.19,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -641,7 +641,7 @@
         "gametime": {
           "low": 73,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 74,
@@ -651,7 +651,7 @@
         "scorebig": {
           "low": 99.94,
           "high": 6706.19,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -669,7 +669,7 @@
         "gametime": {
           "low": 74,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 70,
@@ -679,7 +679,7 @@
         "scorebig": {
           "low": 102.44,
           "high": 6706.19,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -697,7 +697,7 @@
         "gametime": {
           "low": 32,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 27,
@@ -707,7 +707,7 @@
         "scorebig": {
           "low": 49.94,
           "high": 6706.19,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -723,9 +723,9 @@
       "lowDelta": 2,
       "otherSources": {
         "gametime": {
-          "low": 38,
+          "low": 37,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 35,
@@ -735,7 +735,7 @@
         "scorebig": {
           "low": 57.44,
           "high": 6706.19,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -753,7 +753,7 @@
         "gametime": {
           "low": 71,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 62,
@@ -762,8 +762,8 @@
         },
         "scorebig": {
           "low": 97.44,
-          "high": 2771.19,
-          "observedDate": "2026-10-31"
+          "high": 2783.69,
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -781,7 +781,7 @@
         "gametime": {
           "low": 72,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 74,
@@ -791,7 +791,7 @@
         "scorebig": {
           "low": 99.94,
           "high": 2052.44,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -809,7 +809,7 @@
         "gametime": {
           "low": 49,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 41,
@@ -819,7 +819,7 @@
         "scorebig": {
           "low": 63.69,
           "high": 6706.19,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -837,12 +837,17 @@
         "gametime": {
           "low": 71,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 76,
           "high": null,
           "observedDate": "2026-09-30"
+        },
+        "scorebig": {
+          "low": 97.44,
+          "high": 6706.19,
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -860,7 +865,7 @@
         "gametime": {
           "low": 33,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 25,
@@ -883,7 +888,7 @@
         "gametime": {
           "low": 71,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         },
         "ticketnetwork": {
           "low": 75,
@@ -904,9 +909,9 @@
       "lowDelta": -5,
       "otherSources": {
         "gametime": {
-          "low": 38,
+          "low": 37,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -924,7 +929,7 @@
         "gametime": {
           "low": 85,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -942,7 +947,7 @@
         "gametime": {
           "low": 30,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -960,7 +965,7 @@
         "gametime": {
           "low": 33,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -978,7 +983,7 @@
         "gametime": {
           "low": 30,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -996,7 +1001,7 @@
         "gametime": {
           "low": 60,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -1014,7 +1019,7 @@
         "gametime": {
           "low": 71,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -1032,7 +1037,7 @@
         "gametime": {
           "low": 85,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -1050,7 +1055,7 @@
         "gametime": {
           "low": 47,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -1068,7 +1073,7 @@
         "gametime": {
           "low": 44,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -1086,7 +1091,7 @@
         "gametime": {
           "low": 49,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -1104,7 +1109,7 @@
         "gametime": {
           "low": 47,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     },
@@ -1122,7 +1127,7 @@
         "gametime": {
           "low": 95,
           "high": null,
-          "observedDate": "2026-10-31"
+          "observedDate": "2026-11-01"
         }
       }
     }
