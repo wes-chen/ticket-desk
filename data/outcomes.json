@@ -811,10 +811,10 @@
    "date": "2027-01-09",
    "gameId": 2026020721,
    "logo": "https://assets.nhle.com/logos/nhl/svg/NYR_light.svg",
-   "marketCount": 1,
+   "marketCount": 9,
    "marketMax": 602,
-   "marketMedian": 602,
-   "marketMin": 602,
+   "marketMedian": 192,
+   "marketMin": 170,
    "marketWithheld": false,
    "opponent": "New York Rangers",
    "puckTime": "2027-01-10T03:00:00Z",
@@ -834,7 +834,7 @@
     190,
     190,
     190,
-    602
+    192
    ]
   },
   {
