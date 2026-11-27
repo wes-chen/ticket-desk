@@ -1,6 +1,6 @@
 {
   "_comment": "Derived from the per-source stores in data/market/ by scripts/summarize_market.py. low/high are the cheapest and priciest listings in the WHOLE ARENA, all-in, on TickPick - NOT a comp for any specific seat, and NOT the channel these tickets are sold on. See the script docstring.",
-  "generatedAt": "2026-11-26T23:43:27Z",
+  "generatedAt": "2026-11-27T23:22:02Z",
   "source": "tickpick",
   "sources": [
     "gametime",
@@ -12,21 +12,21 @@
     "perSource": {
       "gametime": {
         "games": 44,
-        "medianRatioToPrimary": 1.0448,
+        "medianRatioToPrimary": 1.0486,
         "minRatio": 0.76,
-        "maxRatio": 1.4118
+        "maxRatio": 4.3913
       },
       "scorebig": {
         "games": 36,
-        "medianRatioToPrimary": 1.4573,
+        "medianRatioToPrimary": 1.5363,
         "minRatio": 0.6536,
-        "maxRatio": 2.0238
+        "maxRatio": 4.617
       },
       "ticketnetwork": {
         "games": 31,
-        "medianRatioToPrimary": 1.0545,
+        "medianRatioToPrimary": 1.0882,
         "minRatio": 0.5487,
-        "maxRatio": 2.0238
+        "maxRatio": 4.617
       }
     },
     "commonGames": 31,
@@ -35,9 +35,9 @@
   "priceBasis": "all_in_whole_arena",
   "isOwnChannel": false,
   "confidence": "measured",
-  "observationDays": 76,
+  "observationDays": 77,
   "firstObservedDate": "2026-09-05",
-  "lastObservedDate": "2026-11-26",
+  "lastObservedDate": "2026-11-27",
   "games": [
     {
       "gameId": 2026010032,
@@ -490,13 +490,13 @@
     {
       "gameId": 2026020410,
       "date": "2026-11-27",
-      "low": 74.0,
-      "high": 2120.0,
-      "observedDate": "2026-11-26",
-      "observations": 76,
+      "low": 23.0,
+      "high": 829.0,
+      "observedDate": "2026-11-27",
+      "observations": 77,
       "lowFirst": 69,
       "lowFirstDate": "2026-09-05",
-      "lowDelta": 5.0,
+      "lowDelta": -46.0,
       "otherSources": {
         "gametime": {
           "low": 101,
@@ -519,9 +519,9 @@
       "gameId": 2026020495,
       "date": "2026-12-08",
       "low": 29.0,
-      "high": 2579.0,
-      "observedDate": "2026-11-26",
-      "observations": 61,
+      "high": 2589.0,
+      "observedDate": "2026-11-27",
+      "observations": 62,
       "lowFirst": 23,
       "lowFirstDate": "2026-09-05",
       "lowDelta": 6.0,
@@ -546,13 +546,13 @@
     {
       "gameId": 2026020513,
       "date": "2026-12-11",
-      "low": 65.0,
-      "high": 5210.0,
-      "observedDate": "2026-11-26",
-      "observations": 57,
+      "low": 66.0,
+      "high": 3037.0,
+      "observedDate": "2026-11-27",
+      "observations": 58,
       "lowFirst": 51,
       "lowFirstDate": "2026-09-05",
-      "lowDelta": 14.0,
+      "lowDelta": 15.0,
       "otherSources": {
         "gametime": {
           "low": 66,
@@ -575,9 +575,9 @@
       "gameId": 2026020535,
       "date": "2026-12-14",
       "low": 31.0,
-      "high": 1364.0,
-      "observedDate": "2026-11-26",
-      "observations": 55,
+      "high": 918.0,
+      "observedDate": "2026-11-27",
+      "observations": 56,
       "lowFirst": 23,
       "lowFirstDate": "2026-09-05",
       "lowDelta": 8.0,
@@ -602,13 +602,13 @@
     {
       "gameId": 2026020611,
       "date": "2026-12-26",
-      "low": 100.0,
-      "high": 3037.0,
-      "observedDate": "2026-11-26",
-      "observations": 50,
+      "low": 94.0,
+      "high": 3067.0,
+      "observedDate": "2026-11-27",
+      "observations": 51,
       "lowFirst": 83,
       "lowFirstDate": "2026-09-05",
-      "lowDelta": 17.0,
+      "lowDelta": 11.0,
       "otherSources": {
         "gametime": {
           "low": 105,
@@ -630,13 +630,13 @@
     {
       "gameId": 2026020653,
       "date": "2027-01-01",
-      "low": 81.0,
+      "low": 68.0,
       "high": 3184.0,
-      "observedDate": "2026-11-26",
-      "observations": 48,
+      "observedDate": "2026-11-27",
+      "observations": 49,
       "lowFirst": 73,
       "lowFirstDate": "2026-09-05",
-      "lowDelta": 8.0,
+      "lowDelta": -5.0,
       "otherSources": {
         "gametime": {
           "low": 80,
@@ -660,8 +660,8 @@
       "date": "2027-01-02",
       "low": 91.0,
       "high": 2280.0,
-      "observedDate": "2026-11-26",
-      "observations": 45,
+      "observedDate": "2026-11-27",
+      "observations": 46,
       "lowFirst": 67,
       "lowFirstDate": "2026-09-05",
       "lowDelta": 24.0,
@@ -688,8 +688,8 @@
       "date": "2027-01-04",
       "low": 34.0,
       "high": 2579.0,
-      "observedDate": "2026-11-26",
-      "observations": 44,
+      "observedDate": "2026-11-27",
+      "observations": 45,
       "lowFirst": 25,
       "lowFirstDate": "2026-09-05",
       "lowDelta": 9.0,
@@ -716,8 +716,8 @@
       "date": "2027-01-06",
       "low": 38.0,
       "high": 2852.0,
-      "observedDate": "2026-11-26",
-      "observations": 42,
+      "observedDate": "2026-11-27",
+      "observations": 43,
       "lowFirst": 30,
       "lowFirstDate": "2026-09-05",
       "lowDelta": 8.0,
@@ -743,9 +743,9 @@
       "gameId": 2026020708,
       "date": "2027-01-08",
       "low": 113.0,
-      "high": 3664.0,
-      "observedDate": "2026-11-26",
-      "observations": 37,
+      "high": 3361.0,
+      "observedDate": "2026-11-27",
+      "observations": 38,
       "lowFirst": 60,
       "lowFirstDate": "2026-09-05",
       "lowDelta": 53.0,
@@ -770,13 +770,13 @@
     {
       "gameId": 2026020721,
       "date": "2027-01-09",
-      "low": 79.0,
-      "high": 3633.0,
-      "observedDate": "2026-11-26",
-      "observations": 37,
+      "low": 83.0,
+      "high": 2346.0,
+      "observedDate": "2026-11-27",
+      "observations": 38,
       "lowFirst": 76,
       "lowFirstDate": "2026-09-05",
-      "lowDelta": 3.0,
+      "lowDelta": 7.0,
       "otherSources": {
         "gametime": {
           "low": 78,
